@@ -5,11 +5,17 @@ sequenceDiagram
     autonumber
     actor Bob
     actor Alice
+
+    box firebrick Off-chain
     participant API
+    end
     participant L1 & Rollups
+
+    box rebeccapurple Cartesi Machine
     participant Middleware
     participant dApp
     participant Random
+    end
 
     Bob->>L1 & Rollups: Bob's input
     activate L1 & Rollups
