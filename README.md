@@ -28,13 +28,20 @@ sequenceDiagram
     API->>L1 & Rollups: Drand's beacon
     L1 & Rollups->>Middleware: Drand's beacon
     Middleware->>Random: Drand's beacon
-
-    deactivate Random
-    deactivate Middleware
+    Random-->>dApp: random response
+    dApp-->>Middleware: ok Bob
     deactivate dApp
-
+    Middleware-->>L1 & Rollups: ok Bob
+    deactivate Middleware
+    L1 & Rollups-->>Bob: ok Bob
     deactivate L1 & Rollups
-
+    Middleware->>dApp: Alice's input
+    activate dApp
+    dApp-->>Middleware: ok Alice
+    deactivate dApp
+    Middleware-->>L1 & Rollups: ok Alice
+    L1 & Rollups-->>Alice: ok Alice
+    deactivate Random
     deactivate Middleware
     deactivate L1 & Rollups
 ```
