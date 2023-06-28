@@ -17,17 +17,27 @@ async fn index() -> impl Responder {
     "Hello, World!"
 }
 
-#[get("/{name}")]
-async fn hello(name: web::Path<String>) -> impl Responder {
-    format!("Hello {}!", &name)
-}
+// #[get("/{name}")]
+// async fn hello(name: web::Path<String>) -> impl Responder {
+//     format!("Hello {}!", &name)
+// }
 
 #[post("/add")]
 async fn add_to_buffer(item: web::Json<Item>, ctx: web::Data<AppState>) -> impl Responder {
     let mut buffer = ctx.buffer.lock().unwrap();
     buffer.push(item.request.clone());
-    let buffer = buffer.clone();
-    format!("Hello {}!", &buffer.join(", "))
+    format!("OK {}!", &buffer.join(", "))
+}
+
+#[get("/consume")]
+async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
+    let mut buffer = ctx.buffer.lock().unwrap();
+    if buffer.is_empty() {
+        return "EMPTY";
+    }
+    println!("Buffer: {:?}", buffer[0]);
+    buffer.remove(0);
+    "OK"
 }
 
 #[actix_web::main]
@@ -36,13 +46,12 @@ async fn main() -> std::io::Result<()> {
         buffer: Mutex::new(Vec::new()),
     });
 
-
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
             .service(index)
-            .service(hello)
             .service(add_to_buffer)
+            .service(consume_buffer)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
