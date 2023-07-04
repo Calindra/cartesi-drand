@@ -2,14 +2,44 @@ use actix_web::{get, post, web, App, HttpServer, Responder};
 use serde::Deserialize;
 use std::sync::Mutex;
 
-#[derive(Deserialize)]
-struct AppState {
-    buffer: Mutex<Vec<String>>,
+#[derive(Deserialize, Clone)]
+struct Item {
+    request: String,
 }
 
 #[derive(Deserialize)]
-struct Item {
-    request: String,
+struct InputBufferManager {
+    data: Mutex<Vec<Item>>,
+}
+
+#[derive(Deserialize)]
+struct AppState {
+    input_buffer_manager: InputBufferManager,
+}
+
+impl InputBufferManager {
+    fn new() -> InputBufferManager {
+        InputBufferManager {
+            data: Mutex::new(Vec::new()),
+        }
+    }
+
+    fn read_input_from_rollups(&self) -> Result<(), String> {
+        println!("Reading input from rollups");
+        Ok(())
+    }
+
+    fn consume_input(&self) -> Option<Item> {
+        println!("Consuming input");
+        let mut buffer = self.data.lock().unwrap();
+        let data = buffer.pop();
+        data
+    }
+
+    fn await_beacon(&self) -> Result<(), String> {
+        println!("Awaiting beacon");
+        Ok(())
+    }
 }
 
 #[get("/")]
@@ -17,33 +47,32 @@ async fn index() -> impl Responder {
     "Hello, World!"
 }
 
-// #[get("/{name}")]
-// async fn hello(name: web::Path<String>) -> impl Responder {
-//     format!("Hello {}!", &name)
-// }
-
 #[post("/add")]
 async fn add_to_buffer(item: web::Json<Item>, ctx: web::Data<AppState>) -> impl Responder {
-    let mut buffer = ctx.buffer.lock().unwrap();
-    buffer.push(item.request.clone());
-    format!("OK {}!", &buffer.join(", "))
+    let mut buffer = ctx.input_buffer_manager.data.lock().unwrap();
+    buffer.push(item.into_inner());
+    let content = buffer
+        .to_vec()
+        .iter()
+        .map(|x| x.request.clone())
+        .collect::<Vec<String>>();
+    format!("OK {}!", &content.join(","))
 }
 
 #[get("/consume")]
 async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
-    let mut buffer = ctx.buffer.lock().unwrap();
-    if buffer.is_empty() {
-        return "EMPTY";
-    }
-    println!("Buffer: {:?}", buffer[0]);
-    buffer.remove(0);
-    "OK"
+    let input = ctx.input_buffer_manager.consume_input();
+    let result = match input {
+        Some(item) => item.request,
+        None => "EMPTY".to_string(),
+    };
+    result
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let app_state = web::Data::new(AppState {
-        buffer: Mutex::new(Vec::new()),
+        input_buffer_manager: InputBufferManager::new(),
     });
 
     HttpServer::new(move || {
