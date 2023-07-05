@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
-use std::mem::size_of;
+use std::{error::Error, mem::size_of};
 use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
 // use std::thread::spawn;
@@ -61,7 +61,7 @@ impl InputBufferManager {
     }
 
     async fn read_input_from_rollups(&mut self) {
-        println!("Reading input from rollups");
+        println!("Reading input from rollups receiver");
 
         while let Some(item) = self.receiver.recv().await {
             println!("Received item");
@@ -131,7 +131,7 @@ async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
 }
 
 async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting rollup");
+    println!("Starting rollup sender");
 
     let client = hyper::Client::new();
     let server_addr = env::var("ROLLUP_HTTP_SERVER_URL")?;
@@ -187,22 +187,23 @@ async fn handle_advance(
     _server_addr: &str,
     req: json::JsonValue,
     sender: &Sender<Item>,
-) -> Result<&'static str, Box<dyn std::error::Error>> {
+) -> Result<&'static str, Box<dyn Error>> {
     println!("Handling advance");
 
     println!("req {:}", req);
 
-    sender.send(Item {
-        request: req.dump(),
-    });
+    let _ = sender
+        .send(Item {
+            request: req.dump(),
+        })
+        .await;
 
     Ok("accept")
 }
 
 fn start_workers(sender: Sender<Item>) {
-    println!("Starting workers");
     spawn(async move {
-        rollup(sender).await;
+        let _ = rollup(sender).await;
     });
 }
 
