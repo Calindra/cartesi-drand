@@ -2,8 +2,9 @@ use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
 use std::mem::size_of;
+use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
-use std::thread::spawn;
+// use std::thread::spawn;
 use std::{
     borrow::BorrowMut,
     cell::Cell,
@@ -57,8 +58,6 @@ impl InputBufferManager {
             request_count: Cell::new(0),
             receiver,
         }
-
-        // instance
     }
 
     async fn read_input_from_rollups(&mut self) {
@@ -202,8 +201,8 @@ async fn handle_advance(
 
 fn start_workers(sender: Sender<Item>) {
     println!("Starting workers");
-    spawn(move || {
-        rollup(sender);
+    spawn(async move {
+        rollup(sender).await;
     });
 }
 
@@ -213,12 +212,17 @@ async fn main() -> std::io::Result<()> {
 
     let (tx, rx) = channel::<Item>(size_of::<Item>());
 
-    let instance = InputBufferManager::new(rx);
     let app_state = web::Data::new(AppState {
-        input_buffer_manager: Arc::new(Mutex::new(instance)),
+        input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new(rx))),
     });
 
     start_workers(tx);
+
+    app_state
+        .input_buffer_manager
+        .lock()
+        .unwrap()
+        .read_input_from_rollups();
 
     println!("Starting server");
 
