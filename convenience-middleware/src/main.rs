@@ -1,7 +1,8 @@
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::mem::size_of;
+// use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread::spawn;
 use std::{
     borrow::BorrowMut,
@@ -10,7 +11,7 @@ use std::{
     env,
     sync::{Arc, Mutex},
 };
-// use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 #[derive()]
 struct Item {
@@ -62,9 +63,8 @@ impl InputBufferManager {
 
     async fn read_input_from_rollups(&mut self) {
         println!("Reading input from rollups");
-        println!("Starting listener");
 
-        while let Ok(item) = self.receiver.recv() {
+        while let Some(item) = self.receiver.recv().await {
             println!("Received item");
             println!("Request {}", item.request);
 
@@ -211,7 +211,7 @@ fn start_workers(sender: Sender<Item>) {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    let (tx, rx) = channel::<Item>();
+    let (tx, rx) = channel::<Item>(size_of::<Item>());
 
     let instance = InputBufferManager::new(rx);
     let app_state = web::Data::new(AppState {
