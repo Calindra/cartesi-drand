@@ -1,54 +1,89 @@
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
-use serde::Deserialize;
-use std::{collections::VecDeque, env, sync::Mutex};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
-use tokio::sync::mpsc::Receiver;
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread::spawn;
+use std::{
+    borrow::BorrowMut,
+    cell::Cell,
+    collections::VecDeque,
+    env,
+    sync::{Arc, Mutex},
+};
+// use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-#[derive(Deserialize, Clone)]
+#[derive()]
 struct Item {
     request: String,
 }
 
-#[derive(Deserialize)]
-struct InputBufferManager {
-    data: Mutex<VecDeque<Item>>,
-    flagToHold: bool,
+struct Flag {
+    is_holding: bool,
 }
 
-#[derive(Deserialize)]
+#[derive()]
+struct InputBufferManager {
+    messages: VecDeque<Item>,
+    flag_to_hold: Flag,
+    request_count: Cell<usize>,
+    receiver: Receiver<Item>,
+}
+
+#[derive()]
 struct AppState {
-    input_buffer_manager: InputBufferManager,
+    input_buffer_manager: Arc<Mutex<InputBufferManager>>,
+}
+
+impl Flag {
+    fn new() -> Flag {
+        Flag { is_holding: true }
+    }
+
+    fn hold_up(&mut self) {
+        self.is_holding = true;
+    }
+
+    fn release(&mut self) {
+        self.is_holding = false;
+    }
 }
 
 impl InputBufferManager {
-    fn new() -> InputBufferManager {
+    fn new(receiver: Receiver<Item>) -> InputBufferManager {
         InputBufferManager {
-            data: Mutex::new(VecDeque::new()),
-            flagToHold: true,
+            messages: VecDeque::new(),
+            flag_to_hold: Flag::new(),
+            request_count: Cell::new(0),
+            receiver,
+        }
+
+        // instance
+    }
+
+    async fn read_input_from_rollups(&mut self) {
+        println!("Reading input from rollups");
+        println!("Starting listener");
+
+        while let Ok(item) = self.receiver.recv() {
+            println!("Received item");
+            println!("Request {}", item.request);
+
+            self.messages.push_back(item);
+            self.request_count.set(self.request_count.get() + 1);
         }
     }
 
-    fn read_input_from_rollups(&self) -> Result<(), String> {
-        println!("Reading input from rollups");
-        todo!("Implement this");
-        // Ok(())
-    }
-
-    fn consume_input(&self) -> Option<Item> {
+    fn consume_input(&mut self) -> Option<Item> {
         println!("Consuming input");
-        let mut buffer = self.data.lock().unwrap();
-
+        let buffer = self.messages.borrow_mut();
         let data = buffer.pop_front();
+        self.request_count.set(self.request_count.get() - 1);
         data
     }
 
-    fn await_beacon(&mut self) -> Result<(), String> {
+    fn await_beacon(&mut self) {
         println!("Awaiting beacon");
-        self.flagToHold = true;
-        Ok(())
+        self.flag_to_hold.hold_up();
     }
 }
 
@@ -71,7 +106,7 @@ async fn index() -> impl Responder {
 
 #[get("/consume")]
 async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
-    let input = ctx.input_buffer_manager.consume_input();
+    let input = ctx.input_buffer_manager.lock().unwrap().consume_input();
 
     let result = match input {
         Some(item) => item.request,
@@ -82,6 +117,19 @@ async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
 }
 
 // todo add endpoint to hold on next inputs from Random Server
+
+#[post("/hold")]
+async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
+    let mut manager = ctx.input_buffer_manager.lock().unwrap();
+
+    if manager.flag_to_hold.is_holding {
+        return "Holding already";
+    }
+
+    manager.await_beacon();
+
+    "OK"
+}
 
 async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting rollup");
@@ -124,8 +172,8 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
 }
 
 async fn handle_inspect(
-    client: &hyper::Client<hyper::client::HttpConnector>,
-    server_addr: &str,
+    _client: &hyper::Client<hyper::client::HttpConnector>,
+    _server_addr: &str,
     req: json::JsonValue,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
     println!("Handling inspect");
@@ -136,8 +184,8 @@ async fn handle_inspect(
 }
 
 async fn handle_advance(
-    client: &hyper::Client<hyper::client::HttpConnector>,
-    server_addr: &str,
+    _client: &hyper::Client<hyper::client::HttpConnector>,
+    _server_addr: &str,
     req: json::JsonValue,
     sender: &Sender<Item>,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
@@ -146,7 +194,7 @@ async fn handle_advance(
     println!("req {:}", req);
 
     sender.send(Item {
-        request: "test".to_string(),
+        request: req.dump(),
     });
 
     Ok("accept")
@@ -154,8 +202,8 @@ async fn handle_advance(
 
 fn start_workers(sender: Sender<Item>) {
     println!("Starting workers");
-    tokio::spawn(async move {
-        rollup(sender).await;
+    spawn(move || {
+        rollup(sender);
     });
 }
 
@@ -163,10 +211,11 @@ fn start_workers(sender: Sender<Item>) {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    let (tx, rx) = mpsc::channel(2);
+    let (tx, rx) = channel::<Item>();
 
+    let instance = InputBufferManager::new(rx);
     let app_state = web::Data::new(AppState {
-        input_buffer_manager: InputBufferManager::new(),
+        input_buffer_manager: Arc::new(Mutex::new(instance)),
     });
 
     start_workers(tx);
