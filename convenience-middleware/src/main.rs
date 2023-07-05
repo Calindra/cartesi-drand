@@ -2,7 +2,10 @@ use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
 use serde::Deserialize;
-use std::{env, sync::Mutex};
+use std::{collections::VecDeque, env, sync::Mutex};
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Deserialize, Clone)]
 struct Item {
@@ -11,7 +14,7 @@ struct Item {
 
 #[derive(Deserialize)]
 struct InputBufferManager {
-    data: Mutex<Vec<Item>>,
+    data: Mutex<VecDeque<Item>>,
     flagToHold: bool,
 }
 
@@ -23,8 +26,8 @@ struct AppState {
 impl InputBufferManager {
     fn new() -> InputBufferManager {
         InputBufferManager {
-            data: Mutex::new(Vec::new()),
-            flagToHold: false,
+            data: Mutex::new(VecDeque::new()),
+            flagToHold: true,
         }
     }
 
@@ -37,7 +40,8 @@ impl InputBufferManager {
     fn consume_input(&self) -> Option<Item> {
         println!("Consuming input");
         let mut buffer = self.data.lock().unwrap();
-        let data = buffer.pop();
+
+        let data = buffer.pop_front();
         data
     }
 
@@ -53,17 +57,17 @@ async fn index() -> impl Responder {
     "Hello, World!"
 }
 
-#[post("/add")]
-async fn add_to_buffer(item: web::Json<Item>, ctx: web::Data<AppState>) -> impl Responder {
-    let mut buffer = ctx.input_buffer_manager.data.lock().unwrap();
-    buffer.push(item.into_inner());
-    let content = buffer
-        .to_vec()
-        .iter()
-        .map(|x| x.request.clone())
-        .collect::<Vec<String>>();
-    format!("OK {}!", &content.join(","))
-}
+// #[post("/add")]
+// async fn add_to_buffer(item: web::Json<Item>, ctx: web::Data<AppState>) -> impl Responder {
+//     let mut buffer = ctx.input_buffer_manager.data.lock().unwrap();
+//     buffer.push_back(item.into_inner());
+//     let content = buffer
+//         .to_vec()
+//         .iter()
+//         .map(|x| x.request.clone())
+//         .collect::<Vec<String>>();
+//     format!("OK {}!", &content.join(","))
+// }
 
 #[get("/consume")]
 async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
@@ -77,7 +81,9 @@ async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
     result
 }
 
-async fn rollup() -> Result<(), Box<dyn std::error::Error>> {
+// todo add endpoint to hold on next inputs from Random Server
+
+async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting rollup");
 
     let client = hyper::Client::new();
@@ -106,7 +112,7 @@ async fn rollup() -> Result<(), Box<dyn std::error::Error>> {
                 .as_str()
                 .ok_or("request_type is not a string")?;
             status = match request_type {
-                "advance_state" => handle_advance(&client, &server_addr[..], req).await?,
+                "advance_state" => handle_advance(&client, &server_addr[..], req, &sender).await?,
                 "inspect_state" => handle_inspect(&client, &server_addr[..], req).await?,
                 &_ => {
                     eprintln!("Unknown request type");
@@ -124,6 +130,8 @@ async fn handle_inspect(
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
     println!("Handling inspect");
 
+    println!("req {:}", req);
+
     Ok("accept")
 }
 
@@ -131,23 +139,37 @@ async fn handle_advance(
     client: &hyper::Client<hyper::client::HttpConnector>,
     server_addr: &str,
     req: json::JsonValue,
+    sender: &Sender<Item>,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
     println!("Handling advance");
 
+    println!("req {:}", req);
+
+    sender.send(Item {
+        request: "test".to_string(),
+    });
+
     Ok("accept")
+}
+
+fn start_workers(sender: Sender<Item>) {
+    println!("Starting workers");
+    tokio::spawn(async move {
+        rollup(sender).await;
+    });
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
+    let (tx, rx) = mpsc::channel(2);
+
     let app_state = web::Data::new(AppState {
         input_buffer_manager: InputBufferManager::new(),
     });
 
-    tokio::spawn(async move {
-        rollup().await;
-    });
+    start_workers(tx);
 
     println!("Starting server");
 
@@ -155,7 +177,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .service(index)
-            .service(add_to_buffer)
             .service(consume_buffer)
     })
     .bind(("127.0.0.1", 8080))?

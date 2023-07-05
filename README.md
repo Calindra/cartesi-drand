@@ -1,5 +1,14 @@
 # Cartesi Drand
 
+
+## Description
+
+
+
+## System requirements
+- Rust ^1.7.0
+
+
 ```mermaid
 sequenceDiagram
     autonumber
