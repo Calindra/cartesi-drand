@@ -1,6 +1,7 @@
-use actix_web::{get, post, web, App, HttpServer, Responder};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
+use serde::Serialize;
 use std::{error::Error, mem::size_of};
 use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
@@ -14,6 +15,7 @@ use std::{
 };
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
+#[derive(Serialize)]
 struct Item {
     request: String,
 }
@@ -80,28 +82,34 @@ async fn index() -> impl Responder {
 }
 
 #[get("/consume")]
-async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
-    let input = ctx.input_buffer_manager.lock().unwrap().consume_input();
+async fn consume_buffer(ctx: web::Data<AppState>) -> HttpResponse {
+    let manager = ctx.input_buffer_manager.lock();
 
-    let result = match input {
-        Some(item) => item.request,
-        None => "EMPTY".to_string(),
+    let input = match manager {
+        Ok(mut manager) => manager.consume_input(),
+        Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
-    result
+    match input {
+        Some(item) => HttpResponse::Ok().body(item.request),
+        None => HttpResponse::NoContent().finish(),
+    }
 }
 
 #[post("/hold")]
-async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
-    let mut manager = ctx.input_buffer_manager.lock().unwrap();
+async fn hold_buffer(ctx: web::Data<AppState>) -> HttpResponse {
+    let mut manager = match ctx.input_buffer_manager.lock() {
+        Ok(manager) => manager,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
 
     if manager.flag_to_hold.is_holding {
-        return "Holding already";
+        return HttpResponse::Accepted().body("Holding already");
     }
 
     manager.await_beacon();
 
-    "OK"
+    HttpResponse::Ok().body("Holding")
 }
 
 async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
