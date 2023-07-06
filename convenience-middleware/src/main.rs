@@ -28,7 +28,6 @@ struct InputBufferManager {
     messages: VecDeque<Item>,
     flag_to_hold: Flag,
     request_count: Cell<usize>,
-    receiver: Receiver<Item>,
 }
 
 #[derive()]
@@ -51,19 +50,18 @@ impl Flag {
 }
 
 impl InputBufferManager {
-    fn new(receiver: Receiver<Item>) -> InputBufferManager {
+    fn new() -> InputBufferManager {
         InputBufferManager {
             messages: VecDeque::new(),
             flag_to_hold: Flag::new(),
             request_count: Cell::new(0),
-            receiver,
         }
     }
 
-    async fn read_input_from_rollups(&mut self) {
+    async fn read_input_from_rollups(&mut self, mut receiver: Receiver<Item>) {
         println!("Reading input from rollups receiver");
 
-        while let Some(item) = self.receiver.recv().await {
+        while let Some(item) = receiver.recv().await {
             println!("Received item");
             println!("Request {}", item.request);
 
@@ -207,6 +205,34 @@ fn start_workers(sender: Sender<Item>) {
     });
 }
 
+fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
+    spawn(async move {
+        let mut manager = manager.lock().unwrap();
+
+        println!("Reading input from rollups receiver");
+
+        loop {
+            let conn = rx.try_recv();
+
+            let item = match conn {
+                Ok(conn) => conn,
+                Err(_) => {
+                    println!("No input from rollups receiver");
+                    continue;
+                }
+            };
+
+            println!("Received item");
+            println!("Request {}", item.request);
+
+            manager.messages.push_back(item);
+            manager.request_count.set(manager.request_count.get() + 1);
+        }
+
+        // manager.read_input_from_rollups(rx).await;
+    });
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -214,16 +240,13 @@ async fn main() -> std::io::Result<()> {
     let (tx, rx) = channel::<Item>(size_of::<Item>());
 
     let app_state = web::Data::new(AppState {
-        input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new(rx))),
+        input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
     });
 
     start_workers(tx);
 
-    app_state
-        .input_buffer_manager
-        .lock()
-        .unwrap()
-        .read_input_from_rollups();
+    let manager = Arc::clone(&app_state.input_buffer_manager);
+    start_listener(manager, rx);
 
     println!("Starting server");
 
