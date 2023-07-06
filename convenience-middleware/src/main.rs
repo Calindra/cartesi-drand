@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
-use std::{error::Error, mem::size_of};
+use std::{error::Error, mem::size_of, thread::sleep, time::Duration};
 use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
 // use std::thread::spawn;
@@ -207,24 +207,13 @@ fn start_senders(sender: Sender<Item>) {
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
     spawn(async move {
-        let mut manager = manager.lock().unwrap();
-
         println!("Reading input from rollups receiver");
 
-        loop {
-            let conn = rx.try_recv();
-
-            let item = match conn {
-                Ok(conn) => conn,
-                Err(_) => {
-                    println!("No input from rollups receiver");
-                    continue;
-                }
-            };
-
+        while let Some(item) = rx.recv().await {
             println!("Received item");
             println!("Request {}", item.request);
 
+            let mut manager = manager.lock().unwrap();
             manager.messages.push_back(item);
             manager.request_count.set(manager.request_count.get() + 1);
         }
@@ -243,9 +232,9 @@ async fn main() -> std::io::Result<()> {
         input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
     });
 
+    start_senders(tx);
     let manager = Arc::clone(&app_state.input_buffer_manager);
     start_listener(manager, rx);
-    start_senders(tx);
 
     println!("Starting server");
 
