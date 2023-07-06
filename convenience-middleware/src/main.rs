@@ -1,121 +1,22 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+mod models;
+mod routes;
+
+use crate::{
+    models::models::{AppState, Beacon, InputBufferManager, Item},
+    routes::routes::{consume_buffer, index},
+};
+use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use json::object;
-use serde::Serialize;
 use std::{error::Error, mem::size_of};
 use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
 // use std::thread::spawn;
 use std::{
-    borrow::BorrowMut,
-    cell::Cell,
-    collections::VecDeque,
     env,
     sync::{Arc, Mutex},
 };
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-#[derive(Serialize)]
-struct Item {
-    request: String,
-}
-
-struct Flag {
-    is_holding: bool,
-}
-
-struct Beacon {
-    timestamp: u64,
-    metadata: String,
-}
-
-struct InputBufferManager {
-    messages: VecDeque<Item>,
-    flag_to_hold: Flag,
-    request_count: Cell<usize>,
-    last_beacon: Cell<Beacon>,
-}
-
-struct AppState {
-    input_buffer_manager: Arc<Mutex<InputBufferManager>>,
-}
-
-impl Flag {
-    fn new() -> Flag {
-        Flag { is_holding: true }
-    }
-
-    fn hold_up(&mut self) {
-        self.is_holding = true;
-    }
-
-    fn release(&mut self) {
-        self.is_holding = false;
-    }
-}
-
-impl InputBufferManager {
-    fn new() -> InputBufferManager {
-        InputBufferManager {
-            messages: VecDeque::new(),
-            flag_to_hold: Flag::new(),
-            request_count: Cell::new(0),
-            last_beacon: Cell::new(Beacon {
-                timestamp: 0,
-                metadata: String::new(),
-            }),
-        }
-    }
-
-    fn consume_input(&mut self) -> Option<Item> {
-        println!("Consuming input");
-        let buffer = self.messages.borrow_mut();
-        let data = buffer.pop_front();
-        self.request_count.set(self.request_count.get() - 1);
-        data
-    }
-
-    fn await_beacon(&mut self) {
-        println!("Awaiting beacon");
-        self.flag_to_hold.hold_up();
-    }
-}
-
-#[get("/")]
-async fn index() -> impl Responder {
-    "Hello, World!"
-}
-
-#[get("/consume")]
-async fn consume_buffer(ctx: web::Data<AppState>) -> HttpResponse {
-    let manager = ctx.input_buffer_manager.lock();
-
-    let input = match manager {
-        Ok(mut manager) => manager.consume_input(),
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-
-    match input {
-        Some(item) => HttpResponse::Ok().body(item.request),
-        None => HttpResponse::NoContent().finish(),
-    }
-}
-
-#[post("/hold")]
-async fn hold_buffer(ctx: web::Data<AppState>) -> HttpResponse {
-    let mut manager = match ctx.input_buffer_manager.lock() {
-        Ok(manager) => manager,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-
-    if manager.flag_to_hold.is_holding {
-        return HttpResponse::Accepted().body("Holding already");
-    }
-
-    manager.await_beacon();
-
-    HttpResponse::Ok().body("Holding")
-}
 
 async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting rollup sender");
