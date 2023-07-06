@@ -1,7 +1,7 @@
 use actix_web::{get, post, web, App, HttpServer, Responder};
 use dotenv::dotenv;
 use json::object;
-use std::{error::Error, mem::size_of, thread::sleep, time::Duration};
+use std::{error::Error, mem::size_of};
 use tokio::spawn;
 // use std::sync::mpsc::{channel, Receiver, Sender};
 // use std::thread::spawn;
@@ -14,7 +14,6 @@ use std::{
 };
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-#[derive()]
 struct Item {
     request: String,
 }
@@ -23,14 +22,17 @@ struct Flag {
     is_holding: bool,
 }
 
-#[derive()]
+struct Beacon {
+    timestamp: u64,
+    metadata: String,
+}
+
 struct InputBufferManager {
     messages: VecDeque<Item>,
     flag_to_hold: Flag,
     request_count: Cell<usize>,
 }
 
-#[derive()]
 struct AppState {
     input_buffer_manager: Arc<Mutex<InputBufferManager>>,
 }
@@ -58,18 +60,6 @@ impl InputBufferManager {
         }
     }
 
-    async fn read_input_from_rollups(&mut self, mut receiver: Receiver<Item>) {
-        println!("Reading input from rollups receiver");
-
-        while let Some(item) = receiver.recv().await {
-            println!("Received item");
-            println!("Request {}", item.request);
-
-            self.messages.push_back(item);
-            self.request_count.set(self.request_count.get() + 1);
-        }
-    }
-
     fn consume_input(&mut self) -> Option<Item> {
         println!("Consuming input");
         let buffer = self.messages.borrow_mut();
@@ -89,18 +79,6 @@ async fn index() -> impl Responder {
     "Hello, World!"
 }
 
-// #[post("/add")]
-// async fn add_to_buffer(item: web::Json<Item>, ctx: web::Data<AppState>) -> impl Responder {
-//     let mut buffer = ctx.input_buffer_manager.data.lock().unwrap();
-//     buffer.push_back(item.into_inner());
-//     let content = buffer
-//         .to_vec()
-//         .iter()
-//         .map(|x| x.request.clone())
-//         .collect::<Vec<String>>();
-//     format!("OK {}!", &content.join(","))
-// }
-
 #[get("/consume")]
 async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
     let input = ctx.input_buffer_manager.lock().unwrap().consume_input();
@@ -112,8 +90,6 @@ async fn consume_buffer(ctx: web::Data<AppState>) -> impl Responder {
 
     result
 }
-
-// todo add endpoint to hold on next inputs from Random Server
 
 #[post("/hold")]
 async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
