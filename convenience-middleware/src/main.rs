@@ -33,6 +33,7 @@ struct InputBufferManager {
     messages: VecDeque<Item>,
     flag_to_hold: Flag,
     request_count: Cell<usize>,
+    last_beacon: Cell<Beacon>,
 }
 
 struct AppState {
@@ -59,6 +60,10 @@ impl InputBufferManager {
             messages: VecDeque::new(),
             flag_to_hold: Flag::new(),
             request_count: Cell::new(0),
+            last_beacon: Cell::new(Beacon {
+                timestamp: 0,
+                metadata: String::new(),
+            }),
         }
     }
 
@@ -189,6 +194,10 @@ fn start_senders(sender: Sender<Item>) {
     });
 }
 
+fn is_drand_beacon(item: &Item) -> bool {
+    false
+}
+
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
     spawn(async move {
         println!("Reading input from rollups receiver");
@@ -197,7 +206,24 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
             println!("Received item");
             println!("Request {}", item.request);
 
-            let mut manager = manager.lock().unwrap();
+            let mut manager = match manager.lock() {
+                Ok(manager) => manager,
+                Err(_) => {
+                    eprintln!("Failed to lock manager");
+                    continue;
+                }
+            };
+
+            if is_drand_beacon(&item) {
+                println!("Received beacon");
+                manager.last_beacon.set(Beacon {
+                    timestamp: 0,
+                    metadata: item.request,
+                });
+                manager.flag_to_hold.release();
+                continue;
+            }
+
             manager.messages.push_back(item);
             manager.request_count.set(manager.request_count.get() + 1);
         }
