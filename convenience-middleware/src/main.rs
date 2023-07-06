@@ -199,7 +199,7 @@ async fn handle_advance(
     Ok("accept")
 }
 
-fn start_workers(sender: Sender<Item>) {
+fn start_senders(sender: Sender<Item>) {
     spawn(async move {
         let _ = rollup(sender).await;
     });
@@ -243,10 +243,9 @@ async fn main() -> std::io::Result<()> {
         input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
     });
 
-    start_workers(tx);
-
     let manager = Arc::clone(&app_state.input_buffer_manager);
     start_listener(manager, rx);
+    start_senders(tx);
 
     println!("Starting server");
 
