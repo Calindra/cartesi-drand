@@ -1,32 +1,39 @@
-import { describe } from "node:test";
 import { DrandProvider } from "../src/DrandProvider"
 import nock from "nock";
+import Helper from "./Helper";
 
 describe('DrandProvider', () => {
 
     beforeEach(async () => {
-        nock('http://localhost:5005')
-            .get(/\/inspect\/randomNeeded/)
-            .reply(200, {
-                "status": "Accepted",
-                // "exception_payload": "string",
-                "reports": [
-                    {
-                        "payload": "0x01"
-                    }
-                ],
-                "processed_input_count": 0
-            })
-            .persist()
+        nock.cleanAll()
     })
 
-    it("should do the polling to see the need of the Drand's beacon", async () => {
-        const provider = new DrandProvider()
-        const runPromise = provider.run()
-        setTimeout(() => {
-            provider.stop()
-        }, 3500)
-        await runPromise
+    describe('.pendingDrandBeacon()', () => {
+        it("should inform the inputTime when there is some random seed pending", async () => {
+            Helper.nockInspectEndpointRandomIsNeeded()
+            const provider = new DrandProvider()
+            const resp = await provider.pendingDrandBeacon()
+            expect(resp?.inputTime).toBeDefined()
+        })
+        it("should respond null when inspect response is 0x00, aka no need for beacon", async () => {
+            Helper.nockInspectEndpointRandomIsntNeeded()
+            const provider = new DrandProvider()
+            const resp = await provider.pendingDrandBeacon()
+            expect(resp).toBe(null)
+        })
+    })
+
+    describe('.run()', () => {
+        it("should do the polling to see the need of the Drand's beacon", async () => {
+            Helper.nockInspectEndpointRandomIsNeeded().persist()
+            const provider = new DrandProvider()
+            provider.delaySeconds = .3
+            const runPromise = provider.run()
+            setTimeout(() => {
+                provider.stop()
+            }, 1000)
+            await runPromise
+        })
     })
 })
 

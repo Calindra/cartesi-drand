@@ -1,5 +1,5 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
-import Axios from "axios";
+import Axios, { AxiosInstance } from "axios";
 
 export class DrandProvider {
     delaySeconds = 3
@@ -7,23 +7,45 @@ export class DrandProvider {
     publicKey = 'a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e' // (hex encoded)
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
     inspectEndpoint = 'http://localhost:5005/inspect'
+    inspectAxiosInstance: AxiosInstance;
 
-    async run() {
+    lastPendingTime = 0
+    secodsToWait: number = 3;
+    private drandClient: HttpChainClient
+
+    constructor() {
+        this.inspectAxiosInstance = Axios.create({ baseURL: this.inspectEndpoint })
+        this.drandClient = this.createDrandClient()
+    }
+
+    async pendingDrandBeacon() {
+        const res = await this.inspectAxiosInstance.get('/randomNeeded')
+        const firstReport = res.data.reports[0]
+        if (firstReport?.payload && firstReport?.payload !== '0x00') {
+            return { inputTime: Number(firstReport.payload) }
+        } else {
+            return null
+        }
+    }
+
+    private createDrandClient() {
         const options: ChainOptions = {
             chainVerificationParams: { chainHash: this.chainHash, publicKey: this.publicKey },
             disableBeaconVerification: false,
             noCache: false
         }
         const chain = new HttpCachingChain(`https://api.drand.sh/${this.chainHash}`, options)
-        const client = new HttpChainClient(chain, options)
-        this.desiredState = 'RUNNING'
+        return new HttpChainClient(chain, options)
+    }
 
-        const axiosInstance = Axios.create({ baseURL: this.inspectEndpoint })
+    async run() {
+        this.desiredState = 'RUNNING'
         while (this.desiredState === 'RUNNING') {
-            const res = await axiosInstance.get('/randomNeeded')
-            if (res.data.reports[0].payload === '0x01') {
-                const beacon = await fetchBeacon(client)
-                console.log('random number is needed')
+            let pending = await this.pendingDrandBeacon()
+            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secodsToWait)) {
+                const beacon = await fetchBeacon(this.drandClient)
+                console.log('sending', beacon)
+                this.lastPendingTime = pending.inputTime
             }
             await new Promise(resolve => setTimeout(resolve, Math.round(this.delaySeconds * 1000)))
         }
