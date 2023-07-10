@@ -40,11 +40,15 @@ export default class InputSender {
         const network = await provider.getNetwork();
         console.log(`connected to chain ${network.chainId}`);
 
+        const finalArgs = {...args}
+        if (!finalArgs.address) {
+            finalArgs.address = this.address
+        }
         // connect to rollups,
         const { inputContract } = await rollups(
             network.chainId,
             signer || provider,
-            args
+            finalArgs
         );
         return inputContract
     }
@@ -80,6 +84,7 @@ export default class InputSender {
         console.log(`transaction: ${tx.hash}`);
         console.log("waiting for confirmation...");
         const receipt = await tx.wait(1);
-        console.log({ receipt })
+        console.log('receipt.transactionHash', receipt.transactionHash)
+        console.log(new Date().toISOString())
     };
 }

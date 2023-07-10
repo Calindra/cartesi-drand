@@ -1,5 +1,6 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
 import Axios, { AxiosInstance } from "axios";
+import InputSender from "./cartesi/InputSender";
 
 export class DrandProvider {
     delaySeconds = 3
@@ -40,11 +41,14 @@ export class DrandProvider {
 
     async run() {
         this.desiredState = 'RUNNING'
+        const inputSender = new InputSender()
+        inputSender.address = '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
         while (this.desiredState === 'RUNNING') {
             let pending = await this.pendingDrandBeacon()
             if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secodsToWait)) {
                 const beacon = await fetchBeacon(this.drandClient)
-                console.log('sending', beacon)
+                console.log('sending beacon', beacon.round)
+                inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
                 this.lastPendingTime = pending.inputTime
             }
             await new Promise(resolve => setTimeout(resolve, Math.round(this.delaySeconds * 1000)))
