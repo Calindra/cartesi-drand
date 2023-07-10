@@ -1,0 +1,9 @@
+{
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "tabWidth": 2,
+  "useTabs": false,
+  "printWidth": 120,
+  "semi": true,
+  "endOfLine": "lf"
+}
