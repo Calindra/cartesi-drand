@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "yarn jest -i --colors --detectOpenHandles --logHeapUsage"
+    "test": "yarn jest -i --colors --detectOpenHandles --logHeapUsage",
+    "dev": "ts-node ./src/app.ts"
   },
   "keywords": [],
   "author": "",
