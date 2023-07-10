@@ -31,7 +31,7 @@ pub mod models {
         pub(crate) messages: VecDeque<Item>,
         pub(crate) flag_to_hold: Flag,
         pub(crate) request_count: Cell<usize>,
-        pub(crate) last_beacon: Cell<Beacon>,
+        pub(crate) last_beacon: Cell<Option<Beacon>>,
     }
 
     pub(crate) struct AppState {
@@ -58,10 +58,7 @@ pub mod models {
                 messages: VecDeque::new(),
                 flag_to_hold: Flag::new(),
                 request_count: Cell::new(0),
-                last_beacon: Cell::new(Beacon {
-                    timestamp: 0,
-                    metadata: String::new(),
-                }),
+                last_beacon: Cell::new(None),
             }
         }
 
@@ -69,7 +66,7 @@ pub mod models {
             println!("Consuming input");
             let buffer = self.messages.borrow_mut();
 
-            if buffer.is_empty() {
+            if buffer.is_empty() || self.flag_to_hold.is_holding {
                 return None;
             }
 

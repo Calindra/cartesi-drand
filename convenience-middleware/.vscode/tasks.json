@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "watch",
+			"args": [
+				"-x",
+				"build"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": {
+				"kind": "none",
+				"isDefault": true
+			},
+			"label": "rust: cargo watch"
+		}
+	]
+}

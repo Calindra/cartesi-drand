@@ -117,10 +117,10 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");
-                manager.last_beacon.set(Beacon {
+                manager.last_beacon.set(Some(Beacon {
                     timestamp: 0,
                     metadata: item.request,
-                });
+                }));
                 manager.flag_to_hold.release();
                 continue;
             }

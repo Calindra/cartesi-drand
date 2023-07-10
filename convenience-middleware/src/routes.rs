@@ -19,7 +19,7 @@ pub mod routes {
 
         let input = match manager {
             Ok(mut manager) => manager.consume_input(),
-            Err(_) => return HttpResponse::BadRequest().finish(),
+            Err(_) => return HttpResponse::NotFound().finish(),
         };
 
         match input {
