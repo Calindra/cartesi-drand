@@ -1,7 +1,7 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
 
-    use crate::models::models::AppState;
+    use crate::models::models::{AppState, RequestRollups};
 
     #[get("/")]
     async fn index() -> impl Responder {
@@ -9,8 +9,13 @@ pub mod routes {
     }
 
     #[post("/finish")]
-    async fn consume_buffer(ctx: web::Data<AppState>) -> HttpResponse {
+    async fn consume_buffer(
+        ctx: web::Data<AppState>,
+        body: web::Json<RequestRollups>,
+    ) -> HttpResponse {
         let manager = ctx.input_buffer_manager.lock();
+
+        println!("Received finish request {:?}", body);
 
         let input = match manager {
             Ok(mut manager) => manager.consume_input(),
@@ -18,7 +23,10 @@ pub mod routes {
         };
 
         match input {
-            Some(item) => HttpResponse::Ok().json(item.request),
+            Some(item) => {
+                let parse = json::parse(&item.request).unwrap();
+                HttpResponse::Ok().body(parse.to_string())
+            }
             None => HttpResponse::Accepted().finish(),
         }
     }

@@ -6,11 +6,16 @@ pub mod models {
         sync::{Arc, Mutex},
     };
 
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Serialize)]
     pub(crate) struct Item {
         pub(crate) request: String,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct RequestRollups {
+        status: String,
     }
 
     pub(crate) struct Flag {
@@ -63,6 +68,11 @@ pub mod models {
         pub(crate) fn consume_input(&mut self) -> Option<Item> {
             println!("Consuming input");
             let buffer = self.messages.borrow_mut();
+
+            if buffer.is_empty() {
+                return None;
+            }
+
             let data = buffer.pop_front();
             self.request_count.set(self.request_count.get() - 1);
             data
