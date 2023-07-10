@@ -1,0 +1,16 @@
+{
+    "clearMocks": true,
+    "coverageProvider": "v8",
+    "restoreMocks": true,
+    "roots": ["<rootDir>/test"],
+    "setupFilesAfterEnv": [],
+    "watchPlugins": [],
+    "testEnvironment": "node",
+    "testMatch": ["**/?(*.)+(spec|test).+(ts|tsx|js)"],
+    "testTimeout": 15000,
+    "transform": {
+        "^.+\\.(ts|tsx)$": "ts-jest"
+    },
+    "watchPathIgnorePatterns": [],
+    "testPathIgnorePatterns": ["<rootDir>/node_modules/", "<rootDir>/src/"]
+}
