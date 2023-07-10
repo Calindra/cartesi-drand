@@ -10,8 +10,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@cartesi/rollups": "^0.9.1",
+    "@ethersproject/abi": "^5.7.0",
+    "@ethersproject/providers": "^5.7.2",
     "axios": "^1.4.0",
-    "drand-client": "^1.2.0"
+    "drand-client": "^1.2.0",
+    "ethers": "^5.7.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.2",

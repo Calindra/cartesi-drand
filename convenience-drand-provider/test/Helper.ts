@@ -4,7 +4,7 @@ import nock from "nock";
 export default class Helper {
     static nockInspectEndpointRandomIsNeeded() {
         return nock('http://localhost:5005')
-            .get(/\/inspect\/randomNeeded/)
+            .get(/\/inspect\/pending_drand_beacon/)
             .reply(200, {
                 "status": "Accepted",
                 "reports": [
@@ -17,7 +17,7 @@ export default class Helper {
     }
     static nockInspectEndpointRandomIsntNeeded() {
         return nock('http://localhost:5005')
-            .get(/\/inspect\/randomNeeded/)
+            .get(/\/inspect\/pending_drand_beacon/)
             .reply(200, {
                 "status": "Accepted",
                 "reports": [

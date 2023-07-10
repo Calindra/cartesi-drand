@@ -19,7 +19,7 @@ export class DrandProvider {
     }
 
     async pendingDrandBeacon() {
-        const res = await this.inspectAxiosInstance.get('/randomNeeded')
+        const res = await this.inspectAxiosInstance.get('/pending_drand_beacon')
         const firstReport = res.data.reports[0]
         if (firstReport?.payload && firstReport?.payload !== '0x00') {
             return { inputTime: Number(firstReport.payload) }
