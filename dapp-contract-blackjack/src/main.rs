@@ -1,14 +1,45 @@
-fn main() {
-    println!("Hello, world!");
-}
+use dotenv::dotenv;
+use json::object;
+use std::{env, error::Error};
+// use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-stuct Card {
+struct Card {
     naipe: String,
     valor: String,
 }
 
+async fn handle_inspect(
+    _client: &hyper::Client<hyper::client::HttpConnector>,
+    _server_addr: &str,
+    req: json::JsonValue,
+) -> Result<&'static str, Box<dyn std::error::Error>> {
+    println!("Handling inspect");
 
-async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("req {:}", req);
+
+    Ok("accept")
+}
+
+async fn handle_advance(
+    _client: &hyper::Client<hyper::client::HttpConnector>,
+    _server_addr: &str,
+    req: json::JsonValue,
+    // sender: &Sender<Item>,
+) -> Result<&'static str, Box<dyn Error>> {
+    println!("Handling advance");
+
+    println!("req {:}", req);
+
+    // let _ = sender
+    //     .send(Item {
+    //         request: req.dump(),
+    //     })
+    //     .await;
+
+    Ok("accept")
+}
+
+async fn middleware() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting middleware sender");
 
     let client = hyper::Client::new();
@@ -27,7 +58,7 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
         println!("Received finish status {}", response.status());
 
         if response.status() == hyper::StatusCode::ACCEPTED {
-            println!("No pending rollup request, trying again");
+            println!("No pending request, trying again");
         } else {
             let body = hyper::body::to_bytes(response).await?;
             let utf = std::str::from_utf8(&body)?;
@@ -37,7 +68,7 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
                 .as_str()
                 .ok_or("request_type is not a string")?;
             status = match request_type {
-                "advance_state" => handle_advance(&client, &server_addr[..], req, &sender).await?,
+                "advance_state" => handle_advance(&client, &server_addr[..], req).await?,
                 "inspect_state" => handle_inspect(&client, &server_addr[..], req).await?,
                 &_ => {
                     eprintln!("Unknown request type");
@@ -46,4 +77,9 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
             };
         }
     }
+}
+
+fn main() {
+    dotenv().ok();
+    println!("Starting middleware");
 }

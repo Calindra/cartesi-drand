@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 hyper = { version = "0.14", features = ["http1", "runtime", "client"] }
+json = "0.12.4"
+tokio = "1.29.1"

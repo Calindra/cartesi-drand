@@ -8,7 +8,7 @@ pub mod routes {
         "Hello, World!"
     }
 
-    #[get("/consume")]
+    #[post("/finish")]
     async fn consume_buffer(ctx: web::Data<AppState>) -> HttpResponse {
         let manager = ctx.input_buffer_manager.lock();
 
@@ -18,8 +18,8 @@ pub mod routes {
         };
 
         match input {
-            Some(item) => HttpResponse::Ok().body(item.request),
-            None => HttpResponse::NoContent().finish(),
+            Some(item) => HttpResponse::Ok().json(item.request),
+            None => HttpResponse::Accepted().finish(),
         }
     }
 
