@@ -59,14 +59,27 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
 }
 
 async fn handle_inspect(
-    _client: &hyper::Client<hyper::client::HttpConnector>,
-    _server_addr: &str,
-    req: json::JsonValue,
+    client: &hyper::Client<hyper::client::HttpConnector>,
+    server_addr: &str,
+    request: json::JsonValue,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
-    println!("Handling inspect");
-
-    println!("req {:}", req);
-
+    println!("req {:}", request);
+    let payload = request["data"]["payload"]
+        .as_str()
+        .ok_or("Missing payload")?;
+    let bytes: Vec<u8> = hex::decode(&payload[2..]).unwrap();
+    let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
+    println!("Handling inspect {}", inspect_decoded);
+    if inspect_decoded == "pending_drand_beacon" {
+        // todo: aqui tem que ser o timestamp mais recente do request de beacon em hex
+        let report = object! {"payload" => format!("{}", "0x01")};
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .header(hyper::header::CONTENT_TYPE, "application/json")
+            .uri(format!("{}/report", server_addr))
+            .body(hyper::Body::from(report.dump()))?;
+        let response = client.request(req).await?;
+    }
     Ok("accept")
 }
 
