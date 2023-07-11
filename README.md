@@ -16,18 +16,20 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 ```mermaid
 sequenceDiagram
     autonumber
+    box dApp Frontend
     actor Bob
     actor Alice
+    end
 
-    box seagreen Off-chain
+    box Off-chain
     participant API
     end
     participant L1 & Rollups
 
-    box rebeccapurple Cartesi Machine
+    box Cartesi Machine
     participant Middleware
-    participant dApp
     participant Random
+    participant dApp as dApp Backend
     end
 
     Bob->>L1 & Rollups: Bob's input
