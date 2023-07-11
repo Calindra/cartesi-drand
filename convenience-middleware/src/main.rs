@@ -109,7 +109,9 @@ fn start_senders(sender: Sender<Item>) {
 }
 
 fn is_drand_beacon(item: &Item) -> bool {
-    false
+    let json = json::from(item.request.as_str());
+
+    json.has_key("beacon")
 }
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
