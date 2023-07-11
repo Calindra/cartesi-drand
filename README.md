@@ -36,6 +36,9 @@ sequenceDiagram
     activate L1 & Rollups
     L1 & Rollups->>Middleware: Bob's input
     activate Middleware
+    loop Every clock
+        L1 & Rollups --> Middleware: Waiting for beacon
+    end
     Middleware->>dApp: Bob's input
     activate dApp
     dApp->>Random: request random
