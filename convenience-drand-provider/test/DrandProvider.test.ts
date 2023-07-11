@@ -31,7 +31,7 @@ describe('DrandProvider', () => {
             jest.spyOn(provider.inputSender, 'sendInput').mockImplementation(async (args: any) => {
                 inputSent = args
             })
-            provider.delaySeconds = .3
+            provider.drandConfig.secondsToWait = .3
             const runPromise = provider.run()
             setTimeout(() => {
                 provider.stop()

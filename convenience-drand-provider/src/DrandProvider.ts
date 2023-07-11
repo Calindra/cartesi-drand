@@ -1,30 +1,37 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
 import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
-import { InputSenderConfig } from "./configs";
+import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 
 export class DrandProvider {
-    delaySeconds = 3
-    chainHash = "dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493"
-    publicKey = 'a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e' // (hex encoded)
+
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
-    inspectEndpoint = 'http://localhost:5005/inspect'
     inspectAxiosInstance: AxiosInstance;
 
+    cartesiConfig: CartesiConfig = {
+        inspectEndpoint: "http://localhost:5005/inspect"
+    }
+
+    drandConfig: DrandConfig = {
+        chainHash: "dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493",
+        publicKey: 'a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e', // (hex encoded)
+        secondsToWait: 3,
+    }
+
     inputSenderConfig: InputSenderConfig = {
-        dAppAddress: '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2',
+        dappAddress: '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2',
         mnemonic: 'test test test test test test test test test test test junk',
         rpc: 'http://localhost:8545',
         accountIndex: 0,
     }
 
     lastPendingTime = 0
-    secodsToWait: number = 3;
+    secondsToWait: number = 3;
     private drandClient: HttpChainClient
     inputSender: InputSender
 
     constructor() {
-        this.inspectAxiosInstance = Axios.create({ baseURL: this.inspectEndpoint })
+        this.inspectAxiosInstance = Axios.create({ baseURL: this.cartesiConfig.inspectEndpoint })
         this.drandClient = this.createDrandClient()
         this.inputSender = new InputSender(this.inputSenderConfig)
     }
@@ -41,11 +48,11 @@ export class DrandProvider {
 
     private createDrandClient() {
         const options: ChainOptions = {
-            chainVerificationParams: { chainHash: this.chainHash, publicKey: this.publicKey },
+            chainVerificationParams: { chainHash: this.drandConfig.chainHash, publicKey: this.drandConfig.publicKey },
             disableBeaconVerification: false,
             noCache: false
         }
-        const chain = new HttpCachingChain(`https://api.drand.sh/${this.chainHash}`, options)
+        const chain = new HttpCachingChain(`https://api.drand.sh/${this.drandConfig.chainHash}`, options)
         return new HttpChainClient(chain, options)
     }
 
@@ -58,14 +65,18 @@ export class DrandProvider {
         this.configureInputSender()
         while (this.desiredState === 'RUNNING') {
             let pending = await this.pendingDrandBeacon()
-            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secodsToWait)) {
+            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secondsToWait)) {
                 const beacon = await fetchBeacon(this.drandClient)
                 console.log('sending beacon', beacon.round)
                 this.inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
                 this.lastPendingTime = pending.inputTime
             }
-            await new Promise(resolve => setTimeout(resolve, Math.round(this.delaySeconds * 1000)))
+            await this.someTime()
         }
+    }
+
+    async someTime() {
+        return new Promise(resolve => setTimeout(resolve, Math.round(this.secondsToWait * 1000)))
     }
 
     stop() {

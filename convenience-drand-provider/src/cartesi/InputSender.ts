@@ -28,7 +28,7 @@ export default class InputSender {
 
         const finalArgs = { ...args }
         if (!finalArgs.address) {
-            finalArgs.address = this.config.dAppAddress
+            finalArgs.address = this.config.dappAddress
         }
         // connect to rollups,
         const { inputContract } = await rollups(
@@ -49,7 +49,7 @@ export default class InputSender {
 
     async sendInput(args: any) {
         const { payload } = args;
-        const dappAddress = this.config.dAppAddress || args.address
+        const dappAddress = this.config.dappAddress || args.address
 
         const inputContract = await this.findOrCreateInputBox(args)
 
