@@ -60,6 +60,7 @@ pub mod models {
                 flag_to_hold: Flag::new(),
                 request_count: Cell::new(0),
                 last_beacon: Cell::new(None),
+                pending_beacon_timestamp: Cell::new(0),
             }
         }
 
