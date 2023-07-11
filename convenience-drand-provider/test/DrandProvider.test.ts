@@ -27,12 +27,19 @@ describe('DrandProvider', () => {
         it("should do the polling to see the need of the Drand's beacon", async () => {
             Helper.nockInspectEndpointRandomIsNeeded().persist()
             const provider = new DrandProvider()
-            provider.delaySeconds = .3
+            let inputSent: any
+            jest.spyOn(provider.inputSender, 'sendInput').mockImplementation(async (args: any) => {
+                inputSent = args
+            })
+            provider.drandConfig.secondsToWait = .3
             const runPromise = provider.run()
             setTimeout(() => {
                 provider.stop()
             }, 1000)
             await runPromise
+            expect(inputSent.payload).toBeDefined()
+            const payload = JSON.parse(inputSent.payload)
+            expect(payload.beacon).toBeDefined()
         })
     })
 })

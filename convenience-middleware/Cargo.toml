@@ -12,3 +12,4 @@ hyper = { version = "0.14", features = ["http1", "runtime", "client"] }
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
 json = "0.12"
 dotenv = "0.15.0"
+hex = "0.4.3"
