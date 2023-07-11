@@ -1,6 +1,7 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
 import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
+import { InputSenderConfig } from "./configs";
 
 export class DrandProvider {
     delaySeconds = 3
@@ -10,13 +11,22 @@ export class DrandProvider {
     inspectEndpoint = 'http://localhost:5005/inspect'
     inspectAxiosInstance: AxiosInstance;
 
+    inputSenderConfig: InputSenderConfig = {
+        dAppAddress: '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2',
+        mnemonic: 'test test test test test test test test test test test junk',
+        rpc: 'http://localhost:8545',
+        accountIndex: 0,
+    }
+
     lastPendingTime = 0
     secodsToWait: number = 3;
     private drandClient: HttpChainClient
+    inputSender: InputSender
 
     constructor() {
         this.inspectAxiosInstance = Axios.create({ baseURL: this.inspectEndpoint })
         this.drandClient = this.createDrandClient()
+        this.inputSender = new InputSender(this.inputSenderConfig)
     }
 
     async pendingDrandBeacon() {
@@ -39,16 +49,19 @@ export class DrandProvider {
         return new HttpChainClient(chain, options)
     }
 
+    private configureInputSender() {
+        this.inputSender.config = this.inputSenderConfig
+    }
+
     async run() {
         this.desiredState = 'RUNNING'
-        const inputSender = new InputSender()
-        inputSender.address = '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
+        this.configureInputSender()
         while (this.desiredState === 'RUNNING') {
             let pending = await this.pendingDrandBeacon()
             if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secodsToWait)) {
                 const beacon = await fetchBeacon(this.drandClient)
                 console.log('sending beacon', beacon.round)
-                inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
+                this.inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
                 this.lastPendingTime = pending.inputTime
             }
             await new Promise(resolve => setTimeout(resolve, Math.round(this.delaySeconds * 1000)))

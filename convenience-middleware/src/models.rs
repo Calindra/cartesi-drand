@@ -32,6 +32,7 @@ pub mod models {
         pub(crate) flag_to_hold: Flag,
         pub(crate) request_count: Cell<usize>,
         pub(crate) last_beacon: Cell<Option<Beacon>>,
+        pub(crate) pending_beacon_timestamp: Cell<u64>,
     }
 
     pub(crate) struct AppState {

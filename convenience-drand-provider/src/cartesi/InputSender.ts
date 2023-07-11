@@ -7,42 +7,28 @@ import {
     connect
 } from "./connect";
 import { IInputBox } from "@cartesi/rollups";
+import { InputSenderConfig } from "../configs";
 
 export default class InputSender {
 
-    /**
-     * mnemonic default value
-     */
-    mnemonic: string = 'test test test test test test test test test test test junk'
-
-    /**
-     * default value
-     */
-    rpc: string = 'http://localhost:8545'
-
-    /**
-     * default value
-     */
-    accountIndex: number = 0
-
-    /**
-     * DApp address
-     */
-    address: string = ''
-
+    config: InputSenderConfig
     inputBox?: IInputBox
+    
+    constructor(config: InputSenderConfig) {
+        this.config = config
+    }
 
     async createInputBox(args: any) {
         // connect to provider
-        console.log(`connecting to ${this.rpc}`);
-        const { provider, signer } = connect(this.rpc, this.mnemonic, this.accountIndex);
+        console.log(`connecting to ${this.config.rpc}`);
+        const { provider, signer } = connect(this.config.rpc, this.config.mnemonic, this.config.accountIndex);
 
         const network = await provider.getNetwork();
         console.log(`connected to chain ${network.chainId}`);
 
-        const finalArgs = {...args}
+        const finalArgs = { ...args }
         if (!finalArgs.address) {
-            finalArgs.address = this.address
+            finalArgs.address = this.config.dAppAddress
         }
         // connect to rollups,
         const { inputContract } = await rollups(
@@ -63,7 +49,7 @@ export default class InputSender {
 
     async sendInput(args: any) {
         const { payload } = args;
-        const dappAddress = this.address || args.address
+        const dappAddress = this.config.dAppAddress || args.address
 
         const inputContract = await this.findOrCreateInputBox(args)
 
