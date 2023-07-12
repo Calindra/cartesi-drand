@@ -32,6 +32,7 @@ pub mod routes {
         }
     }
 
+    // GET /random?timestamp=123234
     #[get("/random")]
     async fn request_random(ctx: web::Data<AppState>) -> impl Responder {
         let mut manager = match ctx.input_buffer_manager.lock() {
@@ -46,8 +47,13 @@ pub mod routes {
         }
 
         // @todo Call service to request random
+        // para priorizar a experiencia do usuario vamos setar o timestamp mais velho
+        manager.pending_beacon_timestamp.set(123234);
 
         manager.await_beacon();
+
+        // comparar se o beacon é suficientemente velho pra devolver como resposta do get
+        // se nao for retorna vazio 404
 
         let data = "0x111111111111111111111";
         let json = object! { random: data };

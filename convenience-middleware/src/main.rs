@@ -73,6 +73,7 @@ async fn handle_inspect(
     println!("Handling inspect {}", inspect_decoded);
     if inspect_decoded == "pending_drand_beacon" {
         // todo: aqui tem que ser o timestamp mais recente do request de beacon em hex
+        // manager.pending_beacon_timestamp 64bits => 8 bytes 
         let report = object! {"payload" => format!("{}", "0x01")};
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -165,6 +166,7 @@ async fn main() -> std::io::Result<()> {
         input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
     });
 
+    // let managerA = Arc::clone(&app_state.input_buffer_manager);
     start_senders(tx);
     let manager = Arc::clone(&app_state.input_buffer_manager);
     start_listener(manager, rx);
