@@ -48,7 +48,7 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
                 .ok_or("request_type is not a string")?;
             status = match request_type {
                 "advance_state" => handle_advance(&client, &server_addr[..], req, &sender).await?,
-                "inspect_state" => handle_inspect(&client, &server_addr[..], req).await?,
+                "inspect_state" => handle_inspect(&client, &server_addr[..], req, &sender).await?,
                 &_ => {
                     eprintln!("Unknown request type");
                     "reject"
@@ -62,6 +62,7 @@ async fn handle_inspect(
     client: &hyper::Client<hyper::client::HttpConnector>,
     server_addr: &str,
     request: json::JsonValue,
+    sender: &Sender<Item>,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
     println!("req {:}", request);
     let payload = request["data"]["payload"]
@@ -78,7 +79,13 @@ async fn handle_inspect(
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/report", server_addr))
             .body(hyper::Body::from(report.dump()))?;
-        let response = client.request(req).await?;
+        let _ = client.request(req).await?;
+    } else {
+        let _ = sender
+            .send(Item {
+                request: request.dump(),
+            })
+            .await;
     }
     Ok("accept")
 }
