@@ -9,15 +9,15 @@ use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::G2Pubkey;
 use json::object;
-use std::{
-    env,
-    sync::{Arc, Mutex}, borrow::BorrowMut,
-};
+use std::{borrow::BorrowMut, env, sync::Arc};
 use std::{error::Error, mem::size_of};
-use tokio::spawn;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::{spawn, sync::Mutex};
 
-async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
+async fn rollup(
+    sender: Sender<Item>,
+    manager: Arc<Mutex<InputBufferManager>>,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting rollup sender");
 
     let client = hyper::Client::new();
@@ -47,7 +47,9 @@ async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> 
                 .ok_or("request_type is not a string")?;
             status = match request_type {
                 "advance_state" => handle_advance(&client, &server_addr[..], req, &sender).await?,
-                "inspect_state" => handle_inspect(&client, &server_addr[..], req, &sender).await?,
+                "inspect_state" => {
+                    handle_inspect(&client, &server_addr[..], req, &sender, &manager).await?
+                }
                 &_ => {
                     eprintln!("Unknown request type");
                     "reject"
@@ -62,6 +64,7 @@ async fn handle_inspect(
     server_addr: &str,
     request: json::JsonValue,
     sender: &Sender<Item>,
+    manager: &Arc<Mutex<InputBufferManager>>,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
     println!("req {:}", request);
     let payload = request["data"]["payload"]
@@ -72,8 +75,10 @@ async fn handle_inspect(
     println!("Handling inspect {}", inspect_decoded);
     if inspect_decoded == "pending_drand_beacon" {
         // todo: aqui tem que ser o timestamp mais recente do request de beacon em hex
-        // manager.pending_beacon_timestamp 64bits => 8 bytes 
-        let report = object! {"payload" => format!("{}", "0x01")};
+        // manager.pending_beacon_timestamp 64bits => 8 bytes
+        let manager = manager.lock().await;
+        let x = manager.pending_beacon_timestamp.get();
+        let report = object! {"payload" => format!("{x:#x}")};
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
@@ -109,9 +114,9 @@ async fn handle_advance(
     Ok("accept")
 }
 
-fn start_senders(sender: Sender<Item>) {
+fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) {
     spawn(async move {
-        let _ = rollup(sender).await;
+        let _ = rollup(sender, manager).await;
     });
 }
 
@@ -136,7 +141,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
             println!("Received item");
             println!("Request {}", item.request);
 
-            let mut manager = match manager.lock() {
+            let mut manager = match manager.try_lock() {
                 Ok(manager) => manager,
                 Err(_) => {
                     eprintln!("Failed to lock manager");
@@ -172,8 +177,8 @@ async fn main() -> std::io::Result<()> {
         input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
     });
 
-    // let managerA = Arc::clone(&app_state.input_buffer_manager);
-    start_senders(tx);
+    let manager = Arc::clone(&app_state.input_buffer_manager);
+    start_senders(manager, tx);
     let manager = Arc::clone(&app_state.input_buffer_manager);
     start_listener(manager, rx);
 

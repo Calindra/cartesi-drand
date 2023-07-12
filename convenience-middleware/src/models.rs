@@ -1,12 +1,8 @@
 pub mod models {
-    use std::{
-        borrow::BorrowMut,
-        cell::Cell,
-        collections::VecDeque,
-        sync::{Arc, Mutex},
-    };
+    use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
     use serde::{Deserialize, Serialize};
+    use tokio::sync::Mutex;
 
     #[derive(Serialize)]
     pub(crate) struct Item {
@@ -79,10 +75,6 @@ pub mod models {
 
         pub(crate) fn await_beacon(&mut self) {
             println!("Awaiting beacon");
-
-            while self.flag_to_hold.is_holding {
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
 
             self.flag_to_hold.hold_up();
         }

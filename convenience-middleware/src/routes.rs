@@ -14,7 +14,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        let manager = ctx.input_buffer_manager.lock();
+        let manager = ctx.input_buffer_manager.try_lock();
 
         println!("Received finish request {:?}", body);
 
@@ -35,7 +35,7 @@ pub mod routes {
     // GET /random?timestamp=123234
     #[get("/random")]
     async fn request_random(ctx: web::Data<AppState>) -> impl Responder {
-        let mut manager = match ctx.input_buffer_manager.lock() {
+        let mut manager = match ctx.input_buffer_manager.try_lock() {
             Ok(manager) => manager,
             Err(_) => return HttpResponse::BadRequest().finish(),
         };
@@ -63,7 +63,7 @@ pub mod routes {
 
     #[post("/hold")]
     async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
-        let mut manager = match ctx.input_buffer_manager.lock() {
+        let mut manager = match ctx.input_buffer_manager.try_lock() {
             Ok(manager) => manager,
             Err(_) => return HttpResponse::BadRequest().finish(),
         };
