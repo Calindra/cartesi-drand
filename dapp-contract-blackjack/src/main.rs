@@ -3,11 +3,6 @@ use json::object;
 use std::{env, error::Error};
 // use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-struct Card {
-    naipe: String,
-    valor: String,
-}
-
 async fn handle_inspect(
     _client: &hyper::Client<hyper::client::HttpConnector>,
     _server_addr: &str,

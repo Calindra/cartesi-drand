@@ -79,6 +79,11 @@ pub mod models {
 
         pub(crate) fn await_beacon(&mut self) {
             println!("Awaiting beacon");
+
+            while self.flag_to_hold.is_holding {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+
             self.flag_to_hold.hold_up();
         }
     }
