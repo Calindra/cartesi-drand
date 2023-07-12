@@ -2,7 +2,7 @@ import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "dr
 import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
-
+import { setTimeout } from 'node:timers/promises'
 export class DrandProvider {
 
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
@@ -77,7 +77,8 @@ export class DrandProvider {
     }
 
     async someTime() {
-        return new Promise(resolve => setTimeout(resolve, Math.round(this.secondsToWait * 1000)))
+        return setTimeout(Math.round(this.secondsToWait * 1000))
+        // return new Promise(resolve => globalThis.setTimeout(resolve, Math.round(this.secondsToWait * 1000)))
     }
 
     stop() {

@@ -7,15 +7,14 @@ use crate::{
 };
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
+use drand_verify::G2Pubkey;
 use json::object;
-use std::{error::Error, mem::size_of};
-use tokio::spawn;
-// use std::sync::mpsc::{channel, Receiver, Sender};
-// use std::thread::spawn;
 use std::{
     env,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex}, borrow::BorrowMut,
 };
+use std::{error::Error, mem::size_of};
+use tokio::spawn;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 async fn rollup(sender: Sender<Item>) -> Result<(), Box<dyn std::error::Error>> {
@@ -123,6 +122,13 @@ fn is_drand_beacon(item: &Item) -> bool {
 }
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
+    let hexa_key_env = env::var("PK_UNCHAINED_TESTNET").unwrap();
+    let hexa_key = hexa_key_env.as_str();
+    let mut pk = [0u8; 96];
+    hex::decode_to_slice(hexa_key, pk.borrow_mut()).unwrap();
+
+    // let pk = G2Pubkey::from(pk).unwrap();
+
     spawn(async move {
         println!("Reading input from rollups receiver");
 
