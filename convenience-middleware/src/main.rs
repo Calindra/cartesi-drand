@@ -135,11 +135,21 @@ fn is_drand_beacon(item: &Item) -> bool {
         None => return false,
     };
 
+    if !json.contains_key("data") {
+        return false;
+    }
+
+    let json = match json["data"].as_object() {
+        Some(data) => data,
+        None => return false,
+    };
+
     if !json.contains_key("payload") {
         return false;
     }
 
     let payload = json["payload"].as_str().unwrap();
+    let payload = payload.trim_start_matches("0x");
     let payload = hex::decode(payload).unwrap();
     let payload = std::str::from_utf8(&payload).unwrap();
 
@@ -173,10 +183,10 @@ fn is_drand_beacon(item: &Item) -> bool {
         Err(_) => return false,
     };
 
-    let signature: &str = json["signature"].as_str().unwrap();
+    let signature = json["signature"].as_str().unwrap();
     let signature = hex::decode(signature).unwrap();
 
-    let round: u64 = json["round"].as_u64().unwrap();
+    let round = json["round"].as_u64().unwrap();
 
     match pk.verify(round, b"", &signature) {
         Ok(check) => check,
