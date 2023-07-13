@@ -1,8 +1,13 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
-    use json::object;
+    use serde::Deserialize;
 
-    use crate::models::models::{AppState, RequestRollups};
+    use crate::models::models::{AppState, RequestRollups, Beacon};
+
+    #[derive(Deserialize)]
+    struct GetRandom {
+        timestamp: u64,
+    }
 
     #[get("/")]
     async fn index() -> impl Responder {
@@ -34,31 +39,47 @@ pub mod routes {
 
     // GET /random?timestamp=123234
     #[get("/random")]
-    async fn request_random(ctx: web::Data<AppState>) -> impl Responder {
+    async fn random(ctx: web::Data<AppState>, query: web::Query<GetRandom>) -> impl Responder {
+        println!("Requesting random timestamp {}", query.timestamp);
         let mut manager = match ctx.input_buffer_manager.try_lock() {
             Ok(manager) => manager,
             Err(_) => return HttpResponse::BadRequest().finish(),
         };
 
-        if manager.flag_to_hold.is_holding {
-            return HttpResponse::Accepted().finish();
-        } else {
-            manager.flag_to_hold.hold_up();
-        }
+        // temos que pensar melhor o hold para identificar o request que inicial e deixar ele passar
+        // if manager.flag_to_hold.is_holding {
+        //     return HttpResponse::NotFound().into();
+        // } else {
+        //     manager.flag_to_hold.hold_up();
+        // }
+        let res = match manager.last_beacon.take() {
+            Some(beacon) => {
+                println!("beacon time {}", beacon.timestamp);
+                // comparamos se o beacon é suficientemente velho pra devolver como resposta
+                if query.timestamp < beacon.timestamp - 3 {
+                    // @todo retornar apenas o randomness
+                    let resp = HttpResponse::Ok().json(beacon.metadata.to_owned());
+                    manager.flag_to_hold.release();
+                    manager.last_beacon.set(Some(beacon));
+                    resp
+                } else {
+                    manager.set_pending_beacon_timestamp(query.timestamp);
+                    manager.last_beacon.set(Some(beacon));
+                    HttpResponse::NotFound().into()
+                }
+            }
+            None => {
+                manager.set_pending_beacon_timestamp(query.timestamp);
 
-        // @todo Call service to request random
-        // para priorizar a experiencia do usuario vamos setar o timestamp mais velho
-        manager.pending_beacon_timestamp.set(123234);
-
-        manager.await_beacon();
-
-        // comparar se o beacon é suficientemente velho pra devolver como resposta do get
-        // se nao for retorna vazio 404
-
-        let data = "0x111111111111111111111";
-        let json = object! { random: data };
-
-        HttpResponse::Ok().json(json.to_string())
+                // @todo somente para validar, remover depois
+                manager.last_beacon.set(Some(Beacon {
+                    timestamp: 123,
+                    metadata: "batata".to_string()
+                }));
+                HttpResponse::NotFound().into()
+            }
+        };
+        res
     }
 
     #[post("/hold")]

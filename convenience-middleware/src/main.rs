@@ -188,6 +188,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .service(index)
+            .service(routes::routes::random)
             .service(consume_buffer)
     })
     .bind(("127.0.0.1", 8080))?

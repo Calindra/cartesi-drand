@@ -18,6 +18,7 @@ pub mod models {
         pub(crate) is_holding: bool,
     }
 
+    #[derive(Clone)]
     pub(crate) struct Beacon {
         pub(crate) timestamp: u64,
         pub(crate) metadata: String,
@@ -37,7 +38,7 @@ pub mod models {
 
     impl Flag {
         fn new() -> Flag {
-            Flag { is_holding: true }
+            Flag { is_holding: false }
         }
 
         pub(crate) fn hold_up(&mut self) {
@@ -57,6 +58,18 @@ pub mod models {
                 request_count: Cell::new(0),
                 last_beacon: Cell::new(None),
                 pending_beacon_timestamp: Cell::new(0),
+            }
+        }
+
+        pub(crate) fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
+            let current = self.pending_beacon_timestamp.take();
+            // mantendo o mais recente para economizar transacoes
+            if current == 0 || current < timestamp {
+                println!("pending beacon timestamp {} changed", timestamp);
+                self.pending_beacon_timestamp.set(timestamp);
+            } else {
+                println!("pending beacon timestamp {} still the same", current);
+                self.pending_beacon_timestamp.set(current);
             }
         }
 
