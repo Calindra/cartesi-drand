@@ -162,6 +162,8 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
     spawn(async move {
         println!("Reading input from rollups receiver");
+        let drand_period = env::var("DRAND_PERIOD").unwrap().parse::<u64>().unwrap();
+        let drand_genesis_time = env::var("DRAND_GENESIS_TIME").unwrap().parse::<u64>().unwrap();
 
         while let Some(item) = rx.recv().await {
             println!("Received item");
@@ -177,9 +179,13 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");
+                let json = json::from(item.request.as_str());
+                let round: u64 = json["round"].as_u64().unwrap();
+                let beacon_time = (round * drand_period) + drand_genesis_time;
+
                 manager.last_beacon.set(Some(Beacon {
-                    timestamp: 0,
-                    metadata: item.request,
+                    timestamp: beacon_time,
+                    metadata: json["randomness"].to_string(),
                 }));
                 manager.flag_to_hold.release();
                 continue;
@@ -214,7 +220,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .service(index)
-            .service(routes::routes::request_random)
+            .service(routes::routes::request_random) // aqui routes::routes ficou estranho
             .service(consume_buffer)
     })
     .bind(("127.0.0.1", 8080))?

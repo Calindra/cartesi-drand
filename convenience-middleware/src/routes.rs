@@ -42,7 +42,7 @@ pub mod routes {
             Err(_) => return HttpResponse::BadRequest().finish(),
         };
 
-        // temos que pensar melhor o hold para identificar o request que inicial e deixar ele passar
+        // temos que pensar melhor o hold para identificar o request inicial e deixar ele passar
         // if manager.flag_to_hold.is_holding {
         //     return HttpResponse::NotFound().into();
         // } else {
@@ -53,7 +53,6 @@ pub mod routes {
                 println!("beacon time {}", beacon.timestamp);
                 // comparamos se o beacon é suficientemente velho pra devolver como resposta
                 if query.timestamp < beacon.timestamp - 3 {
-                    // @todo retornar apenas o randomness
                     let resp = HttpResponse::Ok().json(beacon.metadata.to_owned());
                     manager.flag_to_hold.release();
                     manager.last_beacon.set(Some(beacon));
@@ -66,12 +65,6 @@ pub mod routes {
             }
             None => {
                 manager.set_pending_beacon_timestamp(query.timestamp);
-
-                // @todo somente para validar, remover depois
-                manager.last_beacon.set(Some(Beacon {
-                    timestamp: 123,
-                    metadata: "batata".to_string()
-                }));
                 HttpResponse::NotFound().into()
             }
         };
