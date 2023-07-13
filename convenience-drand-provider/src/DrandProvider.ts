@@ -3,6 +3,14 @@ import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
+import axios from "axios";
+
+interface PendingDrandBeacon {
+    reports?: Array<{
+        payload?: string
+    }>
+ }
+
 export class DrandProvider {
 
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
@@ -39,13 +47,22 @@ export class DrandProvider {
     async pendingDrandBeacon() {
         try {
             // url = "http://localhost:5005/inspect/pending_drand_beacon"
-            const res = await this.inspectAxiosInstance.get('/pending_drand_beacon')
-            const firstReport = res.data.reports[0]
-            if (firstReport?.payload && firstReport?.payload !== '0x00') {
-                return { inputTime: Number(firstReport.payload) }
+            const res = await this.inspectAxiosInstance.get<PendingDrandBeacon>('/pending_drand_beacon')
+
+            if (Array.isArray(res.data.reports) && res.data.reports.length > 0) {
+                const firstReport = res.data.reports.at(0);
+                if (firstReport?.payload && firstReport?.payload !== '0x00') {
+                    return { inputTime: Number(firstReport.payload) }
+                }
             }
         } catch (error) {
-            console.error('Error on pending drand beacon', error)
+            let err = error;
+
+            if (axios.isAxiosError(error)) {
+                err = error.toJSON();
+            }
+
+            console.error('Error on pending drand beacon', err);
         }
 
         return null;

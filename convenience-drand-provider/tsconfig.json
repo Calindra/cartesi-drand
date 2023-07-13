@@ -8,13 +8,13 @@
         "outDir": "./dist", // Redirect output structure to the directory.
         "rootDir": "./src", // Specify the root directory of input files. Use to control the output directory structure with --outDir
         "forceConsistentCasingInFileNames": true,
-        "types": ["reflect-metadata", "jest"],
+        "types": ["jest"], // "reflect-metadata",
         "resolveJsonModule": true,
         "lib": ["es6", "dom"],
         "moduleResolution": "node",
         "experimentalDecorators": true, // Enables experimental support for ES7 decorators.
-        "emitDecoratorMetadata": true, // Enables experimental support for emitting type metadata for decorators.
-        "useUnknownInCatchVariables": false
+        "emitDecoratorMetadata": true // Enables experimental support for emitting type metadata for decorators.
+        // "useUnknownInCatchVariables": true
     },
     "$schema": "https://json.schemastore.org/tsconfig",
     "exclude": ["test", "scripts"]
