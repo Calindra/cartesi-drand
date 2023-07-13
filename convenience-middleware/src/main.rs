@@ -189,10 +189,12 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
                 }));
                 manager.flag_to_hold.release();
                 continue;
+            } else {
+                println!("Received a common input");
+                // @todo devemos remover a nossa estrutura e deixar o input original?
+                manager.messages.push_back(item);
+                manager.request_count.set(manager.request_count.get() + 1);
             }
-
-            manager.messages.push_back(item);
-            manager.request_count.set(manager.request_count.get() + 1);
         }
 
         // manager.read_input_from_rollups(rx).await;
