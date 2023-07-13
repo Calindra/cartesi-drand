@@ -9,9 +9,9 @@ edition = "2021"
 actix-web = "4"
 hyper = { version = "0.14", features = ["http1", "runtime", "client"] }
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
-json = "0.12"
 dotenv = "0.15.0"
 hex = "0.4.3"
 drand-verify = { version = "0.5.0", features= ["hex"] }
 serde = { version = "1.0.171", features = ["derive"] }
 hex-literal = "0.4.1"
+serde_json = "1.0.102"

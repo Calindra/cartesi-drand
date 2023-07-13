@@ -23,10 +23,7 @@ pub mod routes {
         };
 
         match input {
-            Some(item) => {
-                let parse = json::parse(&item.request).unwrap();
-                HttpResponse::Ok().body(parse.to_string())
-            }
+            Some(item) => HttpResponse::Ok().body(item.request),
             None => HttpResponse::Accepted().finish(),
         }
     }

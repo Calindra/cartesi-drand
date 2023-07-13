@@ -1,5 +1,6 @@
 mod models;
 mod routes;
+mod utils;
 
 use crate::{
     models::models::{AppState, Beacon, InputBufferManager, Item},
@@ -8,11 +9,12 @@ use crate::{
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::{G2Pubkey, Pubkey};
-use json::object;
+use serde_json::{json, Value};
 use std::{borrow::BorrowMut, env, sync::Arc};
 use std::{error::Error, mem::size_of};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::{spawn, sync::Mutex};
+use utils::util::deserialize_obj;
 
 async fn rollup(
     sender: Sender<Item>,
@@ -26,12 +28,12 @@ async fn rollup(
     let mut status = "accept";
     loop {
         println!("Sending finish");
-        let response = object! {"status" => status.clone()};
+        let response = json!({"status" : status.clone()});
         let request = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/finish", &server_addr))
-            .body(hyper::Body::from(response.dump()))?;
+            .body(hyper::Body::from(response.to_string()))?;
         let response = client.request(request).await?;
         println!("Received finish status {}", response.status());
 
@@ -40,7 +42,7 @@ async fn rollup(
         } else {
             let body = hyper::body::to_bytes(response).await?;
             let utf = std::str::from_utf8(&body)?;
-            let req = json::parse(utf)?;
+            let req: Value = serde_json::from_str(utf)?;
 
             let request_type = req["request_type"]
                 .as_str()
@@ -62,7 +64,7 @@ async fn rollup(
 async fn handle_inspect(
     client: &hyper::Client<hyper::client::HttpConnector>,
     server_addr: &str,
-    request: json::JsonValue,
+    request: Value,
     sender: &Sender<Item>,
     manager: &Arc<Mutex<InputBufferManager>>,
 ) -> Result<&'static str, Box<dyn std::error::Error>> {
@@ -78,17 +80,17 @@ async fn handle_inspect(
         // manager.pending_beacon_timestamp 64bits => 8 bytes
         let manager = manager.lock().await;
         let x = manager.pending_beacon_timestamp.get();
-        let report = object! {"payload" => format!("{x:#x}")};
+        let report = json!({ "payload": format!("{x:#x}") });
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/report", server_addr))
-            .body(hyper::Body::from(report.dump()))?;
+            .body(hyper::Body::from(report.to_string()))?;
         let _ = client.request(req).await?;
     } else {
         let _ = sender
             .send(Item {
-                request: request.dump(),
+                request: request.to_string(),
             })
             .await;
     }
@@ -98,7 +100,7 @@ async fn handle_inspect(
 async fn handle_advance(
     _client: &hyper::Client<hyper::client::HttpConnector>,
     _server_addr: &str,
-    req: json::JsonValue,
+    req: Value,
     sender: &Sender<Item>,
 ) -> Result<&'static str, Box<dyn Error>> {
     println!("Handling advance");
@@ -107,7 +109,7 @@ async fn handle_advance(
 
     let _ = sender
         .send(Item {
-            request: req.dump(),
+            request: req.to_string(),
         })
         .await;
 
@@ -126,9 +128,14 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
  * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
  */
 fn is_drand_beacon(item: &Item) -> bool {
-    let json = json::from(item.request.as_str());
+    let request = item.request.as_str();
 
-    if !json.has_key("payload") {
+    let json = match deserialize_obj(request) {
+        Some(json) => json,
+        None => return false,
+    };
+
+    if !json.contains_key("payload") {
         return false;
     }
 
@@ -136,19 +143,25 @@ fn is_drand_beacon(item: &Item) -> bool {
     let payload = hex::decode(payload).unwrap();
     let payload = std::str::from_utf8(&payload).unwrap();
 
-    let json = json::from(payload);
+    let json = match deserialize_obj(payload) {
+        Some(json) => json,
+        None => return false,
+    };
 
-    println!("json {:?}", json);
+    let json = match json.get("beacon") {
+        Some(beacon) => beacon,
+        None => return false,
+    };
 
-    if !json.has_key("beacon")
-        || !json["beacon"].has_key("signature")
-        || !json["beacon"].has_key("round")
-        || !json["beacon"]["round"].is_number()
+    let json = match json.as_object() {
+        Some(beacon) => beacon,
+        None => return false,
+    };
+
+    if !json.contains_key("signature") || !json.contains_key("round") || !json["round"].is_number()
     {
         return false;
     }
-
-    let json = &json["beacon"];
 
     let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
     let key = key.as_str();
@@ -194,7 +207,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");
-                let json = json::from(item.request.as_str());
+                let json = deserialize_obj(&item.request).unwrap();
                 let round: u64 = json["round"].as_u64().unwrap();
                 let beacon_time = (round * drand_period) + drand_genesis_time;
 
