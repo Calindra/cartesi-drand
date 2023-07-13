@@ -3,7 +3,6 @@ import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
-import axios from "axios";
 
 interface PendingDrandBeacon {
     reports?: Array<{
@@ -56,13 +55,14 @@ export class DrandProvider {
                 }
             }
         } catch (error) {
-            let err = error;
+            // let err = error;
 
-            if (axios.isAxiosError(error)) {
-                err = error.toJSON();
-            }
+            // if (axios.isAxiosError(error)) {
+            //     err = error.toJSON();
+            // }
+            // console.error('Error on pending drand beacon', err);
 
-            console.error('Error on pending drand beacon', err);
+            console.log('No connection to cartesi machine');
         }
 
         return null;
