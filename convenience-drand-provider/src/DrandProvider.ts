@@ -46,6 +46,7 @@ export class DrandProvider {
     async pendingDrandBeacon() {
         try {
             // url = "http://localhost:5005/inspect/pending_drand_beacon"
+            console.log('Fetching pending drand beacon')
             const res = await this.inspectAxiosInstance.get<PendingDrandBeacon>('/pending_drand_beacon')
 
             if (Array.isArray(res.data.reports) && res.data.reports.length > 0) {
@@ -55,14 +56,15 @@ export class DrandProvider {
                 }
             }
         } catch (error) {
-            // let err = error;
 
-            // if (axios.isAxiosError(error)) {
-            //     err = error.toJSON();
-            // }
-            // console.error('Error on pending drand beacon', err);
+            if (Axios.isAxiosError(error)) {
+                console.error(
+                    "No connection to cartesi machine", error.code
+                );
+            } else {
+                console.error('Error on pending drand beacon', error);
+            }
 
-            console.log('No connection to cartesi machine');
         }
 
         return null;
