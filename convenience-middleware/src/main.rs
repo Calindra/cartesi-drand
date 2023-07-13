@@ -7,7 +7,7 @@ use crate::{
 };
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use drand_verify::G2Pubkey;
+use drand_verify::{G2Pubkey, Pubkey};
 use json::object;
 use std::{borrow::BorrowMut, env, sync::Arc};
 use std::{error::Error, mem::size_of};
@@ -120,18 +120,44 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
     });
 }
 
+/**
+ * Example of a drand beacon request
+ *
+ * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
+ */
 fn is_drand_beacon(item: &Item) -> bool {
     let json = json::from(item.request.as_str());
 
-    json.has_key("beacon")
+    if !json.has_key("beacon")
+        || !json.has_key("signature")
+        || !json.has_key("round")
+        || !json["round"].is_number()
+    {
+        return false;
+    }
+
+    let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
+    let key = key.as_str();
+    let mut pk = [0u8; 96];
+    hex::decode_to_slice(key, pk.borrow_mut()).unwrap();
+
+    let pk = match G2Pubkey::from_fixed(pk) {
+        Ok(pk) => pk,
+        Err(_) => return false,
+    };
+
+    let signature: &str = json["signature"].as_str().unwrap();
+    let signature = hex::decode(signature).unwrap();
+
+    let round: u64 = json["round"].as_u64().unwrap();
+
+    match pk.verify(round, b"", &signature) {
+        Ok(check) => check,
+        Err(_) => return false,
+    }
 }
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
-    let hexa_key_env = env::var("PK_UNCHAINED_TESTNET").unwrap();
-    let hexa_key = hexa_key_env.as_str();
-    let mut pk = [0u8; 96];
-    hex::decode_to_slice(hexa_key, pk.borrow_mut()).unwrap();
-
     // let pk = G2Pubkey::from(pk).unwrap();
 
     spawn(async move {
