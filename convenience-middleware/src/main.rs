@@ -148,6 +148,7 @@ fn is_drand_beacon(item: &Item) -> bool {
         return false;
     }
 
+    // @todo lidar com os unwraps
     let payload = json["payload"].as_str().unwrap();
     let payload = payload.trim_start_matches("0x");
     let payload = hex::decode(payload).unwrap();
