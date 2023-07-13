@@ -18,6 +18,11 @@ pub mod models {
         pub(crate) is_holding: bool,
     }
 
+    #[derive(Deserialize)]
+    pub(crate) struct Timestamp {
+        pub(crate) timestamp: u64,
+    }
+
     pub(crate) struct Beacon {
         pub(crate) timestamp: u64,
         pub(crate) metadata: String,

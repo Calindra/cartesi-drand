@@ -2,7 +2,7 @@ pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
     use json::object;
 
-    use crate::models::models::{AppState, RequestRollups};
+    use crate::models::models::{AppState, RequestRollups, Timestamp};
 
     #[get("/")]
     async fn index() -> impl Responder {
@@ -34,7 +34,10 @@ pub mod routes {
 
     // GET /random?timestamp=123234
     #[get("/random")]
-    async fn request_random(ctx: web::Data<AppState>) -> impl Responder {
+    async fn request_random(
+        ctx: web::Data<AppState>,
+        query: web::Query<Timestamp>,
+    ) -> impl Responder {
         let mut manager = match ctx.input_buffer_manager.try_lock() {
             Ok(manager) => manager,
             Err(_) => return HttpResponse::BadRequest().finish(),
@@ -48,7 +51,12 @@ pub mod routes {
 
         // @todo Call service to request random
         // para priorizar a experiencia do usuario vamos setar o timestamp mais velho
-        manager.pending_beacon_timestamp.set(123234);
+
+        let last_beacon = manager.pending_beacon_timestamp.get();
+
+        if last_beacon != 0u64 || query.timestamp > last_beacon {
+            manager.pending_beacon_timestamp.set(query.timestamp);
+        }
 
         manager.await_beacon();
 
