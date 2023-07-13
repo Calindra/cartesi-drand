@@ -218,8 +218,21 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");
+
+                // Root Request
                 let json = deserialize_obj(&item.request).unwrap();
-                let round: u64 = json["round"].as_u64().unwrap();
+
+                // Decript
+                let json = json["data"]["payload"].as_str().unwrap();
+                let json = json.trim_start_matches("0x");
+                let json = hex::decode(json).unwrap();
+                let json = std::str::from_utf8(&json).unwrap();
+
+                // Root Payload
+                let json = deserialize_obj(json).unwrap();
+                let json = json["beacon"].as_object().unwrap();
+
+                let round = json["round"].as_u64().unwrap();
                 let beacon_time = (round * drand_period) + drand_genesis_time;
 
                 manager.last_beacon.set(Some(Beacon {
