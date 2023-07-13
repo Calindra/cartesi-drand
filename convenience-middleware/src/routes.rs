@@ -1,13 +1,7 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
-    use serde::Deserialize;
 
-    use crate::models::models::{AppState, RequestRollups, Beacon};
-
-    #[derive(Deserialize)]
-    struct GetRandom {
-        timestamp: u64,
-    }
+    use crate::models::models::{AppState, RequestRollups, Beacon, Timestamp};
 
     #[get("/")]
     async fn index() -> impl Responder {
@@ -39,8 +33,10 @@ pub mod routes {
 
     // GET /random?timestamp=123234
     #[get("/random")]
-    async fn random(ctx: web::Data<AppState>, query: web::Query<GetRandom>) -> impl Responder {
-        println!("Requesting random timestamp {}", query.timestamp);
+    async fn request_random(
+        ctx: web::Data<AppState>,
+        query: web::Query<Timestamp>,
+    ) -> impl Responder {
         let mut manager = match ctx.input_buffer_manager.try_lock() {
             Ok(manager) => manager,
             Err(_) => return HttpResponse::BadRequest().finish(),
