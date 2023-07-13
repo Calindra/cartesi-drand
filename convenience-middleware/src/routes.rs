@@ -1,7 +1,7 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
 
-    use crate::models::models::{AppState, RequestRollups, Beacon, Timestamp};
+    use crate::models::models::{AppState, RequestRollups, Timestamp};
 
     #[get("/")]
     async fn index() -> impl Responder {
