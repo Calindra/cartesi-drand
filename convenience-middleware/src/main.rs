@@ -128,13 +128,27 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
 fn is_drand_beacon(item: &Item) -> bool {
     let json = json::from(item.request.as_str());
 
+    if !json.has_key("payload") {
+        return false;
+    }
+
+    let payload = json["payload"].as_str().unwrap();
+    let payload = hex::decode(payload).unwrap();
+    let payload = std::str::from_utf8(&payload).unwrap();
+
+    let json = json::from(payload);
+
+    println!("json {:?}", json);
+
     if !json.has_key("beacon")
-        || !json.has_key("signature")
-        || !json.has_key("round")
-        || !json["round"].is_number()
+        || !json["beacon"].has_key("signature")
+        || !json["beacon"].has_key("round")
+        || !json["beacon"]["round"].is_number()
     {
         return false;
     }
+
+    let json = &json["beacon"];
 
     let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
     let key = key.as_str();
@@ -158,12 +172,13 @@ fn is_drand_beacon(item: &Item) -> bool {
 }
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
-    // let pk = G2Pubkey::from(pk).unwrap();
-
     spawn(async move {
         println!("Reading input from rollups receiver");
         let drand_period = env::var("DRAND_PERIOD").unwrap().parse::<u64>().unwrap();
-        let drand_genesis_time = env::var("DRAND_GENESIS_TIME").unwrap().parse::<u64>().unwrap();
+        let drand_genesis_time = env::var("DRAND_GENESIS_TIME")
+            .unwrap()
+            .parse::<u64>()
+            .unwrap();
 
         while let Some(item) = rx.recv().await {
             println!("Received item");
