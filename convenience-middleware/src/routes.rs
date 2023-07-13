@@ -45,7 +45,7 @@ pub mod routes {
         // } else {
         //     manager.flag_to_hold.hold_up();
         // }
-        let res = match manager.last_beacon.take() {
+        match manager.last_beacon.take() {
             Some(beacon) => {
                 println!("beacon time {}", beacon.timestamp);
                 // comparamos se o beacon é suficientemente velho pra devolver como resposta
@@ -57,15 +57,14 @@ pub mod routes {
                 } else {
                     manager.set_pending_beacon_timestamp(query.timestamp);
                     manager.last_beacon.set(Some(beacon));
-                    HttpResponse::NotFound().into()
+                    HttpResponse::NotFound().finish()
                 }
             }
             None => {
                 manager.set_pending_beacon_timestamp(query.timestamp);
-                HttpResponse::NotFound().into()
+                HttpResponse::NotFound().finish()
             }
-        };
-        res
+        }
     }
 
     #[post("/hold")]
