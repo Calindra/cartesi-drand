@@ -1,11 +1,10 @@
+mod man_test;
 mod models;
-mod routes;
+mod router;
 mod utils;
 
-use crate::{
-    models::models::{AppState, Beacon, InputBufferManager, Item},
-    routes::routes::{consume_buffer, index},
-};
+use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
+use crate::router::routes::{self};
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::{G2Pubkey, Pubkey};
@@ -273,9 +272,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(index)
-            .service(routes::routes::request_random) // aqui routes::routes ficou estranho
-            .service(consume_buffer)
+            .service(routes::index)
+            .service(routes::request_random)
+            .service(routes::consume_buffer)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

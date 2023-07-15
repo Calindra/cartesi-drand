@@ -1,12 +1,16 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
-    use sha3::{Sha3_256, Digest};
+    use sha3::{Digest, Sha3_256};
 
     use crate::models::models::{AppState, RequestRollups, Timestamp};
 
+    pub async fn hello() -> HttpResponse {
+        HttpResponse::Ok().body("Hello, World!")
+    }
+
     #[get("/")]
     async fn index() -> impl Responder {
-        "Hello, World!"
+        hello().await
     }
 
     #[post("/finish")]
@@ -51,12 +55,11 @@ pub mod routes {
                 println!("beacon time {}", beacon.timestamp);
                 // comparamos se o beacon é suficientemente velho pra devolver como resposta
                 if query.timestamp < beacon.timestamp - 3 {
-                    
                     let salt = manager.randomness_salt.take() + 1;
                     manager.randomness_salt.set(salt);
 
                     let mut hasher = Sha3_256::new();
-                    hasher.update([beacon.metadata.as_bytes(),&salt.to_le_bytes()].concat());
+                    hasher.update([beacon.metadata.as_bytes(), &salt.to_le_bytes()].concat());
                     let randomness = hasher.finalize();
                     let resp = HttpResponse::Ok().json(hex::encode(randomness));
                     manager.flag_to_hold.release();
