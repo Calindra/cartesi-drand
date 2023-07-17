@@ -263,9 +263,9 @@ async fn main() -> std::io::Result<()> {
         input_buffer_manager: InputBufferManager::new(),
     });
 
-    let manager = Arc::clone(&app_state.input_buffer_manager);
+    let manager = app_state.input_buffer_manager.clone();
     start_senders(manager, tx);
-    let manager = Arc::clone(&app_state.input_buffer_manager);
+    let manager = app_state.input_buffer_manager.clone();
     start_listener(manager, rx);
 
     println!("Starting server");
