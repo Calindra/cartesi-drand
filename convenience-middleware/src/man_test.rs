@@ -10,7 +10,17 @@ mod tests {
         http::{self, header::ContentType},
         test,
     };
+    use dotenv::dotenv;
     use serde_json::json;
+
+    #[macro_export]
+    macro_rules! check_if_dotenv_is_loaded {
+        () => {{
+            let is_env_loaded = dotenv().ok().is_some();
+            assert!(is_env_loaded);
+            is_env_loaded
+        }};
+    }
 
     #[actix_web::test]
     async fn test_index_ok() {
@@ -24,6 +34,8 @@ mod tests {
 
     #[actix_web::test]
     async fn test_main_beacon() {
+        check_if_dotenv_is_loaded!();
+
         let beacon = json!({
             "beacon": {
                 "round": 3828300,
