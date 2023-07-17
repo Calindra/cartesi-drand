@@ -71,7 +71,8 @@ async fn handle_inspect(
     let payload = request["data"]["payload"]
         .as_str()
         .ok_or("Missing payload")?;
-    let bytes: Vec<u8> = hex::decode(&payload[2..]).unwrap();
+    let payload = payload.trim_start_matches("0x");
+    let bytes: Vec<u8> = hex::decode(&payload).unwrap();
     let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
     println!("Handling inspect {}", inspect_decoded);
     if inspect_decoded == "pending_drand_beacon" {
@@ -259,7 +260,7 @@ async fn main() -> std::io::Result<()> {
     let (tx, rx) = channel::<Item>(size_of::<Item>());
 
     let app_state = web::Data::new(AppState {
-        input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::new())),
+        input_buffer_manager: InputBufferManager::new(),
     });
 
     let manager = Arc::clone(&app_state.input_buffer_manager);

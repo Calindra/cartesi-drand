@@ -55,8 +55,8 @@ pub mod models {
         }
     }
 
-    impl InputBufferManager {
-        pub(crate) fn new() -> InputBufferManager {
+    impl Default for InputBufferManager {
+        fn default() -> Self {
             InputBufferManager {
                 messages: VecDeque::new(),
                 flag_to_hold: Flag::new(),
@@ -65,6 +65,14 @@ pub mod models {
                 pending_beacon_timestamp: Cell::new(0),
                 randomness_salt: Cell::new(0),
             }
+        }
+    }
+
+    impl InputBufferManager {
+        pub(crate) fn new() -> Arc<Mutex<InputBufferManager>> {
+            let buffer = InputBufferManager::default();
+
+            Arc::new(Mutex::new(buffer))
         }
 
         pub(crate) fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
