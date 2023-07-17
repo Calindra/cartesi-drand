@@ -1,17 +1,19 @@
 #[cfg(test)]
 mod tests {
-    // use super::*;
+    use std::sync::Arc;
+
     use crate::{
         is_drand_beacon,
-        models::models::Item,
+        models::models::{AppState, Beacon, InputBufferManager, Item},
         router::routes::{self},
     };
     use actix_web::{
-        http::{self, header::ContentType},
-        test,
+        http::{self},
+        test, web, App,
     };
     use dotenv::dotenv;
     use serde_json::json;
+    use tokio::sync::Mutex;
 
     #[macro_export]
     macro_rules! check_if_dotenv_is_loaded {
@@ -62,6 +64,47 @@ mod tests {
 
         let resp = is_drand_beacon(&item);
         assert_eq!(resp, true);
+    }
+
+    #[actix_web::test]
+    async fn request_random_with_old_beacon() {
+        check_if_dotenv_is_loaded!();
+
+        let last_clock_beacon = 24;
+
+        let beacon = Beacon {
+            metadata: json!({
+                "message": "some info about beacon",
+            }).to_string(),
+            timestamp: last_clock_beacon,
+        };
+
+        let manager = InputBufferManager::default();
+
+        manager.last_beacon.set(Some(beacon));
+
+        let app_state = web::Data::new(AppState {
+            input_buffer_manager: Arc::new(Mutex::new(manager)),
+        });
+
+        let manager = app_state.input_buffer_manager.clone();
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::request_random);
+
+        let app = test::init_service(app).await;
+
+        let old_clock = last_clock_beacon - 10;
+
+        let uri = format!("/random?timestamp={}", &old_clock);
+        let req = test::TestRequest::with_uri(uri.as_str()).to_request();
+
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
+        assert!(status.is_success(), "status: {:?}", status.as_str());
+
+        assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
     // #[actix_web::test]
