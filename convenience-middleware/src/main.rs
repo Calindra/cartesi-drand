@@ -1,4 +1,4 @@
-mod man_test;
+mod main_test;
 mod models;
 mod router;
 mod utils;
