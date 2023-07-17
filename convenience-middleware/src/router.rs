@@ -61,10 +61,9 @@ pub mod routes {
                     let mut hasher = Sha3_256::new();
                     hasher.update([beacon.metadata.as_bytes(), &salt.to_le_bytes()].concat());
                     let randomness = hasher.finalize();
-                    let resp = HttpResponse::Ok().json(hex::encode(randomness));
                     manager.flag_to_hold.release();
                     manager.last_beacon.set(Some(beacon));
-                    resp
+                    HttpResponse::Ok().body(hex::encode(randomness))
                 } else {
                     manager.set_pending_beacon_timestamp(query.timestamp);
                     manager.last_beacon.set(Some(beacon));
