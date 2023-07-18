@@ -9,7 +9,7 @@ mod tests {
     };
     use actix_web::{
         http::{self},
-        test, web, App,
+        test, web, App, body::MessageBody,
     };
     use dotenv::dotenv;
     use serde_json::json;
@@ -67,6 +67,78 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn request_random_without_beacon() {
+        check_if_dotenv_is_loaded!();
+
+        let manager = InputBufferManager::default();
+
+        let app_state = web::Data::new(AppState {
+            input_buffer_manager: Arc::new(Mutex::new(manager)),
+        });
+
+        let manager = app_state.input_buffer_manager.clone();
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::request_random);
+
+        let app = test::init_service(app).await;
+
+        let timestamp = 10;
+
+        let uri = format!("/random?timestamp={}", &timestamp);
+        let req = test::TestRequest::with_uri(uri.as_str()).to_request();
+
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
+        assert!(status.is_client_error(), "status: {:?}", status.as_str());
+        assert_eq!(manager.lock().await.pending_beacon_timestamp.get(), timestamp);
+
+    }
+
+    #[actix_web::test]
+    async fn request_random_with_new_beacon() {
+        check_if_dotenv_is_loaded!();
+
+        let last_clock_beacon = 24;
+
+        let beacon = Beacon {
+            metadata: json!({
+                "message": "some info about beacon",
+            }).to_string(),
+            timestamp: last_clock_beacon,
+        };
+
+        let manager = InputBufferManager::default();
+
+        manager.last_beacon.set(Some(beacon));
+
+        let app_state = web::Data::new(AppState {
+            input_buffer_manager: Arc::new(Mutex::new(manager)),
+        });
+
+        let manager = app_state.input_buffer_manager.clone();
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::request_random);
+
+        let app = test::init_service(app).await;
+
+        let old_clock = last_clock_beacon + 10;
+
+        let uri = format!("/random?timestamp={}", &old_clock);
+        let req = test::TestRequest::with_uri(uri.as_str()).to_request();
+
+        let resp = test::call_service(&app, req).await;
+        let status = resp.status();
+        assert!(status.is_client_error(), "status: {:?}", status.as_str());
+        assert!(manager.lock().await.last_beacon.get_mut().is_some());
+
+    }
+
+
+    #[actix_web::test]
     async fn request_random_with_old_beacon() {
         check_if_dotenv_is_loaded!();
 
@@ -104,6 +176,12 @@ mod tests {
         let status = resp.status();
         assert!(status.is_success(), "status: {:?}", status.as_str());
 
+        // let body = resp.into_body();
+        // let body = body.try_into_bytes();
+
+        // println!("body: {:?}", body);
+
+        assert_eq!(manager.lock().await.flag_to_hold.is_holding, false);
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
