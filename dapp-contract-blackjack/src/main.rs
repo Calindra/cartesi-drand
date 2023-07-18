@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
-use rand_seeder::{Seeder, SipHasher};
+use rand_seeder::Seeder;
 
 use tokio::sync::Mutex;
 
@@ -16,7 +16,7 @@ enum Suit {
     Clubs,    // Paus
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Rank {
     Ace = 1,
     Two,
@@ -33,7 +33,7 @@ enum Rank {
     King,  // Rei
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Card {
     suit: Suit,
     rank: Rank,
@@ -46,42 +46,76 @@ struct Bet {
 
 struct Player {
     name: String,
-    hand: Vec<Rank>,
+    hand: Arc<Mutex<Vec<Card>>>,
     has_ace: bool,
     bet: Option<Bet>,
+    is_standing: bool,
 }
 
 impl Player {
     fn new(name: String) -> Self {
         Player {
             name,
-            hand: Vec::new(),
+            hand: Arc::new(Mutex::new(Vec::new())),
             has_ace: false,
             bet: None,
+            is_standing: false,
         }
     }
 
     /**
      * Take a card from the deck and add it to the player's hand.
      */
-    fn hit() -> Rank {
-        let card = Rank::Ace;
+    fn hit(&mut self, deck: &Deck) -> Option<usize> {
+        if self.is_standing {
+            return None;
+        }
 
-        card
+        let nth = random::<usize>();
+        let size = deck.cards.len();
+
+        let nth = nth % size;
+
+        let card = deck.cards[nth].clone();
+
+        let hand = self.hand.try_lock();
+
+        if let Ok(mut hand) = hand {
+            hand.push(card.clone());
+            self.has_ace = self.has_ace || card.rank == Rank::Ace;
+
+            return Some(nth);
+        }
+
+        None
     }
 
     /**
      * Add the value of the card to the player's hand.
      */
-    fn stand() {
-        todo!();
+    fn stand(&mut self) {
+        self.is_standing = true;
     }
 
     /**
      * Double the bet and take one more card.
      */
-    fn double_down() {
-        todo!();
+    fn double_down(&mut self, deck: &Deck) -> bool {
+        if self.is_standing {
+            return false;
+        }
+        if let Some(bet) = self.bet.as_ref() {
+            self.bet = Some(Bet {
+                amount: bet.amount * 2,
+                symbol: bet.symbol.clone(),
+            });
+
+            let is_hit = self.hit(deck).is_some();
+
+            return is_hit;
+        }
+
+        false
     }
 
     /**
@@ -138,15 +172,18 @@ impl Default for Deck {
 
 struct Game {
     players: Arc<Mutex<Vec<Player>>>,
-    deck: Deck,
+
     bet: Option<Bet>,
 }
 
+/**
+ * This is where the game is initialized.
+ */
 impl Game {
     fn new() -> Self {
         Game {
             players: Arc::new(Mutex::new(Vec::new())),
-            deck: Deck::default(),
+
             bet: None,
         }
     }
@@ -167,31 +204,26 @@ impl Game {
     }
 }
 
+/**
+ * The table is where the game is played.
+ */
 struct Table {
-    table: Game,
+    game: Game,
+    deck: Deck,
 }
 
 impl Table {
     fn new(table: Game) -> Table {
-        Table { table }
+        Table {
+            game: table,
+            deck: Deck::default(),
+        }
     }
 
-    fn get_players(&self) -> &Mutex<Vec<Player>> {
-        self.table.players.as_ref()
+    fn get_players(&self) -> Arc<Mutex<Vec<Player>>> {
+        self.game.players.clone()
     }
 }
-
-// fn start_game(nth_players: u8) {
-//     let mut game = Game::new();
-
-//     for i in 0..nth_players {
-//         let player = Player::new(format!("Player {}", i));
-
-//         game.player_join(player);
-//     }
-
-//     let table = game.round_start();
-// }
 
 fn generate_random_seed(seed: String) -> i32 {
     let mut rng: Pcg64 = Seeder::from(seed).make_rng();

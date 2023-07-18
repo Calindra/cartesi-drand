@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod test {
+    use std::borrow::BorrowMut;
+
     use crate::{Game, Player};
 
     #[tokio::test]
@@ -15,8 +17,13 @@ mod test {
         let table = game.round_start();
 
         let players = table.get_players();
-        let players = players.try_lock().unwrap();
+        let mut players = players.try_lock().unwrap();
 
         assert_eq!(players.len(), 2);
+
+        let first_player = players[0].borrow_mut();
+        let index = first_player.hit(&table.deck);
+
+        assert!(index.is_some());
     }
 }
