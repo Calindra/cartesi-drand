@@ -1,5 +1,9 @@
 use std::sync::Arc;
 
+use rand::prelude::*;
+use rand_pcg::Pcg64;
+use rand_seeder::{Seeder, SipHasher};
+
 use tokio::sync::Mutex;
 
 mod main_test;
@@ -188,6 +192,11 @@ impl Table {
 
 //     let table = game.round_start();
 // }
+
+fn generate_random_seed(seed: String) -> i32 {
+    let mut rng: Pcg64 = Seeder::from(seed).make_rng();
+    rng.gen_range(0..51)
+}
 
 fn main() {
     println!("Hello, world!");
