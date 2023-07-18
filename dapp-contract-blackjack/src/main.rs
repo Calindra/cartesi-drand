@@ -1,3 +1,9 @@
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
+
+mod main_test;
+
 #[derive(Debug, Clone)]
 enum Suit {
     Spades,   // Espadas
@@ -29,13 +35,25 @@ struct Card {
     rank: Rank,
 }
 
+struct Bet {
+    amount: u128,
+    symbol: String,
+}
+
+struct Player {
+    name: String,
+    hand: Vec<Rank>,
+    has_ace: bool,
+    bet: Option<Bet>,
+}
+
 impl Player {
     fn new(name: String) -> Self {
         Player {
             name,
             hand: Vec::new(),
             has_ace: false,
-            bet: 0,
+            bet: None,
         }
     }
 
@@ -114,59 +132,65 @@ impl Default for Deck {
     }
 }
 
-struct Player {
-    name: String,
-    hand: Vec<Rank>,
-    has_ace: bool,
-    bet: u32,
-}
-
-struct Table {
-    players: Vec<Player>,
+struct Game {
+    players: Arc<Mutex<Vec<Player>>>,
     deck: Deck,
-    bet: u32,
+    bet: Option<Bet>,
 }
 
-impl Table {
+impl Game {
     fn new() -> Self {
-        Table {
-            players: Vec::new(),
+        Game {
+            players: Arc::new(Mutex::new(Vec::new())),
             deck: Deck::default(),
-            bet: 0,
+            bet: None,
         }
     }
 
     fn player_join(&mut self, player: Player) {
-        self.players.push(player)
+        let players = self.players.try_lock();
+
+        let mut players = match players {
+            Ok(players) => players,
+            Err(_) => return,
+        };
+
+        players.push(player);
     }
 
-    fn round_start(self) -> Game {
-        Game::new(self)
-    }
-}
-
-struct Game {
-    table: Table,
-}
-
-impl Game {
-    fn new(table: Table) -> Game {
-        Game { table }
+    fn round_start(self) -> Table {
+        Table::new(self)
     }
 }
 
-fn start_game(nth_players: u8) {
-    let mut table = Table::new();
+struct Table {
+    table: Game,
+}
 
-    for i in 0..nth_players {
-        let player = Player::new(format!("Player {}", i));
-
-        table.player_join(player);
+impl Table {
+    fn new(table: Game) -> Table {
+        Table { table }
     }
 
-    let game = table.round_start();
+    fn get_players(&self) -> &Mutex<Vec<Player>> {
+        self.table.players.as_ref()
+    }
 }
+
+// fn start_game(nth_players: u8) {
+//     let mut game = Game::new();
+
+//     for i in 0..nth_players {
+//         let player = Player::new(format!("Player {}", i));
+
+//         game.player_join(player);
+//     }
+
+//     let table = game.round_start();
+// }
 
 fn main() {
     println!("Hello, world!");
+
+    // start_game(2);
 }
