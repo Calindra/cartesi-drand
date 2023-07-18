@@ -128,6 +128,8 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
  * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
  */
 fn is_drand_beacon(item: &Item) -> bool {
+    let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
+
     let request = item.request.as_str();
 
     let json = match deserialize_obj(request) {
@@ -148,13 +150,23 @@ fn is_drand_beacon(item: &Item) -> bool {
         return false;
     }
 
-    // @todo lidar com os unwraps
-    let payload = json["payload"].as_str().unwrap();
-    let payload = payload.trim_start_matches("0x");
-    let payload = hex::decode(payload).unwrap();
-    let payload = std::str::from_utf8(&payload).unwrap();
+    let payload = || {
+        let payload = json["payload"].as_str()?;
+        let payload = payload.trim_start_matches("0x");
+        let payload = hex::decode(payload).ok()?;
+        let payload = match std::str::from_utf8(&payload) {
+            Ok(payload) => payload.to_owned(),
+            Err(_) => return None,
+        };
+        Some(payload)
+    };
 
-    let json = match deserialize_obj(payload) {
+    let payload = match payload() {
+        Some(payload) => payload,
+        None => return false,
+    };
+
+    let json = match deserialize_obj(payload.as_str()) {
         Some(json) => json,
         None => return false,
     };
@@ -174,25 +186,40 @@ fn is_drand_beacon(item: &Item) -> bool {
         return false;
     }
 
-    let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
     let key = key.as_str();
     let mut pk = [0u8; 96];
-    hex::decode_to_slice(key, pk.borrow_mut()).unwrap();
+    let is_decoded_err = hex::decode_to_slice(key, pk.borrow_mut()).is_err();
+
+    if is_decoded_err {
+        return false;
+    }
 
     let pk = match G2Pubkey::from_fixed(pk) {
         Ok(pk) => pk,
         Err(_) => return false,
     };
 
-    let signature = json["signature"].as_str().unwrap();
-    let signature = hex::decode(signature).unwrap();
+    let signature = || {
+        let signature = json["signature"].as_str()?;
+        let signature = hex::decode(signature).ok()?;
+        Some(signature)
+    };
 
-    let round = json["round"].as_u64().unwrap();
+    let signature = match signature() {
+        Some(signature) => signature,
+        None => return false,
+    };
 
-    match pk.verify(round, b"", &signature) {
-        Ok(check) => check,
-        Err(_) => return false,
-    }
+    let round = json["round"].as_u64();
+
+    let round = match round {
+        Some(round) => round,
+        None => return false,
+    };
+
+    let is_valid_key = pk.verify(round, b"", &signature).ok().is_some();
+
+    is_valid_key
 }
 
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
