@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+  "convenience-middleware",
+  "dapp-contract-blackjack",
+]
