@@ -9,7 +9,7 @@ mod tests {
     };
     use actix_web::{
         http::{self},
-        test, web, App, body::MessageBody,
+        test, web, App,
     };
     use dotenv::dotenv;
     use serde_json::json;
@@ -92,8 +92,10 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         let status = resp.status();
         assert!(status.is_client_error(), "status: {:?}", status.as_str());
-        assert_eq!(manager.lock().await.pending_beacon_timestamp.get(), timestamp);
-
+        assert_eq!(
+            manager.lock().await.pending_beacon_timestamp.get(),
+            timestamp
+        );
     }
 
     #[actix_web::test]
@@ -105,7 +107,8 @@ mod tests {
         let beacon = Beacon {
             metadata: json!({
                 "message": "some info about beacon",
-            }).to_string(),
+            })
+            .to_string(),
             timestamp: last_clock_beacon,
         };
 
@@ -134,9 +137,7 @@ mod tests {
         let status = resp.status();
         assert!(status.is_client_error(), "status: {:?}", status.as_str());
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
-
     }
-
 
     #[actix_web::test]
     async fn request_random_with_old_beacon() {
@@ -147,7 +148,8 @@ mod tests {
         let beacon = Beacon {
             metadata: json!({
                 "message": "some info about beacon",
-            }).to_string(),
+            })
+            .to_string(),
             timestamp: last_clock_beacon,
         };
 
