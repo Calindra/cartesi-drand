@@ -1,4 +1,13 @@
-enum Card {
+#[derive(Debug, Clone)]
+enum Suit {
+    Spades,   // Espadas
+    Hearts,   // Copas
+    Diamonds, // Ouros
+    Clubs,    // Paus
+}
+
+#[derive(Debug, Clone)]
+enum Rank {
     Ace = 1,
     Two,
     Three,
@@ -14,11 +23,10 @@ enum Card {
     King,  // Rei
 }
 
-struct Player {
-    name: String,
-    hand: Vec<Card>,
-    has_ace: bool,
-    bet: u32,
+#[derive(Debug)]
+struct Card {
+    suit: Suit,
+    rank: Rank,
 }
 
 impl Player {
@@ -34,8 +42,8 @@ impl Player {
     /**
      * Take a card from the deck and add it to the player's hand.
      */
-    fn hit() -> Card {
-        let card = Card::Ace;
+    fn hit() -> Rank {
+        let card = Rank::Ace;
 
         card
     }
@@ -70,15 +78,47 @@ impl Player {
 }
 
 struct Deck {
-    kind: Vec<Card>,
+    cards: Vec<Card>,
 }
 
 impl Default for Deck {
     fn default() -> Self {
-        let deck = Deck { kind: Vec::new() };
+        let mut cards = Vec::new();
 
-        deck
+        for suit in [Suit::Spades, Suit::Hearts, Suit::Diamonds, Suit::Clubs].iter() {
+            for rank in [
+                Rank::Ace,
+                Rank::Two,
+                Rank::Three,
+                Rank::Four,
+                Rank::Five,
+                Rank::Six,
+                Rank::Seven,
+                Rank::Eight,
+                Rank::Nine,
+                Rank::Ten,
+                Rank::Jack,
+                Rank::Queen,
+                Rank::King,
+            ]
+            .iter()
+            {
+                cards.push(Card {
+                    suit: suit.clone(),
+                    rank: rank.clone(),
+                });
+            }
+        }
+
+        Deck { cards }
     }
+}
+
+struct Player {
+    name: String,
+    hand: Vec<Rank>,
+    has_ace: bool,
+    bet: u32,
 }
 
 struct Table {
