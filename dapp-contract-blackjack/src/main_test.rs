@@ -14,19 +14,31 @@ mod test {
             game.player_join(player);
         }
 
-        let mut table = game.round_start();
+        let table = game.round_start();
 
-        assert_eq!(table.deck.cards.len(), 52);
+        let size = match table.deck.try_lock() {
+            Ok(deck) => deck.cards.len(),
+            Err(_) => 0,
+        };
+
+        assert_eq!(size, 52);
 
         let players = table.get_players();
         let mut players = players.try_lock().unwrap();
 
         assert_eq!(players.len(), 2);
 
-        let first_player = players[0].borrow_mut();
-        first_player.hit(&mut table.deck).unwrap();
+        for i in 1..10 {
+            let mut deck = table.deck.try_lock().unwrap();
 
-        assert_eq!(table.deck.cards.len(), 51);
-        println!("Player 1: {:?}", &first_player);
+            let first_player = players[0].borrow_mut();
+            first_player.hit(&mut deck).unwrap();
+
+            assert_eq!(deck.cards.len(), 52 - i);
+
+            println!("Player 1: {:?}", &first_player.hand);
+        }
+
+        // let first_card_value = first_player.hand;
     }
 }

@@ -48,7 +48,7 @@ struct Bet {
 #[derive(Debug)]
 struct Player {
     name: String,
-    hand: Arc<Mutex<Vec<Card>>>,
+    hand: Vec<Card>,
     has_ace: bool,
     bet: Option<Bet>,
     is_standing: bool,
@@ -58,11 +58,15 @@ impl Player {
     fn new(name: String) -> Self {
         Player {
             name,
-            hand: Arc::new(Mutex::new(Vec::new())),
+            hand: Vec::new(),
             has_ace: false,
             bet: None,
             is_standing: false,
         }
+    }
+
+    fn check_points() -> Result<(), &'static str> {
+        todo!();
     }
 
     /**
@@ -81,16 +85,10 @@ impl Player {
 
         let card = deck.cards.remove(nth);
 
-        let hand = self.hand.try_lock();
+        self.has_ace = self.has_ace || card.rank == Rank::Ace;
+        self.hand.push(card);
 
-        if let Ok(mut hand) = hand {
-            self.has_ace = self.has_ace || card.rank == Rank::Ace;
-            hand.push(card);
-
-            return Ok(());
-        }
-
-        Err("Could not lock hand.")
+        Ok(())
     }
 
     /**
@@ -217,14 +215,14 @@ impl Game {
  */
 struct Table {
     game: Game,
-    deck: Deck,
+    deck: Arc<Mutex<Deck>>,
 }
 
 impl Table {
     fn new(table: Game) -> Table {
         Table {
             game: table,
-            deck: Deck::default(),
+            deck: Arc::new(Mutex::new(Deck::default())),
         }
     }
 
