@@ -14,7 +14,9 @@ mod test {
             game.player_join(player);
         }
 
-        let table = game.round_start();
+        let mut table = game.round_start();
+
+        assert_eq!(table.deck.cards.len(), 52);
 
         let players = table.get_players();
         let mut players = players.try_lock().unwrap();
@@ -22,8 +24,8 @@ mod test {
         assert_eq!(players.len(), 2);
 
         let first_player = players[0].borrow_mut();
-        let index = first_player.hit(&table.deck);
+        first_player.hit(&mut table.deck).unwrap();
 
-        assert!(index.is_some());
+        assert_eq!(table.deck.cards.len(), 51);
     }
 }

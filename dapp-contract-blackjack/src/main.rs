@@ -66,9 +66,9 @@ impl Player {
     /**
      * Take a card from the deck and add it to the player's hand.
      */
-    fn hit(&mut self, deck: &Deck) -> Option<usize> {
+    fn hit(&mut self, deck: &mut Deck) -> Result<(), &'static str> {
         if self.is_standing {
-            return None;
+            return Err("Already standing.");
         }
 
         let nth = random::<usize>();
@@ -76,33 +76,34 @@ impl Player {
 
         let nth = nth % size;
 
-        let card = deck.cards[nth].clone();
+        let card = deck.cards.remove(nth);
 
         let hand = self.hand.try_lock();
 
         if let Ok(mut hand) = hand {
-            hand.push(card.clone());
             self.has_ace = self.has_ace || card.rank == Rank::Ace;
+            hand.push(card);
 
-            return Some(nth);
+            return Ok(());
         }
 
-        None
+        Err("Could not lock hand.")
     }
 
     /**
      * Add the value of the card to the player's hand.
      */
-    fn stand(&mut self) {
+    fn stand(&mut self) -> Result<(), ()> {
         self.is_standing = true;
+        Ok(())
     }
 
     /**
      * Double the bet and take one more card.
      */
-    fn double_down(&mut self, deck: &Deck) -> bool {
+    fn double_down(&mut self, deck: &mut Deck) -> Result<(), &'static str> {
         if self.is_standing {
-            return false;
+            return Err("Already standing.");
         }
         if let Some(bet) = self.bet.as_ref() {
             self.bet = Some(Bet {
@@ -110,12 +111,16 @@ impl Player {
                 symbol: bet.symbol.clone(),
             });
 
-            let is_hit = self.hit(deck).is_some();
+            let is_err = self.hit(deck).is_err();
 
-            return is_hit;
+            if is_err {
+                return Err("Could not hit.");
+            }
+
+            return Ok(());
         }
 
-        false
+        Err("No bet.")
     }
 
     /**
