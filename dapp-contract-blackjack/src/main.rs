@@ -39,11 +39,13 @@ struct Card {
     rank: Rank,
 }
 
+#[derive(Debug)]
 struct Bet {
     amount: u128,
     symbol: String,
 }
 
+#[derive(Debug)]
 struct Player {
     name: String,
     hand: Arc<Mutex<Vec<Card>>>,
@@ -71,7 +73,8 @@ impl Player {
             return Err("Already standing.");
         }
 
-        let nth = random::<usize>();
+        // let nth = random::<usize>();
+        let nth = generate_random_seed("blackjack".to_string());
         let size = deck.cards.len();
 
         let nth = nth % size;
@@ -230,7 +233,7 @@ impl Table {
     }
 }
 
-fn generate_random_seed(seed: String) -> i32 {
+fn generate_random_seed(seed: String) -> usize {
     let mut rng: Pcg64 = Seeder::from(seed).make_rng();
     rng.gen_range(0..51)
 }

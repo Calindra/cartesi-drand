@@ -27,5 +27,6 @@ mod test {
         first_player.hit(&mut table.deck).unwrap();
 
         assert_eq!(table.deck.cards.len(), 51);
+        println!("Player 1: {:?}", &first_player);
     }
 }
