@@ -8,7 +8,7 @@ mod test {
     async fn start_game() {
         let mut game = Game::new();
 
-        for i in 0..2 {
+        for i in 1..3 {
             let player = Player::new(format!("Player {}", i));
 
             game.player_join(player);
@@ -36,7 +36,7 @@ mod test {
 
             assert_eq!(deck.cards.len(), 52 - i);
 
-            println!("Player 1: {:?}", &first_player.hand);
+            println!("{:}", &first_player);
         }
 
         // let first_card_value = first_player.hand;

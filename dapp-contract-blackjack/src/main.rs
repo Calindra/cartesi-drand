@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, fmt::Display};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -8,7 +8,7 @@ use tokio::sync::Mutex;
 
 mod main_test;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum Suit {
     Spades,   // Espadas
     Hearts,   // Copas
@@ -16,7 +16,20 @@ enum Suit {
     Clubs,    // Paus
 }
 
-#[derive(Debug, Clone, PartialEq)]
+impl Display for Suit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let suit = match self {
+            Suit::Spades => "Espadas",
+            Suit::Hearts => "Copas",
+            Suit::Diamonds => "Ouros",
+            Suit::Clubs => "Paus",
+        };
+
+        write!(f, "{}", suit)
+    }
+}
+
+#[derive(Clone, PartialEq)]
 enum Rank {
     Ace = 1,
     Two,
@@ -33,40 +46,78 @@ enum Rank {
     King,  // Rei
 }
 
-#[derive(Debug, Clone)]
+impl Display for Rank {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let rank = self.clone() as u8;
+        let rank_name: String = {
+            if rank > 1 && rank < 11 {
+                rank.to_string()
+            } else {
+                match self {
+                    Rank::Ace => "Ás".to_string(),
+                    Rank::Jack => "Valete".to_string(),
+                    Rank::Queen => "Dama".to_string(),
+                    Rank::King => "Rei".to_string(),
+                    _ => "".to_string(),
+                }
+            }
+        };
+
+        write!(f, "{}", rank_name)
+    }
+}
+
 struct Card {
     suit: Suit,
     rank: Rank,
 }
 
-#[derive(Debug)]
+impl Display for Card {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:} de {:}", &self.rank, &self.suit)
+    }
+}
+
 struct Bet {
     amount: u128,
     symbol: String,
 }
 
-#[derive(Debug)]
+struct Hand(pub Vec<Card>);
+
+impl Display for Hand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        let _ = self.0.iter().fold(Ok(()), |result, el| {
+            result.and_then(|_| write!(f, " {},", &el))
+        });
+        write!(f, " ]")
+    }
+}
+
 struct Player {
     name: String,
-    hand: Vec<Card>,
+    hand: Hand,
     has_ace: bool,
     bet: Option<Bet>,
     is_standing: bool,
+}
+
+impl Display for Player {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ name: {:}, hand: {:} }}", &self.name, &self.hand)
+    }
 }
 
 impl Player {
     fn new(name: String) -> Self {
         Player {
             name,
-            hand: Vec::new(),
+            hand: Hand(Vec::new()),
             has_ace: false,
             bet: None,
             is_standing: false,
         }
-    }
-
-    fn check_points() -> Result<(), &'static str> {
-        todo!();
     }
 
     /**
@@ -77,8 +128,8 @@ impl Player {
             return Err("Already standing.");
         }
 
-        // let nth = random::<usize>();
-        let nth = generate_random_seed("blackjack".to_string());
+        let nth = random::<usize>();
+        // let nth = generate_random_seed("blackjack".to_string());
         let size = deck.cards.len();
 
         let nth = nth % size;
@@ -86,7 +137,7 @@ impl Player {
         let card = deck.cards.remove(nth);
 
         self.has_ace = self.has_ace || card.rank == Rank::Ace;
-        self.hand.push(card);
+        self.hand.0.push(card);
 
         Ok(())
     }
