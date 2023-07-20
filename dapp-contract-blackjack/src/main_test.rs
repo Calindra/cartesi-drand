@@ -6,7 +6,7 @@ mod test {
 
     #[tokio::test]
     async fn start_game() {
-        let mut game = Game::new();
+        let mut game = Game::default();
 
         for i in 1..3 {
             let player = PlayerBet::new(format!("Player {}", i));
@@ -15,6 +15,9 @@ mod test {
         }
 
         let table = game.round_start();
+
+        let player = PlayerBet::new("Romário".to_string());
+        game.player_join(player).unwrap();
 
         let size = match table.deck.try_lock() {
             Ok(deck) => deck.cards.len(),
@@ -26,17 +29,17 @@ mod test {
         let players = table.get_players();
         let mut players = players.try_lock().unwrap();
 
-        // assert_eq!(players.len(), 2);
+        assert_eq!(players.len(), 2);
 
-        // for i in 1..10 {
-        //     let mut deck = table.deck.try_lock().unwrap();
+        for i in 1..10 {
+            let mut deck = table.deck.try_lock().unwrap();
 
-        //     let first_player = players[0].borrow_mut();
-        //     first_player.hit(&mut deck).unwrap();
+            let first_player = players[0].borrow_mut();
+            first_player.hit(&mut deck).unwrap();
 
-        //     assert_eq!(deck.cards.len(), 52 - i);
+            assert_eq!(deck.cards.len(), 52 - i);
 
-        //     // println!("{:}", &first_player);
-        // }
+            // println!("{:}", &first_player);
+        }
     }
 }

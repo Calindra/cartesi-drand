@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::{cell::RefCell, error::Error, fmt::Display, rc::Rc, sync::Arc};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -113,7 +113,7 @@ struct Player {
  * Player's hand for specific round while playing.
  */
 struct PlayerHand {
-    player: PlayerBet,
+    player: Arc<Mutex<PlayerBet>>,
     hand: Hand,
     has_ace: bool,
     is_standing: bool,
@@ -121,7 +121,8 @@ struct PlayerHand {
 
 impl Display for PlayerHand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let player_name = &self.player.player.name;
+        let player = self.player.try_lock().unwrap();
+        let player_name = &player.player.name;
         write!(f, "{{ name: {:}, hand: {:} }}", player_name, &self.hand)
     }
 }
@@ -147,7 +148,7 @@ impl PlayerBet {
 }
 
 impl PlayerHand {
-    fn new(player: PlayerBet) -> PlayerHand {
+    fn new(player: Arc<Mutex<PlayerBet>>) -> PlayerHand {
         PlayerHand {
             player,
             hand: Hand(Vec::new()),
@@ -194,25 +195,17 @@ impl PlayerHand {
             return Err("Already standing.");
         }
 
-        let player_balance = self
-            .player
-            .player
-            .balance
-            .as_ref()
-            .ok_or("No balance.")?
-            .amount;
+        let player = self.player.try_lock().unwrap();
 
-        let player_bet = self.player.bet.as_ref().ok_or("No bet.")?.amount;
+        let player_balance = player.player.balance.as_ref().ok_or("No balance.")?.amount;
+        let player_bet = player.bet.as_ref().ok_or("No bet.")?.amount;
 
         let double_bet = player_bet.checked_mul(2).ok_or("Could not double bet.")?;
-        let next_balance = player_balance
-            .checked_sub(double_bet)
-            .ok_or("Insufficient balance.")?;
 
-        self.player.player.balance.as_mut().and_then(|credit| {
-            credit.amount = next_balance;
-            Some(credit)
-        });
+        // self.player.bet.as_mut().and_then(|credit| {
+        //     credit.amount = double_bet;
+        //     Some(credit)
+        // });
 
         Ok(())
     }
@@ -273,35 +266,35 @@ impl Default for Deck {
  * This is where the game is initialized.
  */
 struct Game {
-    players: Vec<PlayerBet>,
+    players: Vec<Arc<Mutex<PlayerBet>>>,
 }
 
-impl Game {
-    fn new() -> Self {
+impl Default for Game {
+    fn default() -> Self {
         Game {
             players: Vec::new(),
         }
     }
+}
 
+impl Game {
     fn player_join(&mut self, player: PlayerBet) -> Result<(), &'static str> {
         if self.players.len() >= 7 {
             return Err("Maximum number of players reached.");
         }
 
+        let player = Arc::new(Mutex::new(player));
+
         self.players.push(player);
         Ok(())
     }
 
-    fn round_start_with_bet(&self, bet: Option<Credit>) -> Table {
+    fn round_start(&self) -> Table {
         if self.players.len() < 2 {
             panic!("Minimum number of players not reached.");
         }
 
-        Table::new(&self, bet)
-    }
-
-    fn round_start(&self) -> Table {
-        self.round_start_with_bet(None)
+        Table::new(&self.players)
     }
 }
 
@@ -309,19 +302,27 @@ impl Game {
  * The table is where the game is played.
  */
 struct Table {
-    bet: Option<Credit>,
+    bets: Vec<Credit>,
     deck: Arc<Mutex<Deck>>,
     players_with_hand: Arc<Mutex<Vec<PlayerHand>>>,
 }
 
 impl Table {
-    fn new(table: &Game, bet: Option<Credit>) -> Table {
-        let players = Vec::new();
+    fn new(players: &Vec<Arc<Mutex<PlayerBet>>>) -> Table {
+        let bets = Vec::new();
+        let mut players_with_hand = Vec::new();
+
+        for player in players.iter() {
+            let player_hand = PlayerHand::new(player.clone());
+            players_with_hand.push(player_hand);
+        }
+
+        // @TODO: Implement bet.
 
         Table {
-            bet,
+            bets,
             deck: Arc::new(Mutex::new(Deck::default())),
-            players_with_hand: Arc::new(Mutex::new(players)),
+            players_with_hand: Arc::new(Mutex::new(players_with_hand)),
         }
     }
 
