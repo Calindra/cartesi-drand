@@ -2,7 +2,7 @@
 mod test {
     use std::borrow::BorrowMut;
 
-    use crate::{Game, Player};
+    use crate::{Game, Hand, Player};
 
     #[tokio::test]
     async fn start_game() {
@@ -38,7 +38,5 @@ mod test {
 
             println!("{:}", &first_player);
         }
-
-        // let first_card_value = first_player.hand;
     }
 }
