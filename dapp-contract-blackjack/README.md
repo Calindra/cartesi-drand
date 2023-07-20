@@ -2,7 +2,6 @@
 
 Example of two players:
 ```mermaid
-%%{init: {'theme':'neutral'}}%%
 stateDiagram-v2
     [*] --> Initial
     Initial --> ShuffleDeck : Deal
