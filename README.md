@@ -14,6 +14,7 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 
 
 ```mermaid
+%%{init: {'theme':'neutral'}}%%
 sequenceDiagram
     autonumber
     box dApp Frontend
