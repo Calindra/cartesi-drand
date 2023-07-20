@@ -3,35 +3,50 @@
 Example of two players:
 ```mermaid
 stateDiagram-v2
-    state CompareHits <<choice>>
-    state DealerHit <<choice>>
-
     [*] --> Initial
     Initial --> ShuffleDeck : Deal
-    ShuffleDeck --> PlayerLoop  : Player's Turn
+    ShuffleDeck --> PlayerLoop  : Game start
 
     state PlayerLoop {
-        [*] --> PlayerTurn
-        PlayerTurn --> PlayerHit : Hit
-        PlayerTurn --> PlayerStand : Stand
-        PlayerHit --> DealerTurn
-        PlayerStand --> DealerTurn
-        DealerTurn --> DealerHit : Hit
-        DealerHit --> CompareHits: Both hit
-        CompareHits --> PlayerTurn: Both can continue
+        state WhoIsAvailable <<choice>>
+        state PhaseInitial <<fork>>
+        [*] --> ForkAvailable
+        ForkAvailable --> PhaseInitial
 
-        DealerHit --> [*]: If player stand
-        CompareHits --> [*]: Some cant continue
-        DealerTurn --> [*] : Stand
+        PhaseInitial --> Player1
+        Player1 --> Player1Hit : Hit
+        Player1 --> Player1Stand : Stand
+
+
+        PhaseInitial --> Player2
+        Player2 --> Player2Hit : Hit
+        Player2 --> Player2Stand : Stand
+
+
+        %% PhaseInitial --> Player3
+        %% Player3 --> Player3Hit : Hit
+        %% Player3 --> Player3Stand : Stand
+
+        state PhaseWait <<join>>
+
+        Player1Hit --> PhaseWait
+        Player2Hit --> PhaseWait
+        %% Player3Hit --> PhaseWait
+
+        Player1Stand --> PhaseWait
+        Player2Stand --> PhaseWait
+        %% Player3Stand --> PhaseWait
+
+        PhaseWait --> WhoIsAvailable
+        WhoIsAvailable --> ForkAvailable: Some can continue
+        WhoIsAvailable --> [*]: Nobody can continue
     }
 
     PlayerLoop --> CompareHands
 
-    CompareHands --> PlayerWins : Player Wins
-    CompareHands --> DealerWins : Dealer Wins
+    CompareHands --> PlayerWins : Some Player Wins
     CompareHands --> Draw : Draw
     PlayerWins --> PlayAgain
-    DealerWins --> PlayAgain
     Draw --> PlayAgain
     PlayAgain --> ShuffleDeck : Deal
     PlayAgain --> [*] : Finish
