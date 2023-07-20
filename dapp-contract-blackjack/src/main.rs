@@ -1,4 +1,4 @@
-use std::{sync::Arc, fmt::Display};
+use std::{fmt::Display, sync::Arc};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -78,9 +78,15 @@ impl Display for Card {
     }
 }
 
-struct Bet {
-    amount: u128,
+struct Credit {
+    amount: u32,
     symbol: String,
+}
+
+impl Display for Credit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:} {:}", &self.amount, &self.symbol)
+    }
 }
 
 struct Hand(pub Vec<Card>);
@@ -95,27 +101,57 @@ impl Display for Hand {
     }
 }
 
+/**
+ * Player registration.
+ */
 struct Player {
     name: String,
+    balance: Option<Credit>,
+}
+
+/**
+ * Player's hand for specific round while playing.
+ */
+struct PlayerHand {
+    player: PlayerBet,
     hand: Hand,
     has_ace: bool,
-    bet: Option<Bet>,
     is_standing: bool,
 }
 
-impl Display for Player {
+impl Display for PlayerHand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{ name: {:}, hand: {:} }}", &self.name, &self.hand)
+        let player_name = &self.player.player.name;
+        write!(f, "{{ name: {:}, hand: {:} }}", player_name, &self.hand)
     }
 }
 
-impl Player {
-    fn new(name: String) -> Self {
-        Player {
-            name,
+/**
+ * Used for the initial of game for bets.
+ */
+struct PlayerBet {
+    player: Player,
+    bet: Option<Credit>,
+}
+
+impl PlayerBet {
+    fn new(name: String) -> PlayerBet {
+        PlayerBet {
+            player: Player {
+                name,
+                balance: None,
+            },
+            bet: None,
+        }
+    }
+}
+
+impl PlayerHand {
+    fn new(player: PlayerBet) -> PlayerHand {
+        PlayerHand {
+            player,
             hand: Hand(Vec::new()),
             has_ace: false,
-            bet: None,
             is_standing: false,
         }
     }
@@ -157,22 +193,28 @@ impl Player {
         if self.is_standing {
             return Err("Already standing.");
         }
-        if let Some(bet) = self.bet.as_ref() {
-            self.bet = Some(Bet {
-                amount: bet.amount * 2,
-                symbol: bet.symbol.clone(),
-            });
 
-            let is_err = self.hit(deck).is_err();
+        let player_balance = self
+            .player
+            .player
+            .balance
+            .as_ref()
+            .ok_or("No balance.")?
+            .amount;
 
-            if is_err {
-                return Err("Could not hit.");
-            }
+        let player_bet = self.player.bet.as_ref().ok_or("No bet.")?.amount;
 
-            return Ok(());
-        }
+        let double_bet = player_bet.checked_mul(2).ok_or("Could not double bet.")?;
+        let next_balance = player_balance
+            .checked_sub(double_bet)
+            .ok_or("Insufficient balance.")?;
 
-        Err("No bet.")
+        self.player.player.balance.as_mut().and_then(|credit| {
+            credit.amount = next_balance;
+            Some(credit)
+        });
+
+        Ok(())
     }
 
     /**
@@ -227,37 +269,39 @@ impl Default for Deck {
     }
 }
 
-struct Game {
-    players: Arc<Mutex<Vec<Player>>>,
-
-    bet: Option<Bet>,
-}
-
 /**
  * This is where the game is initialized.
  */
+struct Game {
+    players: Vec<PlayerBet>,
+}
+
 impl Game {
     fn new() -> Self {
         Game {
-            players: Arc::new(Mutex::new(Vec::new())),
-
-            bet: None,
+            players: Vec::new(),
         }
     }
 
-    fn player_join(&mut self, player: Player) {
-        let players = self.players.try_lock();
+    fn player_join(&mut self, player: PlayerBet) -> Result<(), &'static str> {
+        if self.players.len() >= 7 {
+            return Err("Maximum number of players reached.");
+        }
 
-        let mut players = match players {
-            Ok(players) => players,
-            Err(_) => return,
-        };
-
-        players.push(player);
+        self.players.push(player);
+        Ok(())
     }
 
-    fn round_start(self) -> Table {
-        Table::new(self)
+    fn round_start_with_bet(&self, bet: Option<Credit>) -> Table {
+        if self.players.len() < 2 {
+            panic!("Minimum number of players not reached.");
+        }
+
+        Table::new(&self, bet)
+    }
+
+    fn round_start(&self) -> Table {
+        self.round_start_with_bet(None)
     }
 }
 
@@ -265,20 +309,24 @@ impl Game {
  * The table is where the game is played.
  */
 struct Table {
-    game: Game,
+    bet: Option<Credit>,
     deck: Arc<Mutex<Deck>>,
+    players_with_hand: Arc<Mutex<Vec<PlayerHand>>>,
 }
 
 impl Table {
-    fn new(table: Game) -> Table {
+    fn new(table: &Game, bet: Option<Credit>) -> Table {
+        let players = Vec::new();
+
         Table {
-            game: table,
+            bet,
             deck: Arc::new(Mutex::new(Deck::default())),
+            players_with_hand: Arc::new(Mutex::new(players)),
         }
     }
 
-    fn get_players(&self) -> Arc<Mutex<Vec<Player>>> {
-        self.game.players.clone()
+    fn get_players(&self) -> Arc<Mutex<Vec<PlayerHand>>> {
+        self.players_with_hand.clone()
     }
 }
 
