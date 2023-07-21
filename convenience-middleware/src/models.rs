@@ -39,6 +39,17 @@ pub mod models {
 
     pub(crate) struct AppState {
         pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
+        pub(crate) process_counter: Mutex<u64>,
+    }
+
+    impl AppState {
+        pub(crate) fn new() -> AppState {
+            let manager = InputBufferManager::default();
+            AppState {
+                input_buffer_manager: Arc::new(Mutex::new(manager)),
+                process_counter: Mutex::new(0),
+            }
+        }
     }
 
     impl Flag {

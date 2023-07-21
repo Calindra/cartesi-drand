@@ -22,6 +22,9 @@ pub mod routes {
 
         println!("Received finish request {:?}", body);
 
+        let mut counter = ctx.process_counter.lock().await;
+        *counter -= 1;
+
         let input = match manager {
             Ok(mut manager) => manager.consume_input(),
             Err(_) => return HttpResponse::NotFound().finish(),
@@ -63,6 +66,8 @@ pub mod routes {
                     let randomness = hasher.finalize();
                     manager.flag_to_hold.release();
                     manager.last_beacon.set(Some(beacon));
+                    let mut counter = ctx.process_counter.lock().await;
+                    *counter += 1;
                     HttpResponse::Ok().body(hex::encode(randomness))
                 } else {
                     manager.set_pending_beacon_timestamp(query.timestamp);

@@ -288,6 +288,7 @@ async fn main() -> std::io::Result<()> {
 
     let app_state = web::Data::new(AppState {
         input_buffer_manager: InputBufferManager::new(),
+        process_counter: Mutex::new(0),
     });
 
     let manager = app_state.input_buffer_manager.clone();
