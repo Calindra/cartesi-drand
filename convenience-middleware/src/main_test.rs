@@ -14,7 +14,11 @@ mod tests {
     };
     use dotenv::dotenv;
     use http::Method;
-    use httptest::{matchers::*, responders::*, Expectation, Server};
+    use httptest::{
+        matchers::*,
+        responders::{self, *},
+        Expectation, Server,
+    };
     use serde_json::json;
 
     #[macro_export]
@@ -24,6 +28,21 @@ mod tests {
             assert!(is_env_loaded);
             is_env_loaded
         }};
+    }
+
+    #[macro_export]
+    macro_rules! mock_rollup_server {
+        ($x:expr ) => {
+            let server = Server::run();
+            server.expect(
+                Expectation::matching(request::method_path("POST", "/finish")).respond_with($x),
+            );
+            let url = server.url("/finish");
+            std::env::set_var(
+                "ROLLUP_HTTP_SERVER_URL",
+                format!("http://localhost:{}", url.port().unwrap()),
+            );
+        };
     }
 
     #[actix_web::test]
@@ -177,16 +196,7 @@ mod tests {
     #[actix_web::test]
     async fn test_request_finish_without_input_to_respond() {
         check_if_dotenv_is_loaded!();
-        let server = Server::run();
-        server.expect(
-            Expectation::matching(request::method_path("POST", "/finish"))
-                .respond_with(status_code(202)),
-        );
-        let url = server.url("/finish");
-        std::env::set_var(
-            "ROLLUP_HTTP_SERVER_URL",
-            format!("http://localhost:{}", url.port().unwrap()),
-        );
+        mock_rollup_server!(status_code(202));
 
         let app_state = web::Data::new(AppState::new());
 
@@ -196,6 +206,7 @@ mod tests {
 
         let app = test::init_service(app).await;
 
+        // the DApp call our middleware
         let req = test::TestRequest::with_uri("/finish")
             .method(Method::POST)
             .set_json(json!({"status": "accept"}))
@@ -208,16 +219,9 @@ mod tests {
     #[actix_web::test]
     async fn test_request_finish_with_input_to_respond() {
         check_if_dotenv_is_loaded!();
-        let server = Server::run();
-        server.expect(
-            Expectation::matching(request::method_path("POST", "/finish"))
-                .respond_with(json_encoded(json!({"request_type":"advance_state"}))),
-        );
-        let url = server.url("/finish");
-        std::env::set_var(
-            "ROLLUP_HTTP_SERVER_URL",
-            format!("http://localhost:{}", url.port().unwrap()),
-        );
+        mock_rollup_server!(json_encoded(
+            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B7D"},"request_type":"advance_state"})
+        ));
 
         let app_state = web::Data::new(AppState::new());
 
@@ -227,6 +231,7 @@ mod tests {
 
         let mut app = test::init_service(app).await;
 
+        // the DApp call our middleware
         let req = test::TestRequest::with_uri("/finish")
             .method(Method::POST)
             .set_json(json!({"status": "accept"}))
@@ -236,7 +241,43 @@ mod tests {
         let utf = std::str::from_utf8(&result).unwrap();
         let req: serde_json::Value = serde_json::from_str(utf).unwrap();
         assert_eq!(req["request_type"], "advance_state");
-        println!("{:?}", utf);
+    }
+
+    #[actix_web::test]
+    async fn test_request_finish_with_beacon_inside_input() {
+        check_if_dotenv_is_loaded!();
+        mock_rollup_server!(responders::cycle![
+            json_encoded(
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B7D"},"request_type":"advance_state"})
+            ),
+            json_encoded(
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d"},"request_type":"advance_state"})
+            )
+        ]);
+
+        let app_state = web::Data::new(AppState::new());
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::consume_buffer);
+
+        let mut app = test::init_service(app).await;
+
+        // the DApp call our middleware to start something
+        let req = test::TestRequest::with_uri("/finish")
+            .method(Method::POST)
+            .set_json(json!({"status": "accept"}))
+            .to_request();
+
+        let result = test::call_and_read_body(&mut app, req).await;
+        let utf = std::str::from_utf8(&result).unwrap();
+        let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+        assert_eq!(req["request_type"], "advance_state");
+
+        let req = test::TestRequest::with_uri("/random?timestamp=123")
+            .method(Method::GET)
+            // .set_json(json!({"status": "accept"}))
+            .to_request();
     }
 
     // #[actix_web::test]

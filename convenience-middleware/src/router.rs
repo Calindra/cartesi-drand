@@ -3,7 +3,7 @@ pub mod routes {
     use serde_json::json;
     use sha3::{Digest, Sha3_256};
 
-    use crate::models::models::{AppState, RequestRollups, Timestamp};
+    use crate::{models::models::{AppState, RequestRollups, Timestamp}, utils::util::is_drand_beacon};
 
     pub async fn hello() -> HttpResponse {
         HttpResponse::Ok().body("Hello, World!")
@@ -52,6 +52,12 @@ pub mod routes {
             return HttpResponse::Accepted().finish();
         }
         let body = hyper::body::to_bytes(response).await.unwrap();
+        let utf = std::str::from_utf8(&body).unwrap();
+        if is_drand_beacon(utf) {
+            println!("Is Drand!!!")
+        } else {
+            println!("Isn't Drand!!!")
+        }
         HttpResponse::Ok().body(body)
     }
 

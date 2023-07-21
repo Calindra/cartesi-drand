@@ -3,6 +3,7 @@
         "actix",
         "dotenv",
         "drand",
+        "httptest",
         "Pubkey",
         "rollup"
     ]
