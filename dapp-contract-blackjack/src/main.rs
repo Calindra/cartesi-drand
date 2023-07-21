@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::{Display, self}, sync::Arc, error::Error};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -72,6 +72,20 @@ struct Card {
     rank: Rank,
 }
 
+impl Card {
+    fn show_point(&self) -> u8 {
+        let mut point: u8 = self.rank.clone() as u8;
+
+        if self.rank == Rank::Ace {
+            point = 11;
+        } else if self.rank == Rank::Jack || self.rank == Rank::Queen || self.rank == Rank::King {
+            point = 10;
+        }
+
+        point
+    }
+}
+
 impl Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:} de {:}", &self.rank, &self.suit)
@@ -115,15 +129,20 @@ struct Player {
 struct PlayerHand {
     player: Arc<Mutex<PlayerBet>>,
     hand: Hand,
-    has_ace: bool,
+    points: u8,
     is_standing: bool,
+    deck: Arc<Mutex<Deck>>,
 }
 
 impl Display for PlayerHand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let player = self.player.try_lock().unwrap();
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        let player = self.player.try_lock().or(Err(fmt::Error))?;
         let player_name = &player.player.name;
-        write!(f, "{{ name: {:}, hand: {:} }}", player_name, &self.hand)
+        write!(
+            f,
+            "{{ name: {:}, points: {:}, hand: {:} }}",
+            player_name, &self.points, &self.hand
+        )
     }
 }
 
@@ -148,22 +167,29 @@ impl PlayerBet {
 }
 
 impl PlayerHand {
-    fn new(player: Arc<Mutex<PlayerBet>>) -> PlayerHand {
+    fn new(player: Arc<Mutex<PlayerBet>>, deck: Arc<Mutex<Deck>>) -> PlayerHand {
         PlayerHand {
             player,
             hand: Hand(Vec::new()),
-            has_ace: false,
             is_standing: false,
+            points: 0,
+            deck,
         }
     }
 
     /**
      * Take a card from the deck and add it to the player's hand.
      */
-    fn hit(&mut self, deck: &mut Deck) -> Result<(), &'static str> {
+    fn hit(&mut self) -> Result<(), &'static str> {
+        if self.points > 21 {
+            return Err("Player is busted.");
+        }
+
         if self.is_standing {
             return Err("Already standing.");
         }
+
+        let mut deck = self.deck.try_lock().or(Err("Error try locking"))?;
 
         let nth = random::<usize>();
         // let nth = generate_random_seed("blackjack".to_string());
@@ -172,8 +198,15 @@ impl PlayerHand {
         let nth = nth % size;
 
         let card = deck.cards.remove(nth);
+        let card_point = card.show_point();
+        let points = self.points + card_point;
 
-        self.has_ace = self.has_ace || card.rank == Rank::Ace;
+        if card.rank == Rank::Ace && points > 21 {
+            self.points = points - 10;
+        } else {
+            self.points = points;
+        }
+
         self.hand.0.push(card);
 
         Ok(())
@@ -190,12 +223,14 @@ impl PlayerHand {
     /**
      * Double the bet and take one more card.
      */
-    fn double_down(&mut self, deck: &mut Deck) -> Result<(), &'static str> {
+    fn double_down(&mut self) -> Result<(), &'static str> {
         if self.is_standing {
             return Err("Already standing.");
         }
 
-        let player = self.player.try_lock().unwrap();
+        let player = self.player.clone();
+
+        let player = player.try_lock().or(Err("Error try locking player"))?;
 
         let player_balance = player.player.balance.as_ref().ok_or("No balance.")?.amount;
         let player_bet = player.bet.as_ref().ok_or("No bet.")?.amount;
@@ -207,6 +242,7 @@ impl PlayerHand {
         //     Some(credit)
         // });
 
+        self.hit()?;
         Ok(())
     }
 
@@ -227,6 +263,24 @@ impl PlayerHand {
 
 struct Deck {
     cards: Vec<Card>,
+}
+
+impl Deck {
+    fn new_with_capacity(nth: usize) -> Result<Self, &'static str> {
+        if nth < 1 || nth > 8 {
+            eprintln!("Invalid number of decks.");
+            Err("Invalid number of decks.")?;
+        }
+
+        let mut decks = Deck::default();
+
+        for _ in 1..nth {
+            let deck = Deck::default().cards;
+            decks.cards.extend(deck);
+        }
+
+        Ok(decks)
+    }
 }
 
 impl Default for Deck {
@@ -289,12 +343,12 @@ impl Game {
         Ok(())
     }
 
-    fn round_start(&self) -> Table {
+    fn round_start(&self, nth_decks: usize) -> Result<Table, &'static str> {
         if self.players.len() < 2 {
             panic!("Minimum number of players not reached.");
         }
 
-        Table::new(&self.players)
+        Table::new(&self.players, nth_decks)
     }
 }
 
@@ -308,23 +362,25 @@ struct Table {
 }
 
 impl Table {
-    fn new(players: &Vec<Arc<Mutex<PlayerBet>>>) -> Table {
+    fn new(players: &Vec<Arc<Mutex<PlayerBet>>>, nth_decks: usize) -> Result<Table, &'static str> {
         let bets = Vec::new();
         let mut players_with_hand = Vec::new();
+        let deck = Deck::new_with_capacity(nth_decks)?;
+        let deck = Arc::new(Mutex::new(deck));
 
         for player in players.iter() {
-            let player_hand = PlayerHand::new(player.clone());
+            let player_hand = PlayerHand::new(player.clone(), deck.clone());
             players_with_hand.push(player_hand);
         }
 
         // @TODO: Implement bet.
 
-        Table {
+        Ok(Table {
             bets,
-            deck: Arc::new(Mutex::new(Deck::default())),
+            deck,
             // players_with_hand: Arc::new(Mutex::new(players_with_hand)),
             players_with_hand,
-        }
+        })
     }
 }
 

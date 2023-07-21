@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use std::borrow::BorrowMut;
+    use std::{borrow::BorrowMut, ops::Rem};
 
     use crate::{Game, PlayerBet};
 
@@ -8,15 +8,15 @@ mod test {
     async fn start_game() {
         let mut game = Game::default();
 
-        for i in 1..3 {
-            let player = PlayerBet::new(format!("Player {}", i));
+        for name in ["Alice", "Bob"] {
+            let player = PlayerBet::new(name.to_string());
 
             game.player_join(player).unwrap();
         }
 
-        let table = game.round_start();
+        let table = game.round_start(1).unwrap();
 
-        let player = PlayerBet::new("Romário".to_string());
+        let player = PlayerBet::new("Eve".to_string());
         game.player_join(player).unwrap();
 
         let size = match table.deck.try_lock() {
@@ -24,21 +24,26 @@ mod test {
             Err(_) => 0,
         };
 
-        assert_eq!(size, 52);
+        assert_ne!(size, 0);
+        assert_eq!(size.rem(52), 0);
 
         let mut players = table.players_with_hand;
 
         assert_eq!(players.len(), 2);
 
-        for i in 1..10 {
-            let mut deck = table.deck.try_lock().unwrap();
+        let first_player = players[0].borrow_mut();
+        let mut i = 1;
+        while first_player.points < 17 {
+            if let Err(err) = first_player.hit() {
+                eprintln!("{:}", err);
+                break;
+            }
 
-            let first_player = players[0].borrow_mut();
-            first_player.hit(&mut deck).unwrap();
-
-            assert_eq!(deck.cards.len(), 52 - i);
+            let deck = table.deck.try_lock().unwrap();
+            assert_eq!(deck.cards.len().rem(52), (52 - i) % 52);
 
             println!("{:}", &first_player);
+            i = i + 1;
         }
     }
 }

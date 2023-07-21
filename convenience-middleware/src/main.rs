@@ -18,7 +18,7 @@ use utils::util::deserialize_obj;
 async fn rollup(
     sender: Sender<Item>,
     manager: Arc<Mutex<InputBufferManager>>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     println!("Starting rollup sender");
 
     let client = hyper::Client::new();
@@ -66,7 +66,7 @@ async fn handle_inspect(
     request: Value,
     sender: &Sender<Item>,
     manager: &Arc<Mutex<InputBufferManager>>,
-) -> Result<&'static str, Box<dyn std::error::Error>> {
+) -> Result<&'static str, Box<dyn Error>> {
     println!("req {:}", request);
     let payload = request["data"]["payload"]
         .as_str()
