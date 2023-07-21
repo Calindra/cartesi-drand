@@ -1,5 +1,6 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
+    use serde_json::json;
     use sha3::{Digest, Sha3_256};
 
     use crate::models::models::{AppState, RequestRollups, Timestamp};
@@ -22,8 +23,8 @@ pub mod routes {
 
         println!("Received finish request {:?}", body);
 
-        let mut counter = ctx.process_counter.lock().await;
-        *counter -= 1;
+        // let mut counter = ctx.process_counter.lock().await;
+        // *counter -= 1;
 
         let input = match manager {
             Ok(mut manager) => manager.consume_input(),
@@ -31,9 +32,27 @@ pub mod routes {
         };
 
         match input {
-            Some(item) => HttpResponse::Ok().body(item.request),
-            None => HttpResponse::Accepted().finish(),
+            Some(item) => return HttpResponse::Ok().body(item.request),
+            None => {}
+        };
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
+        println!("Sending finish to {}", &server_addr);
+        let client = hyper::Client::new();
+        let status = "accept";
+        let response = json!({"status" : status.clone()});
+        let request = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .header(hyper::header::CONTENT_TYPE, "application/json")
+            .uri(format!("{}/finish", &server_addr))
+            .body(hyper::Body::from(response.to_string()))
+            .unwrap();
+        let response = client.request(request).await.unwrap();
+        println!("Received finish status {}", response.status());
+        if response.status() == hyper::StatusCode::ACCEPTED {
+            return HttpResponse::Accepted().finish();
         }
+        let body = hyper::body::to_bytes(response).await.unwrap();
+        HttpResponse::Ok().body(body)
     }
 
     // GET /random?timestamp=123234

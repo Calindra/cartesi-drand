@@ -8,9 +8,13 @@ mod tests {
     };
     use actix_web::{
         http::{self},
-        test, web, App,
+        test,
+        web::{self},
+        App,
     };
     use dotenv::dotenv;
+    use http::Method;
+    use httptest::{matchers::*, responders::*, Expectation, Server};
     use serde_json::json;
 
     #[macro_export]
@@ -84,7 +88,11 @@ mod tests {
 
         let resp = test::call_service(&app, req).await;
         let status = resp.status();
-        assert!(resp.status().is_client_error(), "status: {:?}", status.as_str());
+        assert!(
+            resp.status().is_client_error(),
+            "status: {:?}",
+            status.as_str()
+        );
         assert_eq!(resp.status(), 404);
         assert_eq!(
             manager.lock().await.pending_beacon_timestamp.get(),
@@ -167,8 +175,68 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_request_finish() {
+    async fn test_request_finish_without_input_to_respond() {
+        check_if_dotenv_is_loaded!();
+        let server = Server::run();
+        server.expect(
+            Expectation::matching(request::method_path("POST", "/finish"))
+                .respond_with(status_code(202)),
+        );
+        let url = server.url("/finish");
+        std::env::set_var(
+            "ROLLUP_HTTP_SERVER_URL",
+            format!("http://localhost:{}", url.port().unwrap()),
+        );
 
+        let app_state = web::Data::new(AppState::new());
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::consume_buffer);
+
+        let app = test::init_service(app).await;
+
+        let req = test::TestRequest::with_uri("/finish")
+            .method(Method::POST)
+            .set_json(json!({"status": "accept"}))
+            .to_request();
+
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 202);
+    }
+
+    #[actix_web::test]
+    async fn test_request_finish_with_input_to_respond() {
+        check_if_dotenv_is_loaded!();
+        let server = Server::run();
+        server.expect(
+            Expectation::matching(request::method_path("POST", "/finish"))
+                .respond_with(json_encoded(json!({"request_type":"advance_state"}))),
+        );
+        let url = server.url("/finish");
+        std::env::set_var(
+            "ROLLUP_HTTP_SERVER_URL",
+            format!("http://localhost:{}", url.port().unwrap()),
+        );
+
+        let app_state = web::Data::new(AppState::new());
+
+        let app = App::new()
+            .app_data(app_state.clone())
+            .service(routes::consume_buffer);
+
+        let mut app = test::init_service(app).await;
+
+        let req = test::TestRequest::with_uri("/finish")
+            .method(Method::POST)
+            .set_json(json!({"status": "accept"}))
+            .to_request();
+
+        let result = test::call_and_read_body(&mut app, req).await;
+        let utf = std::str::from_utf8(&result).unwrap();
+        let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+        assert_eq!(req["request_type"], "advance_state");
+        println!("{:?}", utf);
     }
 
     // #[actix_web::test]
