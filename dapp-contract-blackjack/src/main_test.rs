@@ -26,8 +26,7 @@ mod test {
 
         assert_eq!(size, 52);
 
-        let players = table.get_players();
-        let mut players = players.try_lock().unwrap();
+        let mut players = table.players_with_hand;
 
         assert_eq!(players.len(), 2);
 
@@ -39,7 +38,7 @@ mod test {
 
             assert_eq!(deck.cards.len(), 52 - i);
 
-            // println!("{:}", &first_player);
+            println!("{:}", &first_player);
         }
     }
 }

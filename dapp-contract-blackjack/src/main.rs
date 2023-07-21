@@ -1,4 +1,4 @@
-use std::{cell::RefCell, error::Error, fmt::Display, rc::Rc, sync::Arc};
+use std::{fmt::Display, sync::Arc};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -304,7 +304,7 @@ impl Game {
 struct Table {
     bets: Vec<Credit>,
     deck: Arc<Mutex<Deck>>,
-    players_with_hand: Arc<Mutex<Vec<PlayerHand>>>,
+    players_with_hand: Vec<PlayerHand>,
 }
 
 impl Table {
@@ -322,12 +322,9 @@ impl Table {
         Table {
             bets,
             deck: Arc::new(Mutex::new(Deck::default())),
-            players_with_hand: Arc::new(Mutex::new(players_with_hand)),
+            // players_with_hand: Arc::new(Mutex::new(players_with_hand)),
+            players_with_hand,
         }
-    }
-
-    fn get_players(&self) -> Arc<Mutex<Vec<PlayerHand>>> {
-        self.players_with_hand.clone()
     }
 }
 
