@@ -235,13 +235,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
             println!("Received item");
             println!("Request {}", item.request);
 
-            let mut manager = match manager.try_lock() {
-                Ok(manager) => manager,
-                Err(_) => {
-                    eprintln!("Failed to lock manager");
-                    continue;
-                }
-            };
+            let mut manager = manager.lock().await;
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");

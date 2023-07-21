@@ -1,4 +1,7 @@
-use std::{fmt::{Display, self}, sync::Arc, error::Error};
+use std::{
+    fmt::{self, Display},
+    sync::Arc,
+};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
@@ -180,8 +183,8 @@ impl PlayerHand {
     /**
      * Take a card from the deck and add it to the player's hand.
      */
-    fn hit(&mut self) -> Result<(), &'static str> {
-        if self.points > 21 {
+    async fn hit(&mut self) -> Result<(), &'static str> {
+        if self.points >= 21 {
             return Err("Player is busted.");
         }
 
@@ -189,15 +192,15 @@ impl PlayerHand {
             return Err("Already standing.");
         }
 
-        let mut deck = self.deck.try_lock().or(Err("Error try locking"))?;
-
         let nth = random::<usize>();
         // let nth = generate_random_seed("blackjack".to_string());
+
+        let mut deck = self.deck.lock().await;
+
         let size = deck.cards.len();
-
         let nth = nth % size;
-
         let card = deck.cards.remove(nth);
+
         let card_point = card.show_point();
         let points = self.points + card_point;
 
@@ -207,6 +210,7 @@ impl PlayerHand {
             self.points = points;
         }
 
+        self.is_standing = self.is_standing || self.points >= 21;
         self.hand.0.push(card);
 
         Ok(())
@@ -215,7 +219,7 @@ impl PlayerHand {
     /**
      * Add the value of the card to the player's hand.
      */
-    fn stand(&mut self) -> Result<(), ()> {
+    async fn stand(&mut self) -> Result<(), ()> {
         self.is_standing = true;
         Ok(())
     }
@@ -223,14 +227,14 @@ impl PlayerHand {
     /**
      * Double the bet and take one more card.
      */
-    fn double_down(&mut self) -> Result<(), &'static str> {
+    async fn double_down(&mut self) -> Result<(), &'static str> {
         if self.is_standing {
             return Err("Already standing.");
         }
 
         let player = self.player.clone();
 
-        let player = player.try_lock().or(Err("Error try locking player"))?;
+        let player = player.lock().await;
 
         let player_balance = player.player.balance.as_ref().ok_or("No balance.")?.amount;
         let player_bet = player.bet.as_ref().ok_or("No bet.")?.amount;
@@ -242,21 +246,21 @@ impl PlayerHand {
         //     Some(credit)
         // });
 
-        self.hit()?;
+        self.hit().await?;
         Ok(())
     }
 
     /**
      * Split the hand into two separate hands.
      */
-    fn split() {
+    async fn split() {
         todo!();
     }
 
     /**
      * Give up the hand and lose half of the bet.
      */
-    fn surrender() {
+    async fn surrender() {
         todo!();
     }
 }
@@ -378,9 +382,14 @@ impl Table {
         Ok(Table {
             bets,
             deck,
-            // players_with_hand: Arc::new(Mutex::new(players_with_hand)),
             players_with_hand,
         })
+    }
+
+    fn any_player_can_hit(&self) -> bool {
+        self.players_with_hand
+            .iter()
+            .any(|player| !player.is_standing)
     }
 }
 
@@ -391,6 +400,4 @@ fn generate_random_seed(seed: String) -> usize {
 
 fn main() {
     println!("Hello, world!");
-
-    // start_game(2);
 }
