@@ -47,7 +47,7 @@ pub(crate) struct RollupInput {
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct RollupInputData {
     pub(crate) payload: String,
-    pub(crate) metadata: RollupInputDataMetadata,
+    pub(crate) metadata: Option<RollupInputDataMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
