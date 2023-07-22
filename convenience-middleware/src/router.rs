@@ -1,7 +1,6 @@
 pub mod routes {
-    use std::env;
-
     use actix_web::{get, post, web, HttpResponse, Responder};
+    use serde_json::json;
     use sha3::{Digest, Sha3_256};
 
     use crate::{
@@ -50,18 +49,38 @@ pub mod routes {
                 return HttpResponse::Accepted().finish();
             }
         };
-        if rollup_input.request_type == "advance_state" {
-            if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
-                println!("Is Drand!!! {:?}", beacon);
-                let beacon_time = (beacon.round * ctx.drand_period) + ctx.drand_genesis_time;
-                let manager = ctx.input_buffer_manager.try_lock();
-                manager.unwrap().last_beacon.set(Some(Beacon {
-                    timestamp: beacon_time,
-                    metadata: beacon.randomness,
-                }));
+        match rollup_input.request_type.as_str() {
+            "advance_state" => {
+                if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
+                    println!("Is Drand!!! {:?}", beacon);
+                    let beacon_time = (beacon.round * ctx.drand_period) + ctx.drand_genesis_time;
+                    println!("Calculated beacon time {}", beacon_time);
+                    let manager = ctx.input_buffer_manager.try_lock();
+                    manager.unwrap().last_beacon.set(Some(Beacon {
+                        timestamp: beacon_time,
+                        metadata: beacon.randomness,
+                    }));
 
-                // This is a beacon, so we omit it from the DApp in the endpoint /finish.
-                return HttpResponse::Accepted().finish();
+                    // This is a beacon, so we omit it from the DApp in the endpoint /finish.
+                    return HttpResponse::Accepted().finish();
+                }
+            }
+            "inspect_state" => {
+                let payload = rollup_input.data.payload.trim_start_matches("0x");
+                let bytes: Vec<u8> = hex::decode(&payload).unwrap();
+                let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
+                if inspect_decoded == "pending_drand_beacon" {
+                    let manager = ctx.input_buffer_manager.lock().await;
+                    let x = manager.pending_beacon_timestamp.get();
+                    let report = json!({ "payload": format!("{x:#x}") });
+                    let _ = rollup::server::send_report(report).await;
+
+                    // This is a specific inspect, so we omit it from the DApp
+                    return HttpResponse::Accepted().finish();
+                }
+            }
+            &_ => {
+                eprintln!("Unknown request type");
             }
         }
         let body = serde_json::to_string(&rollup_input).unwrap();
@@ -86,7 +105,10 @@ pub mod routes {
         // }
         match manager.last_beacon.take() {
             Some(beacon) => {
-                println!("beacon time {}", beacon.timestamp);
+                println!(
+                    "beacon time {} vs {} request time",
+                    beacon.timestamp, query.timestamp
+                );
                 // comparamos se o beacon é suficientemente velho pra devolver como resposta
                 if query.timestamp < beacon.timestamp - 3 {
                     let salt = manager.randomness_salt.take() + 1;

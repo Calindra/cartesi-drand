@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod server {
     use hyper::{Body, Response};
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     pub(crate) async fn send_finish(status: &str) -> Response<Body> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
@@ -22,6 +22,19 @@ pub mod server {
             response.status()
         );
         return response;
+    }
+
+    pub(crate) async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
+        let client = hyper::Client::new();
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .header(hyper::header::CONTENT_TYPE, "application/json")
+            .uri(format!("{}/report", server_addr))
+            .body(hyper::Body::from(report.to_string()))
+            .unwrap();
+        let _ = client.request(req).await?;
+        Ok("accept")
     }
 }
 

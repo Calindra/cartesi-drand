@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-
     use crate::{
         is_drand_beacon,
         models::models::{AppState, Beacon, Item},
@@ -261,7 +260,8 @@ mod tests {
 
         let app = App::new()
             .app_data(app_state.clone())
-            .service(routes::consume_buffer);
+            .service(routes::consume_buffer)
+            .service(routes::request_random);
 
         let mut app = test::init_service(app).await;
 
@@ -276,16 +276,19 @@ mod tests {
         let req: serde_json::Value = serde_json::from_str(utf).unwrap();
         assert_eq!(req["request_type"], "advance_state");
 
-        let req = test::TestRequest::with_uri("/random?timestamp=123")
-            .method(Method::GET)
-            .to_request();
-
         let req = test::TestRequest::with_uri("/finish")
             .method(Method::POST)
             .set_json(json!({"status": "accept"}))
             .to_request();
 
+        let _ = test::call_and_read_body(&mut app, req).await;
+
+        let req = test::TestRequest::with_uri("/random?timestamp=1")
+            .method(Method::GET)
+            .to_request();
         let result = test::call_and_read_body(&mut app, req).await;
+        let utf = std::str::from_utf8(&result).unwrap();
+        assert_eq!(utf, "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29");
     }
 
     // #[actix_web::test]
