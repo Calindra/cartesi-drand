@@ -104,6 +104,12 @@ pub mod routes {
             };
             match rollup_input.request_type.as_str() {
                 "advance_state" => {
+                    {
+                        // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
+                        let mut manager = ctx.input_buffer_manager.lock().await;
+                        let request = serde_json::to_string(&rollup_input).unwrap();
+                        manager.messages.push_back(Item { request });
+                    }
                     if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
                         println!("Is Drand!!! {:?}", beacon);
                         ctx.keep_newest_beacon(beacon);
@@ -112,10 +118,6 @@ pub mod routes {
                             return HttpResponse::Ok().body(randomness);
                         }
                     }
-                    // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
-                    let mut manager = ctx.input_buffer_manager.lock().await;
-                    let request = serde_json::to_string(&rollup_input).unwrap();
-                    manager.messages.push_back(Item { request });
                 }
                 "inspect_state" => {
                     let payload = rollup_input.data.payload.trim_start_matches("0x");
