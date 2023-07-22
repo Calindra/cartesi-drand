@@ -55,11 +55,22 @@ pub mod routes {
                     println!("Is Drand!!! {:?}", beacon);
                     let beacon_time = (beacon.round * ctx.drand_period) + ctx.drand_genesis_time;
                     println!("Calculated beacon time {}", beacon_time);
-                    let manager = ctx.input_buffer_manager.try_lock();
-                    manager.unwrap().last_beacon.set(Some(Beacon {
-                        timestamp: beacon_time,
-                        metadata: beacon.randomness,
-                    }));
+                    let manager = ctx.input_buffer_manager.try_lock().unwrap();
+                    if let Some(b) = manager.last_beacon.take() {
+                        if b.timestamp < beacon_time {
+                            manager.last_beacon.set(Some(Beacon {
+                                timestamp: beacon_time,
+                                metadata: beacon.randomness,
+                            }));
+                        } else {
+                            manager.last_beacon.set(Some(b));
+                        }
+                    } else {
+                        manager.last_beacon.set(Some(Beacon {
+                            timestamp: beacon_time,
+                            metadata: beacon.randomness,
+                        }));
+                    }
 
                     // This is a beacon, so we omit it from the DApp in the endpoint /finish.
                     return HttpResponse::Accepted().finish();
