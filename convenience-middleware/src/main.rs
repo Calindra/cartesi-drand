@@ -264,8 +264,9 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
                 let beacon_time = (round * drand_period) + drand_genesis_time;
 
                 manager.last_beacon.set(Some(Beacon {
+                    round,
                     timestamp: beacon_time,
-                    metadata: json["randomness"].to_string(),
+                    randomness: json["randomness"].to_string(),
                 }));
                 manager.flag_to_hold.release();
                 continue;
