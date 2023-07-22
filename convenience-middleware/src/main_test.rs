@@ -46,6 +46,31 @@ mod tests {
         };
     }
 
+    #[macro_export]
+    macro_rules! call_random {
+        ($app:expr) => {{
+            let req = test::TestRequest::with_uri("/random?timestamp=1")
+                .method(Method::GET)
+                .to_request();
+            let result = test::call_and_read_body($app, req).await;
+            std::str::from_utf8(&result).unwrap().to_string()
+        }};
+    }
+    #[macro_export]
+    macro_rules! call_finish {
+        ($app:expr) => {{
+            let req = test::TestRequest::with_uri("/finish")
+                .method(Method::POST)
+                .set_json(json!({"status": "accept"}))
+                .to_request();
+
+            let result = test::call_and_read_body($app, req).await;
+            let utf = std::str::from_utf8(&result).unwrap();
+            let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+            req
+        }};
+    }
+
     #[actix_web::test]
     async fn test_index_ok() {
         // let req = test::TestRequest::default()
@@ -229,15 +254,8 @@ mod tests {
 
         let mut app = test::init_service(app).await;
 
-        // the DApp call our middleware
-        let req = test::TestRequest::with_uri("/finish")
-            .method(Method::POST)
-            .set_json(json!({"status": "accept"}))
-            .to_request();
-
-        let result = test::call_and_read_body(&mut app, req).await;
-        let utf = std::str::from_utf8(&result).unwrap();
-        let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+        // the DApp call our middleware /finish
+        let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
     }
 
@@ -263,29 +281,19 @@ mod tests {
         let mut app = test::init_service(app).await;
 
         // the DApp call our middleware to start something
-        let req = test::TestRequest::with_uri("/finish")
-            .method(Method::POST)
-            .set_json(json!({"status": "accept"}))
-            .to_request();
-
-        let result = test::call_and_read_body(&mut app, req).await;
-        let utf = std::str::from_utf8(&result).unwrap();
-        let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+        let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
 
-        let req = test::TestRequest::with_uri("/finish")
-            .method(Method::POST)
-            .set_json(json!({"status": "accept"}))
-            .to_request();
+        // call again and the beacon arrives
+        let req = call_finish!(&mut app);
+        assert_eq!(req["request_type"], "advance_state");
 
-        let _ = test::call_and_read_body(&mut app, req).await;
-
-        let req = test::TestRequest::with_uri("/random?timestamp=1")
-            .method(Method::GET)
-            .to_request();
-        let result = test::call_and_read_body(&mut app, req).await;
-        let utf = std::str::from_utf8(&result).unwrap();
-        assert_eq!(utf, "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29");
+        // check randomness
+        let randomness = call_random!(&mut app);
+        assert_eq!(
+            randomness,
+            "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
+        );
     }
 
     #[actix_web::test]
@@ -310,22 +318,17 @@ mod tests {
         let mut app = test::init_service(app).await;
 
         // the DApp call our middleware to start something
-        let req = test::TestRequest::with_uri("/finish")
-            .method(Method::POST)
-            .set_json(json!({"status": "accept"}))
-            .to_request();
-
-        let result = test::call_and_read_body(&mut app, req).await;
-        let utf = std::str::from_utf8(&result).unwrap();
-        let req: serde_json::Value = serde_json::from_str(utf).unwrap();
+        let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
 
-        let req = test::TestRequest::with_uri("/random?timestamp=1")
-            .method(Method::GET)
-            .to_request();
-        let result = test::call_and_read_body(&mut app, req).await;
-        let utf = std::str::from_utf8(&result).unwrap();
-        assert_eq!(utf, "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29");
+        // the DApp call our /random inside middleware to get a seed to generate a random number
+        let randomness = call_random!(&mut app);
+
+        // check randomness
+        assert_eq!(
+            randomness,
+            "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
+        );
     }
 
     // #[actix_web::test]

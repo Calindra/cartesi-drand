@@ -1,10 +1,9 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
     use serde_json::json;
-    use sha3::{Digest, Sha3_256};
 
     use crate::{
-        models::models::{AppState, RequestRollups, Timestamp},
+        models::models::{AppState, Item, RequestRollups, Timestamp},
         rollup::{self},
         utils::util::get_drand_beacon,
     };
@@ -107,22 +106,16 @@ pub mod routes {
                 "advance_state" => {
                     if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
                         println!("Is Drand!!! {:?}", beacon);
-                        let b = ctx.keep_newest_beacon(beacon);
-                        if query.timestamp < b.timestamp - 3 {
-                            let manager = match ctx.input_buffer_manager.try_lock() {
-                                Ok(manager) => manager,
-                                Err(_) => return HttpResponse::BadRequest().finish(),
-                            };
-                            let salt = manager.randomness_salt.take() + 1;
-                            manager.randomness_salt.set(salt);
-
-                            let mut hasher = Sha3_256::new();
-                            hasher.update([b.randomness.as_bytes(), &salt.to_le_bytes()].concat());
-                            let randomness = hasher.finalize();
-                            return HttpResponse::Ok().body(hex::encode(randomness));
+                        ctx.keep_newest_beacon(beacon);
+                        let randomness = ctx.get_randomness_for_timestamp(query.timestamp).await;
+                        if let Some(randomness) = randomness {
+                            return HttpResponse::Ok().body(randomness);
                         }
                     }
-                    // @todo: send the input to the buffer
+                    // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
+                    let mut manager = ctx.input_buffer_manager.lock().await;
+                    let request = serde_json::to_string(&rollup_input).unwrap();
+                    manager.messages.push_back(Item { request });
                 }
                 "inspect_state" => {
                     let payload = rollup_input.data.payload.trim_start_matches("0x");
@@ -137,7 +130,10 @@ pub mod routes {
                         // This is a specific inspect, so we omit it from the DApp
                         return HttpResponse::NotFound().finish();
                     } else {
-                        // @todo: send the input to the buffer
+                        // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
+                        let mut manager = ctx.input_buffer_manager.lock().await;
+                        let request = serde_json::to_string(&rollup_input).unwrap();
+                        manager.messages.push_back(Item { request });
                     }
                 }
                 &_ => {

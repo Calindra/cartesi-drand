@@ -2,7 +2,7 @@ pub mod models {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
     use serde::{Deserialize, Serialize};
-    use sha3::{Digest,Sha3_256};
+    use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
     #[derive(Serialize)]
@@ -28,6 +28,16 @@ pub mod models {
         pub(crate) timestamp: u64,
         pub(crate) round: u64,
         pub(crate) randomness: String,
+    }
+
+    impl Beacon {
+        pub(crate) fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
+            Some(Beacon {
+                timestamp,
+                round: drand_beacon.round,
+                randomness: drand_beacon.randomness.to_string(),
+            })
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug)]
@@ -76,7 +86,10 @@ pub mod models {
                 drand_genesis_time,
             }
         }
-        pub(crate) async fn get_randomness_for_timestamp(&self, query_timestamp: u64) -> Option<String> {
+        pub(crate) async fn get_randomness_for_timestamp(
+            &self,
+            query_timestamp: u64,
+        ) -> Option<String> {
             let mut manager = match self.input_buffer_manager.try_lock() {
                 Ok(manager) => manager,
                 Err(_) => return None,
@@ -110,51 +123,28 @@ pub mod models {
                 }
             }
         }
-        pub(crate) fn keep_newest_beacon(&self, beacon: DrandBeacon) -> Beacon {
-            let beacon_time = (beacon.round * self.drand_period) + self.drand_genesis_time;
+        pub(crate) fn keep_newest_beacon(&self, drand_beacon: DrandBeacon) {
+            let beacon_time = (drand_beacon.round * self.drand_period) + self.drand_genesis_time;
             println!(
                 "Calculated beacon time {} for round {}",
-                beacon_time, beacon.round
+                beacon_time, drand_beacon.round
             );
-            let manager: tokio::sync::MutexGuard<'_, InputBufferManager> =
-                self.input_buffer_manager.try_lock().unwrap();
-            if let Some(b) = manager.last_beacon.take() {
-                if b.round < beacon.round {
+            let manager = self.input_buffer_manager.try_lock().unwrap();
+            if let Some(current_beacon) = manager.last_beacon.take() {
+                if current_beacon.round < drand_beacon.round {
                     println!("Set new beacon");
-                    manager.last_beacon.set(Some(Beacon {
-                        round: beacon.round,
-                        timestamp: beacon_time,
-                        randomness: beacon.randomness.to_string(),
-                    }));
-                    Beacon {
-                        timestamp: beacon_time,
-                        round: beacon.round,
-                        randomness: beacon.randomness.to_string(),
-                    }
+                    manager
+                        .last_beacon
+                        .set(Beacon::some_from(&drand_beacon, beacon_time));
                 } else {
                     println!("Keep current beacon");
-                    let randomness = b.randomness.to_string();
-                    let round = b.round;
-                    let timestamp = b.timestamp;
-                    manager.last_beacon.set(Some(b));
-                    Beacon {
-                        timestamp,
-                        round,
-                        randomness,
-                    }
+                    manager.last_beacon.set(Some(current_beacon));
                 }
             } else {
                 println!("No beacon, initializing");
-                manager.last_beacon.set(Some(Beacon {
-                    round: beacon.round,
-                    timestamp: beacon_time,
-                    randomness: beacon.randomness.to_string(),
-                }));
-                Beacon {
-                    timestamp: beacon_time,
-                    round: beacon.round,
-                    randomness: beacon.randomness.to_owned(),
-                }
+                manager
+                    .last_beacon
+                    .set(Beacon::some_from(&drand_beacon, beacon_time));
             }
         }
     }
