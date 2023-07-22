@@ -35,7 +35,9 @@ mod tests {
         ($x:expr ) => {
             let server = Server::run();
             server.expect(
-                Expectation::matching(request::method_path("POST", "/finish")).respond_with($x),
+                Expectation::matching(request::method_path("POST", "/finish"))
+                    .times(1..)
+                    .respond_with($x),
             );
             let url = server.url("/finish");
             std::env::set_var(
@@ -276,8 +278,14 @@ mod tests {
 
         let req = test::TestRequest::with_uri("/random?timestamp=123")
             .method(Method::GET)
-            // .set_json(json!({"status": "accept"}))
             .to_request();
+
+        let req = test::TestRequest::with_uri("/finish")
+            .method(Method::POST)
+            .set_json(json!({"status": "accept"}))
+            .to_request();
+
+        let result = test::call_and_read_body(&mut app, req).await;
     }
 
     // #[actix_web::test]

@@ -28,6 +28,18 @@ pub mod models {
         pub(crate) metadata: String,
     }
 
+    #[derive(Serialize, Deserialize, Debug)]
+    pub(crate) struct PayloadWithBeacon {
+        pub(crate) beacon: DrandBeacon,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub(crate) struct DrandBeacon {
+        pub(crate) round: u64,
+        pub(crate) signature: String,
+        pub(crate) randomness: String,
+    }
+
     pub(crate) struct InputBufferManager {
         pub(crate) messages: VecDeque<Item>,
         pub(crate) flag_to_hold: Flag,
@@ -40,14 +52,26 @@ pub mod models {
     pub(crate) struct AppState {
         pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
         pub(crate) process_counter: Mutex<u64>,
+        pub(crate) drand_period: u64,
+        pub(crate) drand_genesis_time: u64,
     }
 
     impl AppState {
         pub(crate) fn new() -> AppState {
             let manager = InputBufferManager::default();
+            let drand_period = std::env::var("DRAND_PERIOD")
+                .unwrap()
+                .parse::<u64>()
+                .unwrap();
+            let drand_genesis_time = std::env::var("DRAND_GENESIS_TIME")
+                .unwrap()
+                .parse::<u64>()
+                .unwrap();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 process_counter: Mutex::new(0),
+                drand_period,
+                drand_genesis_time,
             }
         }
     }
@@ -80,12 +104,6 @@ pub mod models {
     }
 
     impl InputBufferManager {
-        pub(crate) fn new() -> Arc<Mutex<InputBufferManager>> {
-            let buffer = InputBufferManager::default();
-
-            Arc::new(Mutex::new(buffer))
-        }
-
         pub(crate) fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
             let current = self.pending_beacon_timestamp.take();
             // mantendo o mais recente para economizar transacoes

@@ -1,9 +1,14 @@
 pub mod routes {
+    use std::env;
+
     use actix_web::{get, post, web, HttpResponse, Responder};
-    use serde_json::json;
     use sha3::{Digest, Sha3_256};
 
-    use crate::{models::models::{AppState, RequestRollups, Timestamp}, utils::util::is_drand_beacon};
+    use crate::{
+        models::models::{AppState, Beacon, RequestRollups, Timestamp},
+        rollup::{self},
+        utils::util::get_drand_beacon,
+    };
 
     pub async fn hello() -> HttpResponse {
         HttpResponse::Ok().body("Hello, World!")
@@ -19,49 +24,50 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        let manager = ctx.input_buffer_manager.try_lock();
+        println!("Received finish request from DApp {:?}", body);
+        {
+            // consume from buffer
+            let manager = ctx.input_buffer_manager.try_lock();
+            match manager {
+                Ok(mut manager) => {
+                    match manager.consume_input() {
+                        Some(item) => return HttpResponse::Ok().body(item.request),
+                        _ => {}
+                    };
+                }
+                Err(_) => return HttpResponse::NotFound().finish(),
+            };
+        }
 
-        println!("Received finish request {:?}", body);
-
-        // let mut counter = ctx.process_counter.lock().await;
-        // *counter -= 1;
-
-        let input = match manager {
-            Ok(mut manager) => manager.consume_input(),
-            Err(_) => return HttpResponse::NotFound().finish(),
-        };
-
-        match input {
-            Some(item) => return HttpResponse::Ok().body(item.request),
-            None => {}
-        };
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
-        println!("Sending finish to {}", &server_addr);
-        let client = hyper::Client::new();
-        let status = "accept";
-        let response = json!({"status" : status.clone()});
-        let request = hyper::Request::builder()
-            .method(hyper::Method::POST)
-            .header(hyper::header::CONTENT_TYPE, "application/json")
-            .uri(format!("{}/finish", &server_addr))
-            .body(hyper::Body::from(response.to_string()))
-            .unwrap();
-        let response = client.request(request).await.unwrap();
-        println!("Received finish status {}", response.status());
+        let response = rollup::server::send_finish("accept").await;
         if response.status() == hyper::StatusCode::ACCEPTED {
             return HttpResponse::Accepted().finish();
         }
-        let body = hyper::body::to_bytes(response).await.unwrap();
-        let utf = std::str::from_utf8(&body).unwrap();
-        if is_drand_beacon(utf) {
-            println!("Is Drand!!!")
-        } else {
-            println!("Isn't Drand!!!")
+        let rollup_input = match rollup::parse_input_from_response(response).await {
+            Ok(input) => input,
+            Err(error) => {
+                println!("Error {:?}", error);
+                return HttpResponse::Accepted().finish();
+            }
+        };
+        if rollup_input.request_type == "advance_state" {
+            if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
+                println!("Is Drand!!! {:?}", beacon);
+                let beacon_time = (beacon.round * ctx.drand_period) + ctx.drand_genesis_time;
+                let manager = ctx.input_buffer_manager.try_lock();
+                manager.unwrap().last_beacon.set(Some(Beacon {
+                    timestamp: beacon_time,
+                    metadata: beacon.randomness,
+                }));
+
+                // This is a beacon, so we omit it from the DApp in the endpoint /finish.
+                return HttpResponse::Accepted().finish();
+            }
         }
-        HttpResponse::Ok().body(body)
+        let body = serde_json::to_string(&rollup_input).unwrap();
+        return HttpResponse::Ok().body(body);
     }
 
-    // GET /random?timestamp=123234
     #[get("/random")]
     async fn request_random(
         ctx: web::Data<AppState>,

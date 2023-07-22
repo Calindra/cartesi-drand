@@ -2,9 +2,10 @@ mod main_test;
 mod models;
 mod router;
 mod utils;
+mod rollup;
 
 use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
-use crate::router::routes::{self};
+use crate::router::routes;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::{G2Pubkey, Pubkey};
@@ -286,10 +287,7 @@ async fn main() -> std::io::Result<()> {
 
     let (tx, rx) = channel::<Item>(size_of::<Item>());
 
-    let app_state = web::Data::new(AppState {
-        input_buffer_manager: InputBufferManager::new(),
-        process_counter: Mutex::new(0),
-    });
+    let app_state = web::Data::new(AppState::new());
 
     let manager = app_state.input_buffer_manager.clone();
     start_senders(manager, tx);
