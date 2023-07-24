@@ -1,9 +1,12 @@
 {
     "cSpell.words": [
         "actix",
+        "Deque",
         "dotenv",
         "drand",
+        "httptest",
         "Pubkey",
-        "rollup"
+        "rollup",
+        "Rollups"
     ]
 }

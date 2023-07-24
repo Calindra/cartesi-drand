@@ -2,6 +2,7 @@ pub mod models {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
     use serde::{Deserialize, Serialize};
+    use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
     #[derive(Serialize)]
@@ -25,7 +26,30 @@ pub mod models {
 
     pub(crate) struct Beacon {
         pub(crate) timestamp: u64,
-        pub(crate) metadata: String,
+        pub(crate) round: u64,
+        pub(crate) randomness: String,
+    }
+
+    impl Beacon {
+        pub(crate) fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
+            Some(Beacon {
+                timestamp,
+                round: drand_beacon.round,
+                randomness: drand_beacon.randomness.to_string(),
+            })
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub(crate) struct PayloadWithBeacon {
+        pub(crate) beacon: DrandBeacon,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub(crate) struct DrandBeacon {
+        pub(crate) round: u64,
+        pub(crate) signature: String,
+        pub(crate) randomness: String,
     }
 
     pub(crate) struct InputBufferManager {
@@ -40,14 +64,87 @@ pub mod models {
     pub(crate) struct AppState {
         pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
         pub(crate) process_counter: Mutex<u64>,
+        pub(crate) drand_period: u64,
+        pub(crate) drand_genesis_time: u64,
     }
 
     impl AppState {
         pub(crate) fn new() -> AppState {
             let manager = InputBufferManager::default();
+            let drand_period = std::env::var("DRAND_PERIOD")
+                .expect("Missing env DRAND_PERIOD")
+                .parse::<u64>()
+                .unwrap();
+            let drand_genesis_time = std::env::var("DRAND_GENESIS_TIME")
+                .expect("Missing env DRAND_GENESIS_TIME")
+                .parse::<u64>()
+                .unwrap();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 process_counter: Mutex::new(0),
+                drand_period,
+                drand_genesis_time,
+            }
+        }
+        pub(crate) async fn get_randomness_for_timestamp(
+            &self,
+            query_timestamp: u64,
+        ) -> Option<String> {
+            let mut manager = match self.input_buffer_manager.try_lock() {
+                Ok(manager) => manager,
+                Err(_) => return None,
+            };
+            match manager.last_beacon.take() {
+                Some(beacon) => {
+                    println!(
+                        "beacon time {} vs {} request time",
+                        beacon.timestamp, query_timestamp
+                    );
+                    // Check the beacon timestamp against the query timestamp
+                    if query_timestamp < beacon.timestamp - 3 {
+                        let salt = manager.randomness_salt.take() + 1;
+                        manager.randomness_salt.set(salt);
+
+                        let mut hasher = Sha3_256::new();
+                        hasher.update([beacon.randomness.as_bytes(), &salt.to_le_bytes()].concat());
+                        let randomness = hasher.finalize();
+                        manager.flag_to_hold.release();
+                        manager.last_beacon.set(Some(beacon));
+                        Some(hex::encode(randomness))
+                    } else {
+                        manager.set_pending_beacon_timestamp(query_timestamp);
+                        manager.last_beacon.set(Some(beacon));
+                        None
+                    }
+                }
+                None => {
+                    manager.set_pending_beacon_timestamp(query_timestamp);
+                    None
+                }
+            }
+        }
+        pub(crate) fn keep_newest_beacon(&self, drand_beacon: DrandBeacon) {
+            let beacon_time = (drand_beacon.round * self.drand_period) + self.drand_genesis_time;
+            println!(
+                "Calculated beacon time {} for round {}",
+                beacon_time, drand_beacon.round
+            );
+            let manager = self.input_buffer_manager.try_lock().unwrap();
+            if let Some(current_beacon) = manager.last_beacon.take() {
+                if current_beacon.round < drand_beacon.round {
+                    println!("Set new beacon");
+                    manager
+                        .last_beacon
+                        .set(Beacon::some_from(&drand_beacon, beacon_time));
+                } else {
+                    println!("Keep current beacon");
+                    manager.last_beacon.set(Some(current_beacon));
+                }
+            } else {
+                println!("No beacon, initializing");
+                manager
+                    .last_beacon
+                    .set(Beacon::some_from(&drand_beacon, beacon_time));
             }
         }
     }
@@ -80,12 +177,6 @@ pub mod models {
     }
 
     impl InputBufferManager {
-        pub(crate) fn new() -> Arc<Mutex<InputBufferManager>> {
-            let buffer = InputBufferManager::default();
-
-            Arc::new(Mutex::new(buffer))
-        }
-
         pub(crate) fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
             let current = self.pending_beacon_timestamp.take();
             // mantendo o mais recente para economizar transacoes
@@ -115,6 +206,79 @@ pub mod models {
             println!("Awaiting beacon");
 
             self.flag_to_hold.hold_up();
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use tokio::sync::Mutex;
+
+    use super::models::{AppState, Beacon, DrandBeacon, InputBufferManager};
+
+    fn create_drand_beacon(round: u64) -> DrandBeacon {
+        DrandBeacon {
+            round,
+            signature: String::from("signature"),
+            randomness: String::from("randomness"),
+        }
+    }
+
+    fn create_app_state() -> AppState {
+        AppState {
+            input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::default())),
+            process_counter: 0.into(),
+            drand_period: 3,
+            drand_genesis_time: 1677685200,
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_app_state_init_beacon() {
+        let app = create_app_state();
+        let beacon = create_drand_beacon(2);
+        app.keep_newest_beacon(beacon);
+        let manager = app.input_buffer_manager.lock().await;
+        assert_eq!(2, manager.last_beacon.take().unwrap().round);
+    }
+
+    #[actix_web::test]
+    async fn test_app_state_keep_current_beacon() {
+        let app = create_app_state();
+        {
+            let manager = app.input_buffer_manager.lock().await;
+            manager.last_beacon.set(Some(Beacon {
+                timestamp: 1677685206,
+                round: 2,
+                randomness: "".to_string(),
+            }))
+        }
+        {
+            let beacon = create_drand_beacon(1);
+            app.keep_newest_beacon(beacon);
+            let manager = app.input_buffer_manager.lock().await;
+            assert_eq!(2, manager.last_beacon.take().unwrap().round);
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_app_state_keep_new_beacon() {
+        let app = create_app_state();
+        {
+            let manager = app.input_buffer_manager.lock().await;
+            manager.last_beacon.set(Some(Beacon {
+                timestamp: 1677685206,
+                round: 2,
+                randomness: "".to_string(),
+            }))
+        }
+        {
+            let beacon = create_drand_beacon(3);
+            app.keep_newest_beacon(beacon);
+            let manager = app.input_buffer_manager.lock().await;
+            assert_eq!(3, manager.last_beacon.take().unwrap().round);
         }
     }
 }
