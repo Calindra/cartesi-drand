@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod test {
+    use crate::models::game::game::Game;
+    use crate::models::player::player::PlayerBet;
     use std::{ops::Rem, sync::Arc};
-
     use tokio::sync::Mutex;
-
-    use crate::{Game, PlayerBet};
 
     #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
