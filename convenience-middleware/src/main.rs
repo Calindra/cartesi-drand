@@ -19,7 +19,7 @@ use utils::util::deserialize_obj;
 async fn rollup(
     sender: Sender<Item>,
     manager: Arc<Mutex<InputBufferManager>>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     println!("Starting rollup sender");
 
     let client = hyper::Client::new();
@@ -67,7 +67,7 @@ async fn handle_inspect(
     request: Value,
     sender: &Sender<Item>,
     manager: &Arc<Mutex<InputBufferManager>>,
-) -> Result<&'static str, Box<dyn std::error::Error>> {
+) -> Result<&'static str, Box<dyn Error>> {
     println!("req {:}", request);
     let payload = request["data"]["payload"]
         .as_str()
@@ -236,13 +236,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
             println!("Received item");
             println!("Request {}", item.request);
 
-            let mut manager = match manager.try_lock() {
-                Ok(manager) => manager,
-                Err(_) => {
-                    eprintln!("Failed to lock manager");
-                    continue;
-                }
-            };
+            let mut manager = manager.lock().await;
 
             if is_drand_beacon(&item) {
                 println!("Received beacon");
