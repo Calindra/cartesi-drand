@@ -8,7 +8,7 @@ pub mod player {
 
     use crate::models::card::card::{Card, Deck, Rank};
 
-    use crate::util::random::generate_random_seed;
+    use crate::util::random::Random;
 
     pub struct Credit {
         pub amount: u32,
@@ -108,7 +108,8 @@ pub mod player {
             }
 
             // let nth = random::<usize>();
-            let nth = generate_random_seed("blackjack".to_string());
+            let seed = Random::new("blackjack".to_string());
+            let nth = seed.generate_random_seed(0..51);
 
             let mut deck = self.deck.lock().await;
 
