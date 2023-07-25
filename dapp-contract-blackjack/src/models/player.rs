@@ -62,6 +62,7 @@ pub mod player {
     }
 
     pub enum PlayerIntent {
+        Join,
         Stop,
         NeedCard,
     }

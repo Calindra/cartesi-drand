@@ -4,8 +4,9 @@ pub mod rollup {
     };
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8};
+    use tokio::sync::mpsc::Sender;
 
-    pub async fn rollup() -> Result<(), Box<dyn Error>> {
+    pub async fn rollup(sender: Sender<Value>) -> Result<(), Box<dyn Error>> {
         println!("Starting loop...");
 
         let client = Client::new();
@@ -36,8 +37,12 @@ pub mod rollup {
                     .ok_or("request_type is not a string")?;
 
                 status = match request_type {
-                    "advance_state" => handle_advance(&client, &server_addr[..], body).await?,
-                    "inspect_state" => handle_inspect(&client, &server_addr[..], body).await?,
+                    "advance_state" => {
+                        handle_advance(&client, &server_addr[..], body, &sender).await?
+                    }
+                    "inspect_state" => {
+                        handle_inspect(&client, &server_addr[..], body, &sender).await?
+                    }
                     &_ => {
                         eprintln!("Unknown request type");
                         "reject"
@@ -51,10 +56,13 @@ pub mod rollup {
         client: &Client<HttpConnector>,
         server_addr: &str,
         body: Value,
+        sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
         println!("Handling inspect");
 
         println!("body {:}", &body);
+
+        sender.send(body).await?;
 
         Ok("accept")
     }
@@ -63,10 +71,13 @@ pub mod rollup {
         client: &Client<HttpConnector>,
         server_addr: &str,
         body: Value,
+        sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
         println!("Handling inspect");
 
         println!("body {:}", &body);
+
+        sender.send(body).await?;
 
         Ok("accept")
     }
