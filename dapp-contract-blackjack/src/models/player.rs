@@ -1,5 +1,6 @@
 pub mod player {
     use std::{
+        error::Error,
         fmt::{self, Display},
         sync::Arc,
     };
@@ -8,7 +9,7 @@ pub mod player {
 
     use crate::models::card::card::{Card, Deck, Rank};
 
-    use crate::util::random::generate_random_seed;
+    use crate::util::random::Random;
 
     pub struct Credit {
         pub amount: u32,
@@ -42,6 +43,14 @@ pub mod player {
     }
 
     /**
+     * Used for the initial of game for bets.
+     */
+    pub struct PlayerBet {
+        player: Player,
+        bet: Option<Credit>,
+    }
+
+    /**
      * Player's hand for specific round while playing.
      */
     pub struct PlayerHand {
@@ -50,6 +59,11 @@ pub mod player {
         pub points: u8,
         pub is_standing: bool,
         deck: Arc<Mutex<Deck>>,
+    }
+
+    pub enum PlayerIntent {
+        Stop,
+        NeedCard,
     }
 
     impl Display for PlayerHand {
@@ -62,14 +76,6 @@ pub mod player {
                 player_name, &self.points, &self.hand
             )
         }
-    }
-
-    /**
-     * Used for the initial of game for bets.
-     */
-    pub struct PlayerBet {
-        player: Player,
-        bet: Option<Credit>,
     }
 
     impl PlayerBet {
@@ -100,15 +106,16 @@ pub mod player {
          */
         pub async fn hit(&mut self) -> Result<(), &'static str> {
             if self.points >= 21 {
-                return Err("Player is busted.");
+                Err("Player is busted.")?;
             }
 
             if self.is_standing {
-                return Err("Already standing.");
+                Err("Already standing.")?;
             }
 
             // let nth = random::<usize>();
-            let nth = generate_random_seed("blackjack".to_string());
+            let seed = Random::new("blackjack".to_string());
+            let nth = seed.generate_random_seed(0..51);
 
             let mut deck = self.deck.lock().await;
 
@@ -144,7 +151,7 @@ pub mod player {
          */
         async fn double_down(&mut self) -> Result<(), &'static str> {
             if self.is_standing {
-                return Err("Already standing.");
+                Err("Already standing.")?;
             }
 
             let player = self.player.clone();
