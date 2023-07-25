@@ -1,5 +1,6 @@
 pub mod player {
     use std::{
+        error::Error,
         fmt::{self, Display},
         sync::Arc,
     };
@@ -60,6 +61,11 @@ pub mod player {
         deck: Arc<Mutex<Deck>>,
     }
 
+    pub enum PlayerIntent {
+        Stop,
+        NeedCard,
+    }
+
     impl Display for PlayerHand {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
             let player = self.player.try_lock().or(Err(fmt::Error))?;
@@ -100,11 +106,11 @@ pub mod player {
          */
         pub async fn hit(&mut self) -> Result<(), &'static str> {
             if self.points >= 21 {
-                return Err("Player is busted.");
+                Err("Player is busted.")?;
             }
 
             if self.is_standing {
-                return Err("Already standing.");
+                Err("Already standing.")?;
             }
 
             // let nth = random::<usize>();
@@ -145,7 +151,7 @@ pub mod player {
          */
         async fn double_down(&mut self) -> Result<(), &'static str> {
             if self.is_standing {
-                return Err("Already standing.");
+                Err("Already standing.")?;
             }
 
             let player = self.player.clone();

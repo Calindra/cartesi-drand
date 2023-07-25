@@ -1,8 +1,4 @@
-use std::{
-    collections::{BTreeMap, BinaryHeap},
-    fmt::{self, Display},
-    sync::Arc,
-};
+use std::env;
 
 mod lop;
 mod main_test;
@@ -12,25 +8,17 @@ mod util;
 use dotenv::dotenv;
 
 use crate::lop::rollup::rollup;
-use crate::models::card::card::{Card, Rank, Suit};
-use crate::models::player::player::{Credit, Hand, Player, PlayerBet};
+// use crate::models::card::card::{Card, Rank, Suit};
+// use crate::models::player::player::{Credit, Hand, Player, PlayerBet};
 
 #[tokio::main]
 async fn main() {
-    // dotenv().unwrap();
+    dotenv().ok();
 
-    println!("Hello world");
+    env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
-    let mut map = BTreeMap::new();
-
-    map.insert(2, "b");
-    map.insert(1, "a");
-    map.insert(3, "c");
-
-    let s = map.range(1..).next().unwrap();
-
-
-    assert_eq!(*s.0, 1);
-
-    // rollup().await.unwrap();
+    let _ = tokio::spawn(async move {
+        rollup().await.unwrap();
+    })
+    .await;
 }
