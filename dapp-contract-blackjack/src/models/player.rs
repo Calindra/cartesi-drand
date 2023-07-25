@@ -42,6 +42,14 @@ pub mod player {
     }
 
     /**
+     * Used for the initial of game for bets.
+     */
+    pub struct PlayerBet {
+        player: Player,
+        bet: Option<Credit>,
+    }
+
+    /**
      * Player's hand for specific round while playing.
      */
     pub struct PlayerHand {
@@ -62,14 +70,6 @@ pub mod player {
                 player_name, &self.points, &self.hand
             )
         }
-    }
-
-    /**
-     * Used for the initial of game for bets.
-     */
-    pub struct PlayerBet {
-        player: Player,
-        bet: Option<Credit>,
     }
 
     impl PlayerBet {
