@@ -1,9 +1,9 @@
+mod drand;
 mod main_test;
 mod models;
+mod rollup;
 mod router;
 mod utils;
-mod rollup;
-mod drand;
 
 use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
 use crate::router::routes;
@@ -16,6 +16,8 @@ use std::{error::Error, mem::size_of};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::{spawn, sync::Mutex};
 use utils::util::deserialize_obj;
+
+const WITH_LOOP: bool = false;
 
 async fn rollup(
     sender: Sender<Item>,
@@ -281,14 +283,16 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    let (tx, rx) = channel::<Item>(size_of::<Item>());
-
     let app_state = web::Data::new(AppState::new());
 
-    let manager = app_state.input_buffer_manager.clone();
-    start_senders(manager, tx);
-    let manager = app_state.input_buffer_manager.clone();
-    start_listener(manager, rx);
+    if WITH_LOOP {
+        let (tx, rx) = channel::<Item>(size_of::<Item>());
+
+        let manager = app_state.input_buffer_manager.clone();
+        start_senders(manager, tx);
+        let manager = app_state.input_buffer_manager.clone();
+        start_listener(manager, rx);
+    }
 
     println!("Starting server");
 

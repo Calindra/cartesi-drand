@@ -67,6 +67,7 @@ pub mod models {
         pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
         pub(crate) drand_period: u64,
         pub(crate) drand_genesis_time: u64,
+        pub(crate) safe_seconds: u64,
     }
 
     impl AppState {
@@ -80,10 +81,15 @@ pub mod models {
                 .expect("Missing env DRAND_GENESIS_TIME")
                 .parse::<u64>()
                 .unwrap();
+            let safe_seconds = std::env::var("DRAND_SAFE_SECONDS")
+            .expect("Missing env DRAND_SAFE_SECONDS")
+            .parse::<u64>()
+            .unwrap();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 drand_period,
                 drand_genesis_time,
+                safe_seconds,
             }
         }
         pub(crate) async fn get_randomness_for_timestamp(
@@ -101,7 +107,7 @@ pub mod models {
                         beacon.timestamp, query_timestamp
                     );
                     // Check the beacon timestamp against the query timestamp
-                    if query_timestamp < beacon.timestamp - 3 {
+                    if query_timestamp < beacon.timestamp - self.safe_seconds {
                         let salt = manager.randomness_salt.take() + 1;
                         manager.randomness_salt.set(salt);
 
@@ -240,6 +246,7 @@ mod test {
             input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::default())),
             drand_period: 3,
             drand_genesis_time: 1677685200,
+            safe_seconds: 5,
         }
     }
 
