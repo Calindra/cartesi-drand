@@ -51,3 +51,29 @@ stateDiagram-v2
     PlayAgain --> ShuffleDeck : Deal
     PlayAgain --> [*] : Finish
 ```
+
+```mermaid
+sequenceDiagram
+    participant DApp as DApp
+    participant Middleware as Middleware
+    participant Rollups as Rollups
+
+    DApp->>Middleware: Chama /finish com input
+    Middleware->>Rollups: Chama /finish com input
+    Rollups->>Middleware: Retorna resultado do processamento
+    Middleware->>DApp: Retorna resultado do processamento
+    DApp->>Middleware: Chama /random
+    Middleware->>Rollups: Chama /finish para congelar a Cartesi Machine
+    Note over Middleware: Aguarda resposta do /finish pelo /random
+    Rollups->>Middleware: Retorna resultado do /finish
+    alt Resultado é um beacon
+        Middleware->>DApp: Devolve o beacon para o DApp
+    else Resultado não é um beacon
+        Middleware->>DApp: Retorna erro 404 para o DApp
+        DApp->>Middleware: Chama /finish novamente
+        Middleware->>Rollups: Chama /finish novamente para obter o input
+        Rollups->>Middleware: Retorna resultado do /finish novamente
+        Note over Middleware: Processamento adicional do input
+        Middleware->>DApp: Retorna resultado do /finish novamente
+    end
+```
