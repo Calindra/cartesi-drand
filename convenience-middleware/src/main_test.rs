@@ -72,16 +72,6 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_index_ok() {
-        // let req = test::TestRequest::default()
-        //     .insert_header(ContentType::plaintext())
-        //     .to_http_request();
-
-        let resp = routes::hello().await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
-    }
-
-    #[actix_web::test]
     async fn test_is_drand_beacon() {
         check_if_dotenv_is_loaded!();
 
@@ -331,10 +321,4 @@ mod tests {
         );
     }
 
-    // #[actix_web::test]
-    // async fn test_index_not_ok() {
-    //     let req = test::TestRequest::default().to_http_request();
-    //     let resp = routes::index(req).await;
-    //     assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
-    // }
 }

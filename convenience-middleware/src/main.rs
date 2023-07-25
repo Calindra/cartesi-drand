@@ -3,6 +3,7 @@ mod models;
 mod router;
 mod utils;
 mod rollup;
+mod drand;
 
 use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
 use crate::router::routes;
@@ -294,7 +295,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(routes::index)
             .service(routes::request_random)
             .service(routes::consume_buffer)
     })

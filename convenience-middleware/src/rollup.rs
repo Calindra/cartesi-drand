@@ -5,6 +5,8 @@ pub mod server {
     use hyper::{Body, Response};
     use serde_json::{json, Value};
 
+    use super::{RollupInput, parse_input_from_response};
+
     pub(crate) async fn send_finish(status: &str) -> Response<Body> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
         println!("Sending finish to {}", &server_addr);
@@ -24,6 +26,20 @@ pub mod server {
         return response;
     }
 
+    pub(crate) async fn send_finish_and_retrieve_input(status: &str) -> Option<RollupInput> {
+        let response = send_finish(status).await;
+        if response.status() == hyper::StatusCode::ACCEPTED {
+            return None
+        }
+        match parse_input_from_response(response).await {
+            Ok(input) => return Some(input),
+            Err(error) => {
+                println!("Error {:?}", error);
+                return None;
+            }
+        };
+    } 
+
     pub(crate) async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
         let client = hyper::Client::new();
@@ -42,6 +58,15 @@ pub mod server {
 pub(crate) struct RollupInput {
     pub(crate) data: RollupInputData,
     pub(crate) request_type: String,
+}
+
+impl RollupInput {
+    pub(crate) fn decoded_inspect(&self) -> String {
+        let payload = self.data.payload.trim_start_matches("0x");
+        let bytes: Vec<u8> = hex::decode(&payload).unwrap();
+        let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
+        inspect_decoded.to_string()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -5,6 +5,8 @@ pub mod models {
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
+    use crate::rollup::RollupInput;
+
     #[derive(Serialize)]
     pub(crate) struct Item {
         pub(crate) request: String,
@@ -63,7 +65,6 @@ pub mod models {
 
     pub(crate) struct AppState {
         pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
-        pub(crate) process_counter: Mutex<u64>,
         pub(crate) drand_period: u64,
         pub(crate) drand_genesis_time: u64,
     }
@@ -81,7 +82,6 @@ pub mod models {
                 .unwrap();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
-                process_counter: Mutex::new(0),
                 drand_period,
                 drand_genesis_time,
             }
@@ -146,6 +146,15 @@ pub mod models {
                     .last_beacon
                     .set(Beacon::some_from(&drand_beacon, beacon_time));
             }
+        }
+        pub(crate) async fn store_input(&self, rollup_input: &RollupInput) {
+            let mut manager = self.input_buffer_manager.lock().await;
+            let request = serde_json::to_string(rollup_input).unwrap();
+            manager.messages.push_back(Item { request });
+        }
+        pub(crate) async fn consume_input(&self) -> Option<Item> {
+            let mut manager = self.input_buffer_manager.lock().await;
+            return manager.consume_input();
         }
     }
 
@@ -229,7 +238,6 @@ mod test {
     fn create_app_state() -> AppState {
         AppState {
             input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::default())),
-            process_counter: 0.into(),
             drand_period: 3,
             drand_genesis_time: 1677685200,
         }

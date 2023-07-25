@@ -1,21 +1,11 @@
 pub mod routes {
     use actix_web::{get, post, web, HttpResponse, Responder};
-    use serde_json::json;
 
     use crate::{
-        models::models::{AppState, Item, RequestRollups, Timestamp},
-        rollup::{self},
-        utils::util::get_drand_beacon,
+        drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
+        models::models::{AppState, RequestRollups, Timestamp},
+        rollup::server::send_finish_and_retrieve_input,
     };
-
-    pub async fn hello() -> HttpResponse {
-        HttpResponse::Ok().body("Hello, World!")
-    }
-
-    #[get("/")]
-    async fn index() -> impl Responder {
-        hello().await
-    }
 
     #[post("/finish")]
     async fn consume_buffer(
@@ -23,30 +13,14 @@ pub mod routes {
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
         println!("Received finish request from DApp {:?}", body);
-        {
-            // the DApp consume from buffer first
-            let manager = ctx.input_buffer_manager.try_lock();
-            match manager {
-                Ok(mut manager) => {
-                    match manager.consume_input() {
-                        Some(item) => return HttpResponse::Ok().body(item.request),
-                        _ => {}
-                    };
-                }
-                Err(_) => return HttpResponse::NotFound().finish(),
-            };
-        }
 
-        let response = rollup::server::send_finish("accept").await;
-        if response.status() == hyper::StatusCode::ACCEPTED {
-            return HttpResponse::Accepted().finish();
+        // the DApp consume from the buffer first
+        if let Some(item) = ctx.consume_input().await {
+            return HttpResponse::Ok().body(item.request);
         }
-        let rollup_input = match rollup::parse_input_from_response(response).await {
-            Ok(input) => input,
-            Err(error) => {
-                println!("Error {:?}", error);
-                return HttpResponse::Accepted().finish();
-            }
+        let rollup_input = match send_finish_and_retrieve_input("accept").await {
+            Some(input) => input,
+            None => return HttpResponse::Accepted().finish(),
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
@@ -56,14 +30,8 @@ pub mod routes {
                 }
             }
             "inspect_state" => {
-                let payload = rollup_input.data.payload.trim_start_matches("0x");
-                let bytes: Vec<u8> = hex::decode(&payload).unwrap();
-                let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
-                if inspect_decoded == "pending_drand_beacon" {
-                    let manager = ctx.input_buffer_manager.lock().await;
-                    let x = manager.pending_beacon_timestamp.get();
-                    let report = json!({ "payload": format!("{x:#x}") });
-                    let _ = rollup::server::send_report(report).await;
+                if is_querying_pending_beacon(&rollup_input) {
+                    send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
                     return HttpResponse::Accepted().finish();
@@ -87,63 +55,43 @@ pub mod routes {
         let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp).await;
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process
-            HttpResponse::Ok().body(randomness)
-        } else {
-            // call finish to halt and wait the beacon
-            let response = rollup::server::send_finish("accept").await;
-            if response.status() == hyper::StatusCode::ACCEPTED {
-                // no input at all
-                return HttpResponse::NotFound().finish();
-            }
-            let rollup_input = match rollup::parse_input_from_response(response).await {
-                Ok(input) => input,
-                Err(error) => {
-                    println!("Error {:?}", error);
-                    return HttpResponse::NotFound().finish();
-                }
-            };
-            match rollup_input.request_type.as_str() {
-                "advance_state" => {
-                    {
-                        // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
-                        let mut manager = ctx.input_buffer_manager.lock().await;
-                        let request = serde_json::to_string(&rollup_input).unwrap();
-                        manager.messages.push_back(Item { request });
-                    }
-                    if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
-                        println!("Is Drand!!! {:?}", beacon);
-                        ctx.keep_newest_beacon(beacon);
-                        let randomness = ctx.get_randomness_for_timestamp(query.timestamp).await;
-                        if let Some(randomness) = randomness {
-                            return HttpResponse::Ok().body(randomness);
-                        }
-                    }
-                }
-                "inspect_state" => {
-                    let payload = rollup_input.data.payload.trim_start_matches("0x");
-                    let bytes: Vec<u8> = hex::decode(&payload).unwrap();
-                    let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
-                    if inspect_decoded == "pending_drand_beacon" {
-                        let manager = ctx.input_buffer_manager.lock().await;
-                        let x = manager.pending_beacon_timestamp.get();
-                        let report = json!({ "payload": format!("{x:#x}") });
-                        let _ = rollup::server::send_report(report).await;
-
-                        // This is a specific inspect, so we omit it from the DApp
-                        return HttpResponse::NotFound().finish();
-                    } else {
-                        // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
-                        let mut manager = ctx.input_buffer_manager.lock().await;
-                        let request = serde_json::to_string(&rollup_input).unwrap();
-                        manager.messages.push_back(Item { request });
-                    }
-                }
-                &_ => {
-                    eprintln!("Unknown request type");
-                }
-            };
-            HttpResponse::NotFound().finish()
+            return HttpResponse::Ok().body(randomness);
         }
+        // call finish to halt and wait the beacon
+        let rollup_input = match send_finish_and_retrieve_input("accept").await {
+            Some(input) => input,
+            None => return HttpResponse::NotFound().finish(),
+        };
+        match rollup_input.request_type.as_str() {
+            "advance_state" => {
+                // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
+                ctx.store_input(&rollup_input).await;
+
+                if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
+                    println!("Is Drand!!! {:?}", beacon);
+                    ctx.keep_newest_beacon(beacon);
+                    let randomness = ctx.get_randomness_for_timestamp(query.timestamp).await;
+                    if let Some(randomness) = randomness {
+                        return HttpResponse::Ok().body(randomness);
+                    }
+                }
+            }
+            "inspect_state" => {
+                if is_querying_pending_beacon(&rollup_input) {
+                    send_pending_beacon_report(&ctx).await;
+
+                    // This is a specific inspect, so we omit it from the DApp
+                    return HttpResponse::NotFound().finish();
+                } else {
+                    // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
+                    ctx.store_input(&rollup_input).await;
+                }
+            }
+            &_ => {
+                eprintln!("Unknown request type");
+            }
+        };
+        HttpResponse::NotFound().finish()
     }
 
     #[post("/hold")]
