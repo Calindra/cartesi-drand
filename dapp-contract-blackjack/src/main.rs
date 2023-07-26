@@ -1,6 +1,5 @@
 use std::borrow::BorrowMut;
 use std::env;
-use std::error::Error;
 use std::mem::size_of;
 use std::sync::Arc;
 
@@ -11,7 +10,9 @@ mod util;
 
 use crate::models::game::game::{Game, Manager};
 use dotenv::dotenv;
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
+use tokio::fs::File;
+use tokio::io::{self, AsyncWriteExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::Mutex;
 
@@ -38,6 +39,13 @@ fn get_input_level(obj: &Value) -> Option<&Map<String, Value>> {
     }
 
     Some(input)
+}
+
+async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
+    let mut file = File::create(path).await?;
+    let value = obj.to_string();
+    file.write_all(value.as_bytes()).await?;
+    Ok(())
 }
 
 /**
@@ -70,9 +78,23 @@ async fn handle_game(
         println!("Received value: {}", value);
 
         if let Some(player_name) = is_create_player_action(&value) {
+            let encoded_name = bs58::encode(&player_name).into_string();
+
             let mut manager = game.lock().await;
             let player = Player::new(player_name);
             manager.add_player(player)?;
+
+            let address_owner = "1111111111111111111111111111111";
+            let address_encoded = bs58::encode(address_owner).into_string();
+            let address_owner_obj = json!({ "address": address_owner });
+            let address_path = format!("../data/address/{}.json", address_encoded);
+
+            write_json(&address_path, &address_owner_obj)
+                .await
+                .or(Err("Could not write address"))?;
+
+            let player_path = format!("../data/names/{}.json", encoded_name);
+            let player = json!({ "name": encoded_name });
         }
     }
 
@@ -80,12 +102,11 @@ async fn handle_game(
 }
 
 async fn start_listener(game: Arc<Mutex<Manager>>, mut receiver: Receiver<Value>) {
-    let _ = tokio::spawn(async move {
+    tokio::spawn(async move {
         while let Err(err) = handle_game(game.clone(), receiver.borrow_mut()).await {
             eprintln!("Listener Error: {}", err);
         }
-    })
-    .await;
+    });
 }
 
 fn start_sender(sender: Sender<Value>) {
@@ -102,13 +123,17 @@ fn start_sender(sender: Sender<Value>) {
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    let example = String::from("hello world");
+    let encoded = bs58::encode(example).into_string();
+    println!("Encoded: {}", encoded);
 
-    let manager = Arc::new(Mutex::new(Manager::default()));
-    let (tx, rx) = channel::<Value>(size_of::<Value>());
+    // dotenv().ok();
 
-    env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
+    // let manager = Arc::new(Mutex::new(Manager::default()));
+    // let (tx, rx) = channel::<Value>(size_of::<Value>());
 
-    start_sender(tx);
-    start_listener(manager, rx).await;
+    // env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
+
+    // start_sender(tx);
+    // start_listener(manager, rx).await;
 }
