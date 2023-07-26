@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 use std::env;
+use std::error::Error;
 use std::mem::size_of;
 use std::sync::Arc;
 
@@ -52,22 +53,16 @@ async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
  * Example of call:
  * {"input":{"name":"Bob","action":"new_player"}}
  */
-fn is_create_player_action(obj: &Value) -> Option<String> {
-    let input = get_input_level(obj)?;
-
-    let is_create_player_action = input
-        .get("action")
-        .is_some_and(|action| action == "new_player");
-
+fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
     let has_valid_name = input
         .get("name")
         .is_some_and(|name| name.is_string() && name.as_str().unwrap().len() >= 3);
 
-    if is_create_player_action && has_valid_name {
-        return Some(input.get("name").unwrap().as_str().unwrap().to_string());
+    if has_valid_name {
+        return input.get("name").unwrap().as_str().ok_or("Invalid name");
     }
 
-    None
+    Err("Invalid name")?
 }
 
 async fn handle_game(
@@ -77,28 +72,51 @@ async fn handle_game(
     while let Some(value) = receiver.recv().await {
         println!("Received value: {}", value);
 
-        if let Some(player_name) = is_create_player_action(&value) {
-            let encoded_name = bs58::encode(&player_name).into_string();
+        match get_action(&value) {
+            Some("new_player") => {
+                let player_name = check_fields_create_player(&value)?;
 
-            let mut manager = game.lock().await;
-            let player = Player::new(player_name);
-            manager.add_player(player)?;
+                let encoded_name = bs58::encode(&player_name).into_string();
 
-            let address_owner = "1111111111111111111111111111111";
-            let address_encoded = bs58::encode(address_owner).into_string();
-            let address_owner_obj = json!({ "address": address_owner });
-            let address_path = format!("../data/address/{}.json", address_encoded);
+                let mut manager = game.lock().await;
+                let player = Player::new(player_name.to_string());
+                manager.add_player(player)?;
 
-            write_json(&address_path, &address_owner_obj)
-                .await
-                .or(Err("Could not write address"))?;
+                let address_owner = "1111111111111111111111111111111";
+                let address_encoded = bs58::encode(address_owner).into_string();
+                let address_owner_obj = json!({ "address": address_owner });
+                let address_path = format!("../data/address/{}.json", address_encoded);
 
-            let player_path = format!("../data/names/{}.json", encoded_name);
-            let player = json!({ "name": encoded_name });
+                write_json(&address_path, &address_owner_obj)
+                    .await
+                    .or(Err("Could not write address"))?;
+
+                let player_path = format!("../data/names/{}.json", encoded_name);
+                let player = json!({ "name": encoded_name });
+                write_json(&player_path, &player)
+                    .await
+                    .or(Err("Could not write player"))?;
+            }
+
+            _ => {}
         }
     }
 
     Ok(())
+}
+
+fn get_action(obj: &Value) -> Option<&str> {
+    let input = match get_input_level(obj) {
+        Some(input) => input,
+        None => return None,
+    };
+
+    let action = input.get("action");
+
+    match action {
+        Some(action) => action.as_str(),
+        None => None,
+    }
 }
 
 async fn start_listener(game: Arc<Mutex<Manager>>, mut receiver: Receiver<Value>) {
