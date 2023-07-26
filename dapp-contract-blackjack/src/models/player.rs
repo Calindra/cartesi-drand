@@ -42,6 +42,15 @@ pub mod player {
         balance: Option<Credit>,
     }
 
+    impl Player {
+        pub fn new(name: String) -> Self {
+            Player {
+                name,
+                balance: None,
+            }
+        }
+    }
+
     /**
      * Used for the initial of game for bets.
      */

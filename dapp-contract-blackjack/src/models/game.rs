@@ -1,10 +1,31 @@
 pub mod game {
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
     use crate::models::{
         card::card::Deck,
-        player::player::{Credit, PlayerBet, PlayerHand},
+        player::player::{Credit, Player, PlayerBet, PlayerHand},
     };
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+    pub struct Manager {
+        pub games: Vec<Game>,
+        pub players: Vec<Player>,
+    }
+
+    impl Default for Manager {
+        fn default() -> Self {
+            Manager {
+                games: Vec::new(),
+                players: Vec::new(),
+            }
+        }
+    }
+
+    impl Manager {
+        pub fn add_player(&mut self, player: Player) -> Result<(), &'static str> {
+            self.players.push(player);
+            Ok(())
+        }
+    }
 
     /**
      * This is where the game is initialized.

@@ -6,7 +6,7 @@ pub mod rollup {
     use std::{env, error::Error, str::from_utf8};
     use tokio::sync::mpsc::Sender;
 
-    pub async fn rollup(sender: Sender<Value>) -> Result<(), Box<dyn Error>> {
+    pub async fn rollup(sender: &Sender<Value>) -> Result<(), Box<dyn Error>> {
         println!("Starting loop...");
 
         let client = Client::new();
@@ -38,10 +38,10 @@ pub mod rollup {
 
                 status = match request_type {
                     "advance_state" => {
-                        handle_advance(&client, &server_addr[..], body, &sender).await?
+                        handle_advance(&client, &server_addr[..], body, sender).await?
                     }
                     "inspect_state" => {
-                        handle_inspect(&client, &server_addr[..], body, &sender).await?
+                        handle_inspect(&client, &server_addr[..], body, sender).await?
                     }
                     &_ => {
                         eprintln!("Unknown request type");
