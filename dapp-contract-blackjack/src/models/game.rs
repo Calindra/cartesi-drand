@@ -24,10 +24,10 @@ pub mod game {
     }
 
     impl Manager {
-        pub fn new_with_capacity(size: usize) -> Self {
-            let mut games = Vec::with_capacity(size);
+        pub fn new_with_games(game_size: usize) -> Self {
+            let mut games = Vec::with_capacity(game_size);
 
-            for _ in 0..size {
+            for _ in 0..game_size {
                 games.push(Game::default());
             }
 

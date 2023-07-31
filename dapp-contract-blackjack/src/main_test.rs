@@ -1,22 +1,65 @@
 #[cfg(test)]
 mod test {
-    use crate::models::{
-        game::game::{Game, Manager},
-        player::player::Player,
+    use crate::{
+        handle_request_action,
+        models::{
+            game::game::{Game, Manager},
+            player::player::Player,
+        },
     };
+    use serde_json::json;
     use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
 
     #[tokio::test]
     async fn generate_manager() {
-        let manager = Manager::new_with_capacity(10);
+        let manager = Manager::new_with_games(10);
         assert_eq!(manager.games.len(), 10);
     }
 
-     #[tokio::test]
-    async fn show_only_available_games() {
-        let manager = Manager::new_with_capacity(10);
-        // let first_game = manager.games.remove(0);
+    #[tokio::test]
+    async fn should_create_player() {
+        let manager = Manager::default();
+        let manager = Arc::new(Mutex::new(manager));
+
+        // Baseaded on this: https://docs.cartesi.io/cartesi-rollups/api/rollup/finish/
+        let payload = json!({
+            "input": {
+                "name": "Bob",
+                "action": "new_player"
+            }
+        });
+        let payload = hex::encode(payload.to_string());
+        let payload = format!("0x{}", payload);
+
+        let metadata = json!({
+            "msg_sender": "0xdeadbeef",
+            "epoch_index": 0u64,
+            "input_index": 0u64,
+            "block_number": 123u64,
+            "timestamp": 1690817064394u64,
+        });
+
+        let data = json!({
+            "data": {
+                "metadata": metadata,
+                "payload": payload,
+            }
+        });
+
+        let result = handle_request_action(&data, manager.clone(), false).await;
+
+        assert!(result.is_ok(), "Result is not ok");
+
+        let manager = manager.lock().await;
+
+        let size = manager.players.len();
+
+        assert_ne!(size, 0);
+
+        let player = manager.players.get(0).unwrap();
+
+        println!("{:}", player);
     }
 
     #[tokio::test]
@@ -24,14 +67,15 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = Player::new(name.to_string());
+            let name = name.to_string();
+            let player = Player::new_without_id(name);
             game.player_join(player).unwrap();
         }
 
         let table = game.round_start(1).unwrap();
 
         // Add a new player after the game has started.
-        let player = Player::new("Eve".to_string());
+        let player = Player::new_without_id("Eve".to_string());
         game.player_join(player).unwrap();
 
         let size = table.players_with_hand.len();
@@ -45,7 +89,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = Player::new(name.to_string());
+            let player = Player::new_without_id(name.to_string());
             game.player_join(player).unwrap();
         }
 
@@ -61,7 +105,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = Player::new(name.to_string());
+            let player = Player::new_without_id(name.to_string());
             game.player_join(player).unwrap();
         }
 
@@ -106,7 +150,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = Player::new(name.to_string());
+            let player = Player::new_without_id(name.to_string());
             game.player_join(player).unwrap();
         }
 

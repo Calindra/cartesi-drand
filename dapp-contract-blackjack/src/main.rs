@@ -6,7 +6,7 @@ mod rollups;
 mod util;
 
 use dotenv::dotenv;
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 use tokio::{
     fs::File,
     io::{self, AsyncWriteExt},
@@ -21,25 +21,37 @@ use crate::{
     rollups::rollup::rollup,
 };
 
-fn get_input_level(obj: &Value) -> Option<&Map<String, Value>> {
-    let root = match obj.as_object() {
-        Some(root) => root,
-        None => return None,
-    };
+fn decode_payload(payload: &str) -> Option<Value> {
+    let payload = payload.trim_start_matches("0x");
 
-    let input = match root.get("input") {
-        Some(input) => match input.as_object() {
-            Some(input) => input,
-            None => return None,
-        },
-        None => return None,
-    };
+    let payload = hex::decode(payload).ok()?;
+    let payload = String::from_utf8(payload).ok()?;
 
-    if !input.contains_key("action") {
-        return None;
-    }
+    let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
 
-    Some(input)
+    Some(payload)
+}
+
+fn get_payload_from_root(root: &Value) -> Option<Value> {
+    let root = root.as_object()?;
+    let root = root.get("data")?.as_object()?;
+    let payload = root.get("payload")?.as_str()?;
+    let payload = decode_payload(payload)?;
+    Some(payload)
+}
+
+fn get_address_metadata_from_root(root: &Value) -> Option<String> {
+    let root = root.as_object()?;
+    let root = root.get("data")?.as_object()?;
+    let metadata = root.get("metadata")?.as_object()?;
+    let address = metadata.get("msg_sender")?.as_str()?;
+    Some(address.to_owned())
+}
+
+fn get_from_payload_action(payload: &Value) -> Option<String> {
+    let input = payload.get("input")?.as_object()?;
+    let action = input.get("action")?.as_str()?;
+    Some(action.to_owned())
 }
 
 async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
@@ -65,25 +77,31 @@ fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
     Err("Invalid name")?
 }
 
-async fn handle_game(
-    game: Arc<Mutex<Manager>>,
-    receiver: &mut Receiver<Value>,
+pub async fn handle_request_action(
+    root: &Value,
+    manager: Arc<Mutex<Manager>>,
+    need_write: bool,
 ) -> Result<(), &'static str> {
-    while let Some(value) = receiver.recv().await {
-        println!("Received value: {}", value);
+    let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
+    let action = get_from_payload_action(&payload);
+    let input = payload.get("input").ok_or("Invalid field input")?;
 
-        match get_action(&value) {
-            Some("new_player") => {
-                let player_name = check_fields_create_player(&value)?;
+    match action.as_deref() {
+        Some("new_player") => {
+            let player_name = check_fields_create_player(&input)?;
 
-                let encoded_name = bs58::encode(&player_name).into_string();
+            let encoded_name = bs58::encode(&player_name).into_string();
 
-                let mut manager = game.lock().await;
-                let player = Player::new(player_name.to_string());
-                manager.add_player(player)?;
+            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = address_owner.trim_start_matches("0x");
+            let address_encoded = bs58::encode(address_owner).into_string();
 
-                let address_owner = "1111111111111111111111111111111";
-                let address_encoded = bs58::encode(address_owner).into_string();
+            // Add player to manager
+            let mut manager = manager.lock().await;
+            let player = Player::new(address_encoded.clone(), player_name.to_string());
+            manager.add_player(player)?;
+
+            if need_write {
                 let address_owner_obj = json!({ "address": address_owner });
                 let address_path = format!("../data/address/{}.json", address_encoded);
 
@@ -97,26 +115,24 @@ async fn handle_game(
                     .await
                     .or(Err("Could not write player"))?;
             }
-
-            _ => {}
         }
+
+        _ => Err("Invalid action")?,
     }
 
     Ok(())
 }
 
-fn get_action(obj: &Value) -> Option<&str> {
-    let input = match get_input_level(obj) {
-        Some(input) => input,
-        None => return None,
-    };
-
-    let action = input.get("action");
-
-    match action {
-        Some(action) => action.as_str(),
-        None => None,
+async fn handle_game(
+    game: Arc<Mutex<Manager>>,
+    receiver: &mut Receiver<Value>,
+) -> Result<(), &'static str> {
+    while let Some(value) = receiver.recv().await {
+        println!("Received value: {}", value);
+        let _ = handle_request_action(&value, game.clone(), true).await?;
     }
+
+    Ok(())
 }
 
 async fn start_listener(game: Arc<Mutex<Manager>>, mut receiver: Receiver<Value>) {

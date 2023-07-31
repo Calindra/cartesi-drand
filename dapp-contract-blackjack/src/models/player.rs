@@ -38,12 +38,26 @@ pub mod player {
      * Player registration.
      */
     pub struct Player {
+        id: String,
         name: String,
     }
 
+    impl Display for Player {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{{ id: {:}, name: {:} }}", &self.id, &self.name)
+        }
+    }
+
     impl Player {
-        pub fn new(name: String) -> Self {
-            Player { name }
+        pub fn new(id: String, name: String) -> Self {
+            Player { id, name }
+        }
+
+        pub fn new_without_id(name: String) -> Self {
+            Player {
+                id: bs58::encode(&name).into_string(),
+                name,
+            }
         }
     }
 
