@@ -22,7 +22,7 @@ mod test {
         let manager = Manager::default();
         let manager = Arc::new(Mutex::new(manager));
 
-        // Baseaded on this: https://docs.cartesi.io/cartesi-rollups/api/rollup/finish/
+        // Based on this: https://docs.cartesi.io/cartesi-rollups/api/rollup/finish/
         let payload = json!({
             "input": {
                 "name": "Bob",
