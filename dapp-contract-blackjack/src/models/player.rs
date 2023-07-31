@@ -39,31 +39,19 @@ pub mod player {
      */
     pub struct Player {
         name: String,
-        balance: Option<Credit>,
     }
 
     impl Player {
         pub fn new(name: String) -> Self {
-            Player {
-                name,
-                balance: None,
-            }
+            Player { name }
         }
-    }
-
-    /**
-     * Used for the initial of game for bets.
-     */
-    pub struct PlayerBet {
-        player: Player,
-        bet: Option<Credit>,
     }
 
     /**
      * Player's hand for specific round while playing.
      */
     pub struct PlayerHand {
-        player: Arc<Mutex<PlayerBet>>,
+        player: Arc<Mutex<Player>>,
         hand: Hand,
         pub points: u8,
         pub is_standing: bool,
@@ -79,7 +67,7 @@ pub mod player {
     impl Display for PlayerHand {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
             let player = self.player.try_lock().or(Err(fmt::Error))?;
-            let player_name = &player.player.name;
+            let player_name = &player.name;
             write!(
                 f,
                 "{{ name: {:}, points: {:}, hand: {:} }}",
@@ -88,20 +76,8 @@ pub mod player {
         }
     }
 
-    impl PlayerBet {
-        pub fn new(name: String) -> PlayerBet {
-            PlayerBet {
-                player: Player {
-                    name,
-                    balance: None,
-                },
-                bet: None,
-            }
-        }
-    }
-
     impl PlayerHand {
-        pub fn new(player: Arc<Mutex<PlayerBet>>, deck: Arc<Mutex<Deck>>) -> PlayerHand {
+        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>) -> PlayerHand {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
@@ -164,22 +140,24 @@ pub mod player {
                 Err("Already standing.")?;
             }
 
-            let player = self.player.clone();
+            todo!();
 
-            let player = player.lock().await;
+            // let player = self.player.clone();
 
-            let player_balance = player.player.balance.as_ref().ok_or("No balance.")?.amount;
-            let player_bet = player.bet.as_ref().ok_or("No bet.")?.amount;
+            // let player = player.lock().await;
 
-            let double_bet = player_bet.checked_mul(2).ok_or("Could not double bet.")?;
+            // let player_balance = player.balance.as_ref().ok_or("No balance.")?.amount;
+            // let player_bet = player.bet.as_ref().ok_or("No bet.")?.amount;
+
+            // let double_bet = player_bet.checked_mul(2).ok_or("Could not double bet.")?;
 
             // self.player.bet.as_mut().and_then(|credit| {
             //     credit.amount = double_bet;
             //     Some(credit)
             // });
 
-            self.hit().await?;
-            Ok(())
+            // self.hit().await?;
+            // Ok(())
         }
 
         /**

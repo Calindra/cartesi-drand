@@ -1,10 +1,11 @@
 pub mod game {
     use crate::models::{
         card::card::Deck,
-        player::player::{Credit, Player, PlayerBet, PlayerHand},
+        player::player::{Credit, Player, PlayerHand},
     };
-    use std::sync::Arc;
+    use std::{rc::Rc, sync::Arc};
     use tokio::sync::Mutex;
+    use uuid::Uuid;
 
     pub struct Manager {
         pub games: Vec<Game>,
@@ -13,14 +14,29 @@ pub mod game {
 
     impl Default for Manager {
         fn default() -> Self {
+            let games = Vec::new();
+
             Manager {
-                games: Vec::new(),
+                games,
                 players: Vec::new(),
             }
         }
     }
 
     impl Manager {
+        pub fn new_with_capacity(size: usize) -> Self {
+            let mut games = Vec::with_capacity(size);
+
+            for _ in 0..size {
+                games.push(Game::default());
+            }
+
+            Manager {
+                games,
+                players: Vec::new(),
+            }
+        }
+
         pub fn add_player(&mut self, player: Player) -> Result<(), &'static str> {
             self.players.push(player);
             Ok(())
@@ -31,19 +47,25 @@ pub mod game {
      * This is where the game is initialized.
      */
     pub struct Game {
-        pub players: Vec<Arc<Mutex<PlayerBet>>>,
+        id: String,
+        pub players: Vec<Arc<Mutex<Player>>>,
     }
 
     impl Default for Game {
         fn default() -> Self {
             Game {
+                id: Uuid::new_v4().to_string(),
                 players: Vec::new(),
             }
         }
     }
 
     impl Game {
-        pub fn player_join(&mut self, player: PlayerBet) -> Result<(), &'static str> {
+        pub fn get_id(&self) -> &str {
+            &self.id
+        }
+
+        pub fn player_join(&mut self, player: Player) -> Result<(), &'static str> {
             if self.players.len() >= 7 {
                 return Err("Maximum number of players reached.");
             }
@@ -73,10 +95,7 @@ pub mod game {
     }
 
     impl Table {
-        fn new(
-            players: &Vec<Arc<Mutex<PlayerBet>>>,
-            nth_decks: usize,
-        ) -> Result<Table, &'static str> {
+        fn new(players: &Vec<Arc<Mutex<Player>>>, nth_decks: usize) -> Result<Table, &'static str> {
             let bets = Vec::new();
             let mut players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks)?;

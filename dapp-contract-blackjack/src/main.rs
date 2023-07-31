@@ -1,25 +1,25 @@
-use std::borrow::BorrowMut;
-use std::env;
-use std::error::Error;
-use std::mem::size_of;
-use std::sync::Arc;
+use std::{borrow::BorrowMut, env, mem::size_of, sync::Arc};
 
-mod lop;
 mod main_test;
 mod models;
+mod rollups;
 mod util;
 
-use crate::models::game::game::{Game, Manager};
 use dotenv::dotenv;
 use serde_json::{json, Map, Value};
-use tokio::fs::File;
-use tokio::io::{self, AsyncWriteExt};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::Mutex;
+use tokio::{
+    fs::File,
+    io::{self, AsyncWriteExt},
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Mutex,
+    },
+};
 
-use crate::lop::rollup::rollup;
-// use crate::models::card::card::{Card, Rank, Suit};
-use crate::models::player::player::{Credit, Hand, Player, PlayerBet};
+use crate::{
+    models::{game::game::Manager, player::player::Player},
+    rollups::rollup::rollup,
+};
 
 fn get_input_level(obj: &Value) -> Option<&Map<String, Value>> {
     let root = match obj.as_object() {
@@ -135,23 +135,15 @@ fn start_sender(sender: Sender<Value>) {
     });
 }
 
-// async fn create_player(player_name: String) -> Player {
-//     Player::new(player_name)
-// }
-
 #[tokio::main]
 async fn main() {
-    let example = String::from("hello world");
-    let encoded = bs58::encode(example).into_string();
-    println!("Encoded: {}", encoded);
+    dotenv().ok();
 
-    // dotenv().ok();
+    let manager = Arc::new(Mutex::new(Manager::default()));
+    let (tx, rx) = channel::<Value>(size_of::<Value>());
 
-    // let manager = Arc::new(Mutex::new(Manager::default()));
-    // let (tx, rx) = channel::<Value>(size_of::<Value>());
+    env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
-    // env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
-
-    // start_sender(tx);
-    // start_listener(manager, rx).await;
+    start_sender(tx);
+    start_listener(manager, rx).await;
 }

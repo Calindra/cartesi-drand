@@ -1,23 +1,37 @@
 #[cfg(test)]
 mod test {
-    use crate::models::game::game::Game;
-    use crate::models::player::player::PlayerBet;
+    use crate::models::{
+        game::game::{Game, Manager},
+        player::player::Player,
+    };
     use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
+
+    #[tokio::test]
+    async fn generate_manager() {
+        let manager = Manager::new_with_capacity(10);
+        assert_eq!(manager.games.len(), 10);
+    }
+
+     #[tokio::test]
+    async fn show_only_available_games() {
+        let manager = Manager::new_with_capacity(10);
+        // let first_game = manager.games.remove(0);
+    }
 
     #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = PlayerBet::new(name.to_string());
+            let player = Player::new(name.to_string());
             game.player_join(player).unwrap();
         }
 
         let table = game.round_start(1).unwrap();
 
         // Add a new player after the game has started.
-        let player = PlayerBet::new("Eve".to_string());
+        let player = Player::new("Eve".to_string());
         game.player_join(player).unwrap();
 
         let size = table.players_with_hand.len();
@@ -31,7 +45,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = PlayerBet::new(name.to_string());
+            let player = Player::new(name.to_string());
             game.player_join(player).unwrap();
         }
 
@@ -47,7 +61,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = PlayerBet::new(name.to_string());
+            let player = Player::new(name.to_string());
             game.player_join(player).unwrap();
         }
 
@@ -92,7 +106,7 @@ mod test {
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
-            let player = PlayerBet::new(name.to_string());
+            let player = Player::new(name.to_string());
             game.player_join(player).unwrap();
         }
 
