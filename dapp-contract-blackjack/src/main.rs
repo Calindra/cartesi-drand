@@ -15,7 +15,7 @@ use tokio::{
         Mutex,
     },
 };
-use util::json::{decode_payload, generate_data};
+use util::json::{decode_payload, generate_message};
 
 use crate::{
     models::{game::game::Manager, player::player::Player},
@@ -106,7 +106,7 @@ pub async fn handle_request_action(
                     .or(Err("Could not write player"))?;
             }
 
-            let response = generate_data(json!({
+            let response = generate_message(json!({
                 "address": address_encoded,
                 "encoded_name": encoded_name,
                 "name": player_name,
@@ -116,9 +116,9 @@ pub async fn handle_request_action(
         }
         Some("show_games") => {
             let manager = manager.lock().await;
-            let games = manager.show_games_available();
+            let games = manager.show_games_id_available();
 
-            let response = generate_data(json!({
+            let response = generate_message(json!({
                 "games": games,
             }));
 

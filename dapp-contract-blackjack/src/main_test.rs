@@ -13,12 +13,12 @@ mod test {
     use tokio::sync::Mutex;
 
     #[tokio::test]
-    async fn generate_manager() {
+    async fn should_create_manager_with_capacity() {
         let manager = Manager::new_with_games(10);
         assert_eq!(manager.games.len(), 10);
     }
 
-    fn generate_data(payload: serde_json::Value) -> serde_json::Value {
+    fn factory_message(payload: serde_json::Value) -> serde_json::Value {
         let payload = hex::encode(payload.to_string());
         let payload = format!("0x{}", payload);
 
@@ -51,7 +51,7 @@ mod test {
             }
         });
 
-        let data = generate_data(payload);
+        let data = factory_message(payload);
 
         let result = handle_request_action(&data, manager.clone(), false).await;
 
@@ -70,24 +70,30 @@ mod test {
 
     #[tokio::test]
     async fn list_all_games_available() {
-        // Create game
+        // Generate manager with 10 games with empty players
         let mut manager = Manager::new_with_games(10);
-        let games = &mut manager.games;
-        assert_eq!(games.len(), 10);
+        assert_eq!(manager.games.len(), 10);
 
-        let mut game = games.remove(0);
+        // Get ref for first game
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
 
+        // Add players
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
             game.player_join(player).unwrap();
         }
 
+        assert_eq!(game.players.len(), 2);
+
         // Start this game
+        let game = manager.drop_game(game_id).unwrap();
         let table = game.round_start(1);
 
         assert!(table.is_ok(), "Table is not ok");
 
+        // Generate ref to manager
         let manager = Arc::new(Mutex::new(manager));
 
         // Mock request from middleware
@@ -97,12 +103,15 @@ mod test {
             }
         });
 
-        let data = generate_data(payload);
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
 
         assert!(response.is_ok(), "Result is not ok");
 
-        // Process response
+        // Decode response for see if is ok
         let fn_response = || {
             let response = response.unwrap().unwrap();
             println!("{:}", &response);

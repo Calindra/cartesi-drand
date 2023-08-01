@@ -6,7 +6,7 @@ pub mod game {
         },
         util::random::generate_id,
     };
-    use std::sync::Arc;
+    use std::{borrow::BorrowMut, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -54,7 +54,11 @@ pub mod game {
             Ok(player)
         }
 
-        pub fn show_games_available(&self) -> Vec<String> {
+        pub fn first_game_available(&mut self) -> Result<&mut Game, &'static str> {
+            self.games.first_mut().ok_or("No games available.")
+        }
+
+        pub fn show_games_id_available(&self) -> Vec<String> {
             self.games.iter().map(|game| game.id.clone()).collect()
         }
 
@@ -68,7 +72,7 @@ pub mod game {
             Ok(game)
         }
 
-        pub fn drop_table(&mut self, table: Table) {
+        pub fn realocate_table_to_game(&mut self, table: Table) {
             self.games.push(table.game);
         }
     }

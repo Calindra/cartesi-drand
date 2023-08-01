@@ -40,7 +40,7 @@ pub mod json {
         Some(payload)
     }
 
-    pub fn generate_data(payload: Value) -> Value {
+    pub fn generate_message(payload: Value) -> Value {
         let payload = hex::encode(payload.to_string());
         let payload = format!("0x{}", payload);
 
