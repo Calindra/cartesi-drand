@@ -128,6 +128,45 @@ mod test {
     }
 
     #[tokio::test]
+    async fn start_game() {
+        let mut manager = Manager::new_with_games(10);
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
+
+        for name in ["Alice", "Bob"] {
+            let name = name.to_string();
+            let player = Player::new_without_id(name);
+            game.player_join(player).unwrap();
+        }
+
+        let manager = Arc::new(Mutex::new(manager));
+
+        // Mock request from middleware
+        let payload = json!({
+            "input": {
+                "action": "start_game",
+                "game_id": game_id,
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        // Call function used to see what action need for
+        let response = handle_request_action(&data, manager.clone(), false).await;
+
+        if let Err(err) = response {
+            eprintln!("{:}", err);
+        }
+
+        assert!(response.is_ok());
+
+        let manager = manager.lock().await;
+        assert_eq!(manager.games.len(), 9);
+        assert_eq!(manager.tables.len(), 1);
+    }
+
+    #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
         let mut game = Game::default();
 

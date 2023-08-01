@@ -2,24 +2,24 @@ pub mod game {
     use crate::{
         models::{
             card::card::Deck,
-            player::player::{Credit, Player, PlayerHand},
+            player::player::{Player, PlayerHand},
         },
         util::random::generate_id,
     };
-    use std::{borrow::BorrowMut, sync::Arc};
+    use std::sync::Arc;
     use tokio::sync::Mutex;
 
     pub struct Manager {
         pub games: Vec<Game>,
         pub players: Vec<Player>,
+        pub tables: Vec<Table>,
     }
 
     impl Default for Manager {
         fn default() -> Self {
-            let games = Vec::new();
-
             Manager {
-                games,
+                games: Vec::new(),
+                tables: Vec::new(),
                 players: Vec::new(),
             }
         }
@@ -35,6 +35,7 @@ pub mod game {
 
             Manager {
                 games,
+                tables: Vec::with_capacity(game_size),
                 players: Vec::new(),
             }
         }
@@ -68,12 +69,16 @@ pub mod game {
                 .iter()
                 .position(|game| game.id == id)
                 .ok_or("Game not found.")?;
-            let game = self.games.remove(index);
+            let game = self.games.swap_remove(index);
             Ok(game)
         }
 
         pub fn realocate_table_to_game(&mut self, table: Table) {
             self.games.push(table.game);
+        }
+
+        pub fn add_table(&mut self, table: Table) {
+            self.tables.push(table);
         }
     }
 

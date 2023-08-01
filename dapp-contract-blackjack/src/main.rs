@@ -124,6 +124,20 @@ pub async fn handle_request_action(
 
             return Ok(Some(response));
         }
+
+        Some("start_game") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
+            let mut manager = manager.lock().await;
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let game = manager.drop_game(game_id.to_string())?;
+            let table = game.round_start(2)?;
+            manager.add_table(table);
+        }
         _ => Err("Invalid action")?,
     }
 
