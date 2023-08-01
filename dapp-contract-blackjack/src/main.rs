@@ -56,15 +56,18 @@ async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
  * {"input":{"name":"Bob","action":"new_player"}}
  */
 fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
-    let has_valid_name = input
+    input
         .get("name")
-        .is_some_and(|name| name.is_string() && name.as_str().unwrap().len() >= 3);
-
-    if has_valid_name {
-        return input.get("name").unwrap().as_str().ok_or("Invalid name");
-    }
-
-    Err("Invalid name")?
+        .ok_or("Invalid name")?
+        .as_str()
+        .ok_or("Invalid name")
+        .and_then(|name| {
+            if name.len() > 3 && name.len() < 255 {
+                Ok(name)
+            } else {
+                Err("Invalid name")
+            }
+        })
 }
 
 pub async fn handle_request_action(
