@@ -61,7 +61,7 @@ mod test {
 
         let size = manager.players.len();
 
-        assert_ne!(size, 0);
+        assert_eq!(size, 1);
 
         let player = manager.players.get(0).unwrap();
 
