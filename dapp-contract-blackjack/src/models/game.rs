@@ -3,7 +3,7 @@ pub mod game {
         card::card::Deck,
         player::player::{Credit, Player, PlayerHand},
     };
-    use std::{rc::Rc, sync::Arc};
+    use std::sync::Arc;
     use tokio::sync::Mutex;
     use uuid::Uuid;
 
@@ -41,6 +41,14 @@ pub mod game {
             self.players.push(player);
             Ok(())
         }
+
+        pub fn show_games_available(&self) -> Vec<String> {
+            self.games
+                .iter()
+                .filter(|game| !game.is_started())
+                .map(|game| game.id.clone())
+                .collect()
+        }
     }
 
     /**
@@ -49,6 +57,7 @@ pub mod game {
     pub struct Game {
         id: String,
         pub players: Vec<Arc<Mutex<Player>>>,
+        is_started: bool,
     }
 
     impl Default for Game {
@@ -56,6 +65,7 @@ pub mod game {
             Game {
                 id: Uuid::new_v4().to_string(),
                 players: Vec::new(),
+                is_started: false,
             }
         }
     }
@@ -63,6 +73,10 @@ pub mod game {
     impl Game {
         pub fn get_id(&self) -> &str {
             &self.id
+        }
+
+        pub fn is_started(&self) -> bool {
+            self.is_started
         }
 
         pub fn player_join(&mut self, player: Player) -> Result<(), &'static str> {
@@ -76,10 +90,16 @@ pub mod game {
             Ok(())
         }
 
-        pub fn round_start(&self, nth_decks: usize) -> Result<Table, &'static str> {
+        pub fn round_start(&mut self, nth_decks: usize) -> Result<Table, &'static str> {
+            if self.is_started {
+                return Err("Game already started.");
+            }
+
             if self.players.len() < 2 {
                 panic!("Minimum number of players not reached.");
             }
+
+            self.is_started = true;
 
             Table::new(&self.players, nth_decks)
         }
@@ -89,14 +109,14 @@ pub mod game {
      * The table is where the game is played.
      */
     pub struct Table {
-        bets: Vec<Credit>,
+        // bets: Vec<Credit>,
         pub deck: Arc<Mutex<Deck>>,
         pub players_with_hand: Vec<PlayerHand>,
     }
 
     impl Table {
         fn new(players: &Vec<Arc<Mutex<Player>>>, nth_decks: usize) -> Result<Table, &'static str> {
-            let bets = Vec::new();
+            // let bets = Vec::new();
             let mut players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks)?;
             let deck = Arc::new(Mutex::new(deck));
@@ -109,7 +129,7 @@ pub mod game {
             // @TODO: Implement bet.
 
             Ok(Table {
-                bets,
+                // bets,
                 deck,
                 players_with_hand,
             })

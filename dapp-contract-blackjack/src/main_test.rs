@@ -6,8 +6,9 @@ mod test {
             game::game::{Game, Manager},
             player::player::Player,
         },
+        util::json::decode_payload,
     };
-    use serde_json::json;
+    use serde_json::{json, Value};
     use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
 
@@ -15,6 +16,26 @@ mod test {
     async fn generate_manager() {
         let manager = Manager::new_with_games(10);
         assert_eq!(manager.games.len(), 10);
+    }
+
+    fn generate_data(payload: serde_json::Value) -> serde_json::Value {
+        let payload = hex::encode(payload.to_string());
+        let payload = format!("0x{}", payload);
+
+        let metadata = json!({
+            "msg_sender": "0xdeadbeef",
+            "epoch_index": 0u64,
+            "input_index": 0u64,
+            "block_number": 123u64,
+            "timestamp": 1690817064394u64,
+        });
+
+        json!({
+            "data": {
+                "metadata": metadata,
+                "payload": payload,
+            }
+        })
     }
 
     #[tokio::test]
@@ -29,23 +50,8 @@ mod test {
                 "action": "new_player"
             }
         });
-        let payload = hex::encode(payload.to_string());
-        let payload = format!("0x{}", payload);
 
-        let metadata = json!({
-            "msg_sender": "0xdeadbeef",
-            "epoch_index": 0u64,
-            "input_index": 0u64,
-            "block_number": 123u64,
-            "timestamp": 1690817064394u64,
-        });
-
-        let data = json!({
-            "data": {
-                "metadata": metadata,
-                "payload": payload,
-            }
-        });
+        let data = generate_data(payload);
 
         let result = handle_request_action(&data, manager.clone(), false).await;
 
@@ -60,6 +66,57 @@ mod test {
         let player = manager.players.get(0).unwrap();
 
         println!("{:}", player);
+    }
+
+    #[tokio::test]
+    async fn list_all_games_available() {
+        // Create game
+        let mut manager = Manager::new_with_games(10);
+        let games = &mut manager.games;
+        assert_eq!(games.len(), 10);
+
+        let game = games.get_mut(0).unwrap();
+
+        for name in ["Alice", "Bob"] {
+            let name = name.to_string();
+            let player = Player::new_without_id(name);
+            game.player_join(player).unwrap();
+        }
+
+        // Start this game
+        let table = game.round_start(1);
+
+        assert!(table.is_ok(), "Table is not ok");
+
+        let manager = Arc::new(Mutex::new(manager));
+
+        // Send request
+        let payload = json!({
+            "input": {
+                "action": "show_games"
+            }
+        });
+
+        let data = generate_data(payload);
+
+        let response = handle_request_action(&data, manager.clone(), false).await;
+
+        assert!(response.is_ok(), "Result is not ok");
+
+        // Process response
+        let fn_response = || {
+            let response = response.unwrap().unwrap();
+            println!("{:}", &response);
+
+            let response = response["data"]["payload"].as_str().unwrap();
+            let response = decode_payload(response).unwrap();
+            let response = response["games"].as_array().unwrap();
+            response.to_owned()
+        };
+
+        let response = fn_response();
+
+        assert_eq!(response.len(), 9);
     }
 
     #[tokio::test]

@@ -4,6 +4,7 @@ pub mod random {
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
+    use serde_json::{json, Value};
 
     pub struct Random {
         seed: String,
@@ -18,5 +19,31 @@ pub mod random {
             let mut rng: Pcg64 = Seeder::from(self.seed.clone()).make_rng();
             rng.gen_range(range)
         }
+    }
+}
+
+pub mod json {
+    use serde_json::{json, Value};
+
+    pub fn decode_payload(payload: &str) -> Option<Value> {
+        let payload = payload.trim_start_matches("0x");
+
+        let payload = hex::decode(payload).ok()?;
+        let payload = String::from_utf8(payload).ok()?;
+
+        let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
+
+        Some(payload)
+    }
+
+    pub fn generate_data(payload: Value) -> Value {
+        let payload = hex::encode(payload.to_string());
+        let payload = format!("0x{}", payload);
+
+        json!({
+            "data": {
+                "payload": payload,
+            }
+        })
     }
 }

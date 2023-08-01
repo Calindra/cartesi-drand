@@ -15,22 +15,12 @@ use tokio::{
         Mutex,
     },
 };
+use util::json::{decode_payload, generate_data};
 
 use crate::{
     models::{game::game::Manager, player::player::Player},
     rollups::rollup::rollup,
 };
-
-fn decode_payload(payload: &str) -> Option<Value> {
-    let payload = payload.trim_start_matches("0x");
-
-    let payload = hex::decode(payload).ok()?;
-    let payload = String::from_utf8(payload).ok()?;
-
-    let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
-
-    Some(payload)
-}
 
 fn get_payload_from_root(root: &Value) -> Option<Value> {
     let root = root.as_object()?;
@@ -81,7 +71,7 @@ pub async fn handle_request_action(
     root: &Value,
     manager: Arc<Mutex<Manager>>,
     need_write: bool,
-) -> Result<(), &'static str> {
+) -> Result<Option<Value>, &'static str> {
     let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
     let action = get_from_payload_action(&payload);
     let input = payload.get("input").ok_or("Invalid field input")?;
@@ -115,12 +105,29 @@ pub async fn handle_request_action(
                     .await
                     .or(Err("Could not write player"))?;
             }
-        }
 
+            let response = generate_data(json!({
+                "address": address_encoded,
+                "encoded_name": encoded_name,
+                "name": player_name,
+            }));
+
+            return Ok(Some(response));
+        }
+        Some("show_games") => {
+            let manager = manager.lock().await;
+            let games = manager.show_games_available();
+
+            let response = generate_data(json!({
+                "games": games,
+            }));
+
+            return Ok(Some(response));
+        }
         _ => Err("Invalid action")?,
     }
 
-    Ok(())
+    Ok(None)
 }
 
 async fn handle_game(
