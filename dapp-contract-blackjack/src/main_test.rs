@@ -8,7 +8,7 @@ mod test {
         },
         util::json::decode_payload,
     };
-    use serde_json::{json, Value};
+    use serde_json::json;
     use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
 
@@ -75,7 +75,7 @@ mod test {
         let games = &mut manager.games;
         assert_eq!(games.len(), 10);
 
-        let game = games.get_mut(0).unwrap();
+        let mut game = games.remove(0);
 
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
@@ -90,7 +90,7 @@ mod test {
 
         let manager = Arc::new(Mutex::new(manager));
 
-        // Send request
+        // Mock request from middleware
         let payload = json!({
             "input": {
                 "action": "show_games"
@@ -98,7 +98,6 @@ mod test {
         });
 
         let data = generate_data(payload);
-
         let response = handle_request_action(&data, manager.clone(), false).await;
 
         assert!(response.is_ok(), "Result is not ok");
@@ -130,15 +129,15 @@ mod test {
         }
 
         let table = game.round_start(1).unwrap();
+        let size = table.players_with_hand.len();
+        assert_eq!(size, 2);
 
-        // Add a new player after the game has started.
+        let mut game = table.drop_table();
+
         let player = Player::new_without_id("Eve".to_string());
         game.player_join(player).unwrap();
 
-        let size = table.players_with_hand.len();
-
         assert_eq!(game.players.len(), 3);
-        assert_eq!(size, 2);
     }
 
     #[tokio::test]

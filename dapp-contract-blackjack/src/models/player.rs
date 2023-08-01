@@ -59,6 +59,10 @@ pub mod player {
                 name,
             }
         }
+
+        pub fn get_id(&self) -> String {
+            self.id.to_owned()
+        }
     }
 
     /**

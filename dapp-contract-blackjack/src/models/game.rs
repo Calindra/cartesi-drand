@@ -1,11 +1,13 @@
 pub mod game {
-    use crate::models::{
-        card::card::Deck,
-        player::player::{Credit, Player, PlayerHand},
+    use crate::{
+        models::{
+            card::card::Deck,
+            player::player::{Credit, Player, PlayerHand},
+        },
+        util::random::generate_id,
     };
     use std::sync::Arc;
     use tokio::sync::Mutex;
-    use uuid::Uuid;
 
     pub struct Manager {
         pub games: Vec<Game>,
@@ -42,12 +44,32 @@ pub mod game {
             Ok(())
         }
 
-        pub fn show_games_available(&self) -> Vec<String> {
-            self.games
+        pub fn remove_player_by_id(&mut self, id: String) -> Result<Player, &'static str> {
+            let index = self
+                .players
                 .iter()
-                .filter(|game| !game.is_started())
-                .map(|game| game.id.clone())
-                .collect()
+                .position(|player| player.get_id() == id)
+                .ok_or("Player not found.")?;
+            let player = self.players.remove(index);
+            Ok(player)
+        }
+
+        pub fn show_games_available(&self) -> Vec<String> {
+            self.games.iter().map(|game| game.id.clone()).collect()
+        }
+
+        pub fn drop_game(&mut self, id: String) -> Result<Game, &'static str> {
+            let index = self
+                .games
+                .iter()
+                .position(|game| game.id == id)
+                .ok_or("Game not found.")?;
+            let game = self.games.remove(index);
+            Ok(game)
+        }
+
+        pub fn drop_table(&mut self, table: Table) {
+            self.games.push(table.game);
         }
     }
 
@@ -57,15 +79,13 @@ pub mod game {
     pub struct Game {
         id: String,
         pub players: Vec<Arc<Mutex<Player>>>,
-        is_started: bool,
     }
 
     impl Default for Game {
         fn default() -> Self {
             Game {
-                id: Uuid::new_v4().to_string(),
+                id: generate_id(),
                 players: Vec::new(),
-                is_started: false,
             }
         }
     }
@@ -73,10 +93,6 @@ pub mod game {
     impl Game {
         pub fn get_id(&self) -> &str {
             &self.id
-        }
-
-        pub fn is_started(&self) -> bool {
-            self.is_started
         }
 
         pub fn player_join(&mut self, player: Player) -> Result<(), &'static str> {
@@ -90,18 +106,12 @@ pub mod game {
             Ok(())
         }
 
-        pub fn round_start(&mut self, nth_decks: usize) -> Result<Table, &'static str> {
-            if self.is_started {
-                return Err("Game already started.");
-            }
-
+        pub fn round_start(self, nth_decks: usize) -> Result<Table, &'static str> {
             if self.players.len() < 2 {
                 panic!("Minimum number of players not reached.");
             }
 
-            self.is_started = true;
-
-            Table::new(&self.players, nth_decks)
+            Table::new(self, nth_decks)
         }
     }
 
@@ -109,19 +119,19 @@ pub mod game {
      * The table is where the game is played.
      */
     pub struct Table {
-        // bets: Vec<Credit>,
         pub deck: Arc<Mutex<Deck>>,
         pub players_with_hand: Vec<PlayerHand>,
+        game: Game,
     }
 
     impl Table {
-        fn new(players: &Vec<Arc<Mutex<Player>>>, nth_decks: usize) -> Result<Table, &'static str> {
+        fn new(game: Game, nth_decks: usize) -> Result<Self, &'static str> {
             // let bets = Vec::new();
             let mut players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks)?;
             let deck = Arc::new(Mutex::new(deck));
 
-            for player in players.iter() {
+            for player in game.players.iter() {
                 let player_hand = PlayerHand::new(player.clone(), deck.clone());
                 players_with_hand.push(player_hand);
             }
@@ -129,13 +139,17 @@ pub mod game {
             // @TODO: Implement bet.
 
             Ok(Table {
-                // bets,
                 deck,
                 players_with_hand,
+                game,
             })
         }
 
-        fn any_player_can_hit(&self) -> bool {
+        pub fn drop_table(self) -> Game {
+            self.game
+        }
+
+        pub fn any_player_can_hit(&self) -> bool {
             self.players_with_hand
                 .iter()
                 .any(|player| !player.is_standing)

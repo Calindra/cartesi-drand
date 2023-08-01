@@ -4,7 +4,7 @@ pub mod random {
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
-    use serde_json::{json, Value};
+    use uuid::Uuid;
 
     pub struct Random {
         seed: String,
@@ -19,6 +19,10 @@ pub mod random {
             let mut rng: Pcg64 = Seeder::from(self.seed.clone()).make_rng();
             rng.gen_range(range)
         }
+    }
+
+    pub fn generate_id() -> String {
+        Uuid::new_v4().to_string()
     }
 }
 

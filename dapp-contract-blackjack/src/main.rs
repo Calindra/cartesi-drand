@@ -74,10 +74,10 @@ pub async fn handle_request_action(
 ) -> Result<Option<Value>, &'static str> {
     let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
     let action = get_from_payload_action(&payload);
-    let input = payload.get("input").ok_or("Invalid field input")?;
 
     match action.as_deref() {
         Some("new_player") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
             let player_name = check_fields_create_player(&input)?;
 
             let encoded_name = bs58::encode(&player_name).into_string();
