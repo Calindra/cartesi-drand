@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod middleware_tests {
     use crate::{
         is_drand_beacon,
         models::models::{AppState, Beacon, Item},
