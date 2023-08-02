@@ -105,6 +105,11 @@ pub mod player {
             }
         }
 
+        pub fn get_player_id(&self) -> Result<String, Box<dyn Error>> {
+            let player = self.player.try_lock()?;
+            Ok(player.id.to_owned())
+        }
+
         /**
          * Take a card from the deck and add it to the player's hand.
          */

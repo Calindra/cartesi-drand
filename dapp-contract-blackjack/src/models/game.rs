@@ -80,6 +80,13 @@ pub mod game {
         pub fn add_table(&mut self, table: Table) {
             self.tables.push(table);
         }
+
+        pub fn get_table(&mut self, id: &str) -> Result<&mut Table, &'static str> {
+            self.tables
+                .iter_mut()
+                .find(|table| table.game.get_id() == id)
+                .ok_or("Table not found.")
+        }
     }
 
     /**
@@ -162,6 +169,13 @@ pub mod game {
             self.players_with_hand
                 .iter()
                 .any(|player| !player.is_standing)
+        }
+
+        pub fn find_player_by_id(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
+            self.players_with_hand
+                .iter_mut()
+                .find(|player| player.get_player_id().is_ok_and(|p_id| p_id == id))
+                .ok_or("Player not found.")
         }
     }
 }

@@ -141,6 +141,25 @@ pub async fn handle_request_action(
             let table = game.round_start(2)?;
             manager.add_table(table);
         }
+        Some("hit") => {
+            // Address
+            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = address_owner.trim_start_matches("0x");
+            let address_encoded = bs58::encode(address_owner).into_string();
+
+            // Game ID
+            let input = payload.get("input").ok_or("Invalid field input")?;
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let mut manager = manager.lock().await;
+            let table = manager.get_table(game_id)?;
+            let player = table.find_player_by_id(&address_encoded)?;
+            player.hit().await?;
+        }
         _ => Err("Invalid action")?,
     }
 
