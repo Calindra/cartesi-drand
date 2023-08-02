@@ -1,5 +1,6 @@
 # Cartesi Drand
 
+![Tests](https://github.com/Calindra/cartesi-drand/actions/workflows/drand-provider.yml/badge.svg)
 
 ## Description
 
