@@ -320,5 +320,4 @@ mod middleware_tests {
             "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
         );
     }
-
 }

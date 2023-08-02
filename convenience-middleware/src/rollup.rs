@@ -5,10 +5,12 @@ pub mod server {
     use hyper::{Body, Response};
     use serde_json::{json, Value};
 
-    use super::{RollupInput, parse_input_from_response};
+    use super::{parse_input_from_response, RollupInput};
 
-    pub(crate) async fn send_finish(status: &str) -> Result<Response<Body>, hyper::Error> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
+    pub(crate) async fn send_finish(
+        status: &str,
+    ) -> Result<Response<Body>, Box<dyn std::error::Error>> {
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
         println!("Sending finish to {}", &server_addr);
         let client = hyper::Client::new();
         let response = json!({"status" : status.clone()});
@@ -16,45 +18,49 @@ pub mod server {
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/finish", &server_addr))
-            .body(hyper::Body::from(response.to_string()))
-            .unwrap();
-        let response = client.request(request).await;
+            .body(hyper::Body::from(response.to_string()))?;
 
-        match &response {
-            Ok(response) => {
-                println!("Received finish status {} from RollupServer", response.status());
-            }
-            Err(error) => {
-                eprintln!("Error {:?}", error);
-            }
-        };
+        let response = client.request(request).await?;
 
-        response
+        println!(
+            "Received finish status {} from RollupServer",
+            response.status()
+        );
+        Ok(response)
     }
 
     pub(crate) async fn send_finish_and_retrieve_input(status: &str) -> Option<RollupInput> {
-        let response = send_finish(status).await.ok()?;
+        let response = send_finish(status)
+            .await
+            .map_err(|err| {
+                eprintln!("Error {:?}", err);
+                err
+            })
+            .ok()?;
+
         if response.status() == hyper::StatusCode::ACCEPTED {
-            return None
+            return None;
         }
-        match parse_input_from_response(response).await {
-            Ok(input) => return Some(input),
-            Err(error) => {
-                println!("Error {:?}", error);
-                return None;
-            }
-        };
+        parse_input_from_response(response)
+            .await
+            .map_err(|err| {
+                eprintln!("Error {:?}", err);
+                err
+            })
+            .ok()
     }
 
-    pub(crate) async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
+    pub(crate) async fn send_report(
+        report: Value,
+    ) -> Result<&'static str, Box<dyn std::error::Error>> {
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/report", server_addr))
-            .body(hyper::Body::from(report.to_string()))
-            .unwrap();
+            .body(hyper::Body::from(report.to_string()))?;
+
         let _ = client.request(req).await?;
         Ok("accept")
     }
@@ -92,9 +98,9 @@ pub(crate) struct RollupInputDataMetadata {
 
 pub(crate) async fn parse_input_from_response(
     response: Response<Body>,
-) -> Result<RollupInput, serde_json::Error> {
-    let body = hyper::body::to_bytes(response).await.unwrap();
-    let utf = std::str::from_utf8(&body).unwrap();
-    let result_deserialization = serde_json::from_str::<RollupInput>(utf);
-    return result_deserialization;
+) -> Result<RollupInput, Box<dyn std::error::Error>> {
+    let body = hyper::body::to_bytes(response).await?;
+    let utf = std::str::from_utf8(&body)?;
+    let result_deserialization = serde_json::from_str::<RollupInput>(utf)?;
+    Ok(result_deserialization)
 }

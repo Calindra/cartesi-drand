@@ -14,7 +14,7 @@ pub(crate) async fn send_pending_beacon_report(app_state: &Data<AppState>) {
     let manager = app_state.input_buffer_manager.lock().await;
     let x = manager.pending_beacon_timestamp.get();
     let report = json!({ "payload": format!("{x:#x}") });
-    let _ = rollup::server::send_report(report).await;
+    let _ = rollup::server::send_report(report).await.unwrap();
 }
 
 pub(crate) fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
@@ -39,7 +39,7 @@ pub(crate) fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
         Ok(payload) => payload,
         Err(_) => return None,
     };
-    
+
     let key = key.as_str();
     let mut pk = [0u8; 96];
     let is_decoded_err = hex::decode_to_slice(key, pk.borrow_mut()).is_err();
