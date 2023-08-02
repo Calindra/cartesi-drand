@@ -7,7 +7,7 @@ pub mod server {
 
     use super::{RollupInput, parse_input_from_response};
 
-    pub(crate) async fn send_finish(status: &str) -> Response<Body> {
+    pub(crate) async fn send_finish(status: &str) -> Result<Response<Body>, hyper::Error> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
         println!("Sending finish to {}", &server_addr);
         let client = hyper::Client::new();
@@ -18,16 +18,22 @@ pub mod server {
             .uri(format!("{}/finish", &server_addr))
             .body(hyper::Body::from(response.to_string()))
             .unwrap();
-        let response = client.request(request).await.unwrap();
-        println!(
-            "Received finish status {} from RollupServer",
-            response.status()
-        );
-        return response;
+        let response = client.request(request).await;
+
+        match &response {
+            Ok(response) => {
+                println!("Received finish status {} from RollupServer", response.status());
+            }
+            Err(error) => {
+                eprintln!("Error {:?}", error);
+            }
+        };
+
+        response
     }
 
     pub(crate) async fn send_finish_and_retrieve_input(status: &str) -> Option<RollupInput> {
-        let response = send_finish(status).await;
+        let response = send_finish(status).await.ok()?;
         if response.status() == hyper::StatusCode::ACCEPTED {
             return None
         }
@@ -38,7 +44,7 @@ pub mod server {
                 return None;
             }
         };
-    } 
+    }
 
     pub(crate) async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").unwrap();
