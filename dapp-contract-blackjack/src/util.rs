@@ -1,24 +1,19 @@
 pub mod random {
-    use std::ops::Range;
+    use std::{ops::Range, error::Error};
 
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
     use uuid::Uuid;
 
-    pub struct Random {
-        seed: String,
+
+    pub fn generate_random_number(seed: String, range: Range<usize>) -> usize {
+        let mut rng: Pcg64 = Seeder::from(seed).make_rng();
+        rng.gen_range(range)
     }
 
-    impl Random {
-        pub fn new(seed: String) -> Self {
-            Random { seed }
-        }
-
-        pub fn generate_random_seed(&self, range: Range<usize>) -> usize {
-            let mut rng: Pcg64 = Seeder::from(self.seed.clone()).make_rng();
-            rng.gen_range(range)
-        }
+    pub async fn call_seed() -> Result<String, Box<dyn Error>> {
+        todo!("Call seed from a remote server.");
     }
 
     pub fn generate_id() -> String {

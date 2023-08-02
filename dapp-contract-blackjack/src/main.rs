@@ -58,14 +58,14 @@ async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
 fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
     input
         .get("name")
-        .ok_or("Invalid name")?
+        .ok_or("Field name dont exist")?
         .as_str()
-        .ok_or("Invalid name")
+        .ok_or("Field name isnt a string")
         .and_then(|name| {
             if name.len() > 3 && name.len() < 255 {
                 Ok(name)
             } else {
-                Err("Invalid name")
+                Err("Name need between 3 and 255 characters")
             }
         })
 }

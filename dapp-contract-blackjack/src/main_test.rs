@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod test {
+mod contract_blackjack_tests {
     use crate::{
         handle_request_action,
         models::{

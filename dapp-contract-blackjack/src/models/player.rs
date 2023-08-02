@@ -9,7 +9,7 @@ pub mod player {
 
     use crate::models::card::card::{Card, Deck, Rank};
 
-    use crate::util::random::Random;
+    use crate::util::random::{generate_random_number};
 
     pub struct Credit {
         pub amount: u32,
@@ -123,13 +123,14 @@ pub mod player {
             }
 
             // let nth = random::<usize>();
-            let seed = Random::new("blackjack".to_string());
-            let nth = seed.generate_random_seed(0..51);
-
             let mut deck = self.deck.lock().await;
 
+            if deck.cards.is_empty() {
+                Err("No cards in the deck.")?;
+            }
+
             let size = deck.cards.len();
-            let nth = nth % size;
+            let nth = generate_random_number("blackjack".to_string(), 0..size);
             let card = deck.cards.remove(nth);
 
             let card_point = card.show_point();
