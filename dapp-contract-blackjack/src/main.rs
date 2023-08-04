@@ -160,6 +160,10 @@ pub async fn handle_request_action(
             let player = table.find_player_by_id(&address_encoded)?;
             player.hit().await?;
         }
+
+        Some("stand") => {
+            todo!("stand")
+        }
         _ => Err("Invalid action")?,
     }
 
@@ -172,6 +176,7 @@ async fn handle_game(
 ) -> Result<(), &'static str> {
     while let Some(value) = receiver.recv().await {
         println!("Received value: {}", value);
+        // @todo need return responses
         let _ = handle_request_action(&value, game.clone(), true).await?;
     }
 

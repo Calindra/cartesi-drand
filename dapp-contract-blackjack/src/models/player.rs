@@ -2,7 +2,7 @@ pub mod player {
     use std::{
         error::Error,
         fmt::{self, Display},
-        sync::Arc,
+        sync::Arc, cell::RefCell,
     };
 
     use tokio::sync::Mutex;
@@ -74,6 +74,7 @@ pub mod player {
         pub points: u8,
         pub is_standing: bool,
         deck: Arc<Mutex<Deck>>,
+        pub round: RefCell<usize>,
     }
 
     pub enum PlayerIntent {
@@ -95,13 +96,14 @@ pub mod player {
     }
 
     impl PlayerHand {
-        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>) -> PlayerHand {
+        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>, round: RefCell<usize>) -> Self {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
                 is_standing: false,
                 points: 0,
                 deck,
+                round,
             }
         }
 
