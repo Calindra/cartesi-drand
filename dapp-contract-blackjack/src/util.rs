@@ -1,19 +1,61 @@
 pub mod random {
-    use std::{ops::Range, error::Error};
+    use std::{env::var as env, error::Error, ops::Range};
 
+    use hyper::{body, client::HttpConnector, Body, Client, Request, Response, StatusCode};
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
     use uuid::Uuid;
-
 
     pub fn generate_random_number(seed: String, range: Range<usize>) -> usize {
         let mut rng: Pcg64 = Seeder::from(seed).make_rng();
         rng.gen_range(range)
     }
 
-    pub async fn call_seed() -> Result<String, Box<dyn Error>> {
-        todo!("Call seed from a remote server.");
+    async fn call_random_api(
+        client: &Client<HttpConnector>,
+        request: Request<Body>,
+    ) -> Result<(StatusCode, Response<Body>), Box<dyn Error>> {
+        let response = client.request(request).await?;
+
+        let status_response = response.status();
+        println!("Receive random status {}", &status_response);
+
+        Ok((status_response, response))
+    }
+
+    pub async fn need_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
+        println!("Calling random...");
+
+        let client = Client::new();
+        let server_addr = env("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let uri = format!("{}/random?timestamp={}", server_addr, timestamp);
+
+        loop {
+            let request = Request::builder()
+                .method("POST")
+                .uri(uri.to_owned())
+                .header("Content-Type", "application/json")
+                .body(Body::empty())?;
+
+            let (status_response, body) = call_random_api(&client, request).await?;
+
+            match status_response {
+                StatusCode::NOT_FOUND => {
+                    println!("No pending random request, trying again");
+                }
+
+                StatusCode::OK => {
+                    let body = body::to_bytes(body).await?;
+                    let body = String::from_utf8(body.to_vec())?;
+                    return Ok(body);
+                }
+
+                code => {
+                    println!("Unknown status code {:}", code);
+                }
+            }
+        }
     }
 
     pub fn generate_id() -> String {
