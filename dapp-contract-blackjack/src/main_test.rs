@@ -10,7 +10,11 @@ mod contract_blackjack_tests {
     };
     use axum::routing::MethodRouter;
     use serde_json::json;
-    use std::{net::SocketAddr, ops::Rem, sync::Arc};
+    use std::{
+        net::SocketAddr,
+        ops::Rem,
+        sync::{Arc, Once},
+    };
     use tokio::sync::{
         oneshot::{channel, Sender},
         Mutex,
@@ -287,29 +291,33 @@ mod contract_blackjack_tests {
             .unwrap()
     }
 
-    async fn run_server(port: u16, methods: Vec<RoutesTest>) -> tokio::task::JoinHandle<()> {
-        std::env::set_var(
-            "MIDDLEWARE_HTTP_SERVER_URL",
-            format!("http://localhost:{}/", &port),
-        );
+    static SERVER_FN: Once = Once::new();
 
-        let (sender, receiver) = channel::<bool>();
+    async fn run_server(port: u16, methods: Vec<RoutesTest>) {
+        SERVER_FN.call_once(|| {
+            std::env::set_var(
+                "MIDDLEWARE_HTTP_SERVER_URL",
+                format!("http://localhost:{}/", &port),
+            );
 
-        let server = tokio::spawn(async move {
-            start_server(sender, methods, port).await;
-        });
+            let (sender, mut receiver) = channel::<bool>();
 
-        let result = receiver.await;
+            tokio::spawn(async move {
+                start_server(sender, methods, port).await;
+            });
 
-        assert!(result.is_ok());
+            let result = receiver.try_recv();
 
-        server
+            assert!(result.is_ok(), "Server not started.");
+
+            println!("Server test running on port {}", &port);
+        })
     }
 
     #[tokio::test]
     async fn hit_card_never_busted() {
         check_if_dotenv_is_loaded!();
-        let server = run_server(
+        run_server(
             8080,
             vec![RoutesTest::new(
                 "/random",
@@ -347,7 +355,5 @@ mod contract_blackjack_tests {
             println!("{:}", &first_player);
             i = i + 1;
         }
-
-        server.abort();
     }
 }
