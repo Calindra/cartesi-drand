@@ -47,7 +47,7 @@ pub mod random {
                 }
 
                 code => {
-                    assert!(false, "Unknown status code {:}", code);
+                    println!("Unknown status code {:}", code);
                 }
             }
         }

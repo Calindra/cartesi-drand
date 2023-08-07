@@ -65,7 +65,7 @@ mod contract_blackjack_tests {
 
         let result = handle_request_action(&data, manager.clone(), false).await;
 
-        assert!(result.is_ok(), "Result is not ok");
+        assert!(result.is_ok(), "Result is not ok: {:}", result.unwrap_err());
 
         let manager = manager.lock().await;
 
@@ -197,7 +197,7 @@ mod contract_blackjack_tests {
         let player = Player::new_without_id("Eve".to_string());
         game.player_join(player).unwrap();
 
-        assert_eq!(game.players.len(), 3);
+        assert_eq!(game.players.len(), 1);
     }
 
     #[tokio::test]

@@ -77,6 +77,9 @@ pub mod game {
             Ok(game)
         }
 
+        /**
+         * Players are cleared from the game.
+         */
         pub fn realocate_table_to_game(&mut self, table: Table) {
             let mut game = table.game;
             game.players.clear();

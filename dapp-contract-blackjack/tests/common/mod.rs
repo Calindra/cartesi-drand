@@ -12,7 +12,7 @@ pub mod common {
     use crate::util::json::generate_message;
 
     static BIND_SERVER: Once = Once::new();
-    static SERVER_POOL: ServerPool = ServerPool::new(2);
+    static SERVER_POOL: ServerPool = ServerPool::new(1);
 
     pub async fn setup_hit_random() -> impl Drop {
         let message = generate_message(Value::from("blackjack"));
@@ -41,13 +41,13 @@ pub mod common {
 
         let url = server.url_str("");
 
-        println!("Server listening on {}", &url);
-
         BIND_SERVER.call_once(|| {
             set_var("MIDDLEWARE_HTTP_SERVER_URL", &url);
         });
 
         assert!(std::env::var("MIDDLEWARE_HTTP_SERVER_URL").is_ok());
+
+        println!("Server listening on {}", &url);
 
         server
     }

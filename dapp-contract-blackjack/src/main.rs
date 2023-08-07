@@ -73,7 +73,7 @@ fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
         .as_str()
         .ok_or("Field name isnt a string")
         .and_then(|name| {
-            if name.len() > 3 && name.len() < 255 {
+            if name.len() >= 3 && name.len() <= 255 {
                 Ok(name)
             } else {
                 Err("Name need between 3 and 255 characters")
