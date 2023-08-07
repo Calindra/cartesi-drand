@@ -1,5 +1,5 @@
 pub mod random {
-    use std::{env::var as env, error::Error, ops::Range};
+    use std::{env::var as env, error::Error, net::SocketAddr, ops::Range, str::FromStr};
 
     use hyper::{body, Body, Client, Request, StatusCode};
     use rand::prelude::*;
@@ -17,12 +17,16 @@ pub mod random {
 
         let client = Client::new();
         let server_addr = env("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let uri = format!("{}/random?timestamp={}", server_addr, timestamp);
+        let server_addr = server_addr.trim_end_matches("/");
+
+        let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
+
+        println!("Calling random at {:}", &uri);
 
         loop {
             let request = Request::builder()
-                .method("POST")
-                .uri(uri.to_owned())
+                .method(hyper::Method::POST)
+                .uri(&uri)
                 .header("Content-Type", "application/json")
                 .body(Body::empty())?;
 
@@ -43,7 +47,7 @@ pub mod random {
                 }
 
                 code => {
-                    println!("Unknown status code {:}", code);
+                    assert!(false, "Unknown status code {:}", code);
                 }
             }
         }
@@ -81,7 +85,6 @@ pub mod json {
 }
 
 pub mod env {
-    #[macro_export]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
             let is_env_loaded = dotenv::dotenv().ok().is_some();
@@ -89,4 +92,6 @@ pub mod env {
             is_env_loaded
         }};
     }
+
+    pub(crate) use check_if_dotenv_is_loaded;
 }

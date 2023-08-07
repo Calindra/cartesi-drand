@@ -1,11 +1,11 @@
 use std::{borrow::BorrowMut, env, mem::size_of, sync::Arc};
 
-mod main_test;
 mod models;
 mod rollups;
 mod util;
 
 use dotenv::dotenv;
+use rollups::rollup::rollup;
 use serde_json::{json, Value};
 use tokio::{
     fs::File,
@@ -17,10 +17,7 @@ use tokio::{
 };
 use util::json::{decode_payload, generate_message};
 
-use crate::{
-    models::{game::game::Manager, player::player::Player},
-    rollups::rollup::rollup,
-};
+use crate::models::{game::game::Manager, player::player::Player};
 
 struct Metadata {
     address: String,

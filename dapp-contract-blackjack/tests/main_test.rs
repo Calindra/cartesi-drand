@@ -1,24 +1,26 @@
+mod common;
+#[path = "../src/main.rs"]
+mod main;
+#[path = "../src/models/mod.rs"]
+mod models;
+#[path = "../src/util.rs"]
+mod util;
+
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
-        check_if_dotenv_is_loaded, handle_request_action,
+        common::common::setup_hit_random,
+        main::handle_request_action,
         models::{
             game::game::{Game, Manager},
             player::player::Player,
         },
-        util::json::decode_payload,
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
     };
-    use axum::routing::MethodRouter;
+
     use serde_json::json;
-    use std::{
-        net::SocketAddr,
-        ops::Rem,
-        sync::{Arc, Once},
-    };
-    use tokio::sync::{
-        oneshot::{channel, Sender},
-        Mutex,
-    };
+    use std::{ops::Rem, sync::Arc};
+    use tokio::sync::Mutex;
 
     #[tokio::test]
     async fn should_create_manager_with_capacity() {
@@ -216,6 +218,9 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn size_of_deck_while_players_hit() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
@@ -259,74 +264,13 @@ mod contract_blackjack_tests {
         assert_ne!(*i.lock().await, 52);
     }
 
-    struct RoutesTest {
-        path: &'static str,
-        method: MethodRouter,
-    }
-
-    impl RoutesTest {
-        fn new(path: &'static str, method: MethodRouter) -> Self {
-            Self { path, method }
-        }
-    }
-
-    async fn start_server(sender: Sender<bool>, methods: Vec<RoutesTest>, port: u16) {
-        let mut app = axum::Router::new();
-
-        for route in methods {
-            let path = route.path;
-            let method = route.method;
-
-            app = app.route(path, method);
-        }
-
-        let addr = SocketAddr::from(([0, 0, 0, 0], port));
-        println!("Server test running on port {}", &addr.port());
-
-        sender.send(true).unwrap();
-
-        axum::Server::bind(&addr)
-            .serve(app.into_make_service())
-            .await
-            .unwrap()
-    }
-
-    static SERVER_FN: Once = Once::new();
-
-    async fn run_server(port: u16, methods: Vec<RoutesTest>) {
-        SERVER_FN.call_once(|| {
-            std::env::set_var(
-                "MIDDLEWARE_HTTP_SERVER_URL",
-                format!("http://localhost:{}/", &port),
-            );
-
-            let (sender, mut receiver) = channel::<bool>();
-
-            tokio::spawn(async move {
-                start_server(sender, methods, port).await;
-            });
-
-            let result = receiver.try_recv();
-
-            assert!(result.is_ok(), "Server not started.");
-
-            println!("Server test running on port {}", &port);
-        })
-    }
-
     #[tokio::test]
     async fn hit_card_never_busted() {
         check_if_dotenv_is_loaded!();
-        run_server(
-            8080,
-            vec![RoutesTest::new(
-                "/random",
-                axum::routing::post(|| async { "blackjack".to_string() }),
-            )],
-        )
-        .await;
+        let _server = setup_hit_random().await;
 
-        let mut game = Game::default();
+        let mut manager = Manager::new_with_games(1);
+        let mut game = manager.first_game_available_owned().unwrap();
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
