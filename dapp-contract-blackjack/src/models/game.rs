@@ -6,7 +6,7 @@ pub mod game {
         },
         util::random::generate_id,
     };
-    use std::{cell::RefCell, sync::Arc};
+    use std::sync::Arc;
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -57,6 +57,10 @@ pub mod game {
 
         pub fn first_game_available(&mut self) -> Result<&mut Game, &'static str> {
             self.games.first_mut().ok_or("No games available.")
+        }
+
+        pub fn first_game_available_owned(&mut self) -> Result<Game, &'static str> {
+            self.games.pop().ok_or("No games available.")
         }
 
         pub fn show_games_id_available(&self) -> Vec<String> {
@@ -144,8 +148,6 @@ pub mod game {
         pub deck: Arc<Mutex<Deck>>,
         pub players_with_hand: Vec<PlayerHand>,
         game: Game,
-        is_finished: bool,
-        round: RefCell<usize>,
     }
 
     impl Table {
@@ -154,10 +156,13 @@ pub mod game {
             let mut players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks)?;
             let deck = Arc::new(Mutex::new(deck));
-            let round = RefCell::new(1);
 
             for player in game.players.iter() {
-                let player_hand = PlayerHand::new(player.clone(), deck.clone(), round.clone());
+                let player_hand = PlayerHand::new(
+                    player.clone(),
+                    deck.clone(),
+                    // RefCell::from(ref_table),
+                );
                 players_with_hand.push(player_hand);
             }
 
@@ -167,13 +172,7 @@ pub mod game {
                 deck,
                 players_with_hand,
                 game,
-                is_finished: false,
-                round,
             })
-        }
-
-        pub fn drop_table(self) -> Game {
-            self.game
         }
 
         pub fn any_player_can_hit(&self) -> bool {

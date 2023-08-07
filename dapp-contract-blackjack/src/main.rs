@@ -22,6 +22,12 @@ use crate::{
     rollups::rollup::rollup,
 };
 
+struct Metadata {
+    address: String,
+    timestamp: u64,
+    input_index: u64,
+}
+
 fn get_payload_from_root(root: &Value) -> Option<Value> {
     let root = root.as_object()?;
     let root = root.get("data")?.as_object()?;
@@ -30,12 +36,20 @@ fn get_payload_from_root(root: &Value) -> Option<Value> {
     Some(payload)
 }
 
-fn get_address_metadata_from_root(root: &Value) -> Option<String> {
+fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
     let root = root.as_object()?;
     let root = root.get("data")?.as_object()?;
     let metadata = root.get("metadata")?.as_object()?;
+
     let address = metadata.get("msg_sender")?.as_str()?;
-    Some(address.to_owned())
+    let timestamp = metadata.get("timestamp")?.as_u64()?;
+    let input_index = metadata.get("input_index")?.as_u64()?;
+
+    Some(Metadata {
+        address: address.to_owned(),
+        timestamp,
+        input_index,
+    })
 }
 
 fn get_from_payload_action(payload: &Value) -> Option<String> {
@@ -85,8 +99,8 @@ pub async fn handle_request_action(
 
             let encoded_name = bs58::encode(&player_name).into_string();
 
-            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
-            let address_owner = address_owner.trim_start_matches("0x");
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
 
             // Add player to manager
@@ -143,9 +157,10 @@ pub async fn handle_request_action(
         }
         Some("hit") => {
             // Address
-            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
-            let address_owner = address_owner.trim_start_matches("0x");
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
+            let timestamp = metadata.timestamp;
 
             // Game ID
             let input = payload.get("input").ok_or("Invalid field input")?;
@@ -158,7 +173,7 @@ pub async fn handle_request_action(
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
             let player = table.find_player_by_id(&address_encoded)?;
-            player.hit().await?;
+            player.hit(timestamp).await?;
         }
 
         Some("stand") => {

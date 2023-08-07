@@ -1,16 +1,20 @@
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
-        handle_request_action,
+        check_if_dotenv_is_loaded, handle_request_action,
         models::{
             game::game::{Game, Manager},
             player::player::Player,
         },
         util::json::decode_payload,
     };
+    use axum::routing::MethodRouter;
     use serde_json::json;
-    use std::{ops::Rem, sync::Arc};
-    use tokio::sync::Mutex;
+    use std::{net::SocketAddr, ops::Rem, sync::Arc};
+    use tokio::sync::{
+        oneshot::{channel, Sender},
+        Mutex,
+    };
 
     #[tokio::test]
     async fn should_create_manager_with_capacity() {
@@ -168,7 +172,8 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
-        let mut game = Game::default();
+        let mut manager = Manager::new_with_games(10);
+        let mut game = manager.first_game_available_owned().unwrap();
 
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
@@ -180,7 +185,8 @@ mod contract_blackjack_tests {
         let size = table.players_with_hand.len();
         assert_eq!(size, 2);
 
-        let mut game = table.drop_table();
+        manager.realocate_table_to_game(table);
+        let game = manager.first_game_available().unwrap();
 
         let player = Player::new_without_id("Eve".to_string());
         game.player_join(player).unwrap();
@@ -227,7 +233,7 @@ mod contract_blackjack_tests {
             let run = || async {
                 let task = tokio::spawn(async move {
                     while player.points <= 11 {
-                        if let Err(res) = player.hit().await {
+                        if let Err(res) = player.hit(0).await {
                             println!("{:}", res);
                             break;
                         } else {
@@ -249,8 +255,69 @@ mod contract_blackjack_tests {
         assert_ne!(*i.lock().await, 52);
     }
 
+    struct RoutesTest {
+        path: &'static str,
+        method: MethodRouter,
+    }
+
+    impl RoutesTest {
+        fn new(path: &'static str, method: MethodRouter) -> Self {
+            Self { path, method }
+        }
+    }
+
+    async fn start_server(sender: Sender<bool>, methods: Vec<RoutesTest>, port: u16) {
+        let mut app = axum::Router::new();
+
+        for route in methods {
+            let path = route.path;
+            let method = route.method;
+
+            app = app.route(path, method);
+        }
+
+        let addr = SocketAddr::from(([0, 0, 0, 0], port));
+        println!("Server test running on port {}", &addr.port());
+
+        sender.send(true).unwrap();
+
+        axum::Server::bind(&addr)
+            .serve(app.into_make_service())
+            .await
+            .unwrap()
+    }
+
+    async fn run_server(port: u16, methods: Vec<RoutesTest>) -> tokio::task::JoinHandle<()> {
+        std::env::set_var(
+            "MIDDLEWARE_HTTP_SERVER_URL",
+            format!("http://localhost:{}/", &port),
+        );
+
+        let (sender, receiver) = channel::<bool>();
+
+        let server = tokio::spawn(async move {
+            start_server(sender, methods, port).await;
+        });
+
+        let result = receiver.await;
+
+        assert!(result.is_ok());
+
+        server
+    }
+
     #[tokio::test]
     async fn hit_card_never_busted() {
+        check_if_dotenv_is_loaded!();
+        let server = run_server(
+            8080,
+            vec![RoutesTest::new(
+                "/random",
+                axum::routing::post(|| async { "blackjack".to_string() }),
+            )],
+        )
+        .await;
+
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
@@ -264,11 +331,12 @@ mod contract_blackjack_tests {
 
         assert!(first_player.is_some(), "First player not found.");
 
+        let timestamp = 1691386341757;
         let first_player = first_player.unwrap();
         let mut i = 1;
 
         while first_player.points <= 11 {
-            let res = first_player.hit().await;
+            let res = first_player.hit(timestamp).await;
 
             assert!(res.is_ok(), "Player is busted.");
 
@@ -279,5 +347,7 @@ mod contract_blackjack_tests {
             println!("{:}", &first_player);
             i = i + 1;
         }
+
+        server.abort();
     }
 }

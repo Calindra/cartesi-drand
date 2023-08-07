@@ -1,15 +1,19 @@
 pub mod player {
     use std::{
+        cell::RefCell,
         error::Error,
         fmt::{self, Display},
-        sync::Arc, cell::RefCell,
+        sync::Arc,
     };
 
     use tokio::sync::Mutex;
 
-    use crate::models::card::card::{Card, Deck, Rank};
+    use crate::models::{
+        card::card::{Card, Deck, Rank},
+        game::game::Table,
+    };
 
-    use crate::util::random::{generate_random_number};
+    use crate::util::random::{call_seed, generate_random_number};
 
     pub struct Credit {
         pub amount: u32,
@@ -74,13 +78,8 @@ pub mod player {
         pub points: u8,
         pub is_standing: bool,
         deck: Arc<Mutex<Deck>>,
-        pub round: RefCell<usize>,
-    }
-
-    pub enum PlayerIntent {
-        Join,
-        Stop,
-        NeedCard,
+        round: usize,
+        // table: RefCell<Table>,
     }
 
     impl Display for PlayerHand {
@@ -96,14 +95,19 @@ pub mod player {
     }
 
     impl PlayerHand {
-        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>, round: RefCell<usize>) -> Self {
+        pub fn new(
+            player: Arc<Mutex<Player>>,
+            deck: Arc<Mutex<Deck>>,
+            // table: RefCell<Table>,
+        ) -> Self {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
                 is_standing: false,
                 points: 0,
                 deck,
-                round,
+                round: 0,
+                // table,
             }
         }
 
@@ -115,7 +119,7 @@ pub mod player {
         /**
          * Take a card from the deck and add it to the player's hand.
          */
-        pub async fn hit(&mut self) -> Result<(), &'static str> {
+        pub async fn hit(&mut self, timestamp: u64) -> Result<(), &'static str> {
             if self.points >= 21 {
                 Err("Player is busted.")?;
             }
@@ -124,16 +128,32 @@ pub mod player {
                 Err("Already standing.")?;
             }
 
-            // let nth = random::<usize>();
-            let mut deck = self.deck.lock().await;
+            let deck_is_empty = {
+                let deck = self.deck.lock().await;
+                deck.cards.is_empty()
+            };
 
-            if deck.cards.is_empty() {
+            if deck_is_empty {
+                self.is_standing = true;
                 Err("No cards in the deck.")?;
             }
 
-            let size = deck.cards.len();
-            let nth = generate_random_number("blackjack".to_string(), 0..size);
-            let card = deck.cards.remove(nth);
+            // @todo: use seed from the player
+            let seed = call_seed(timestamp)
+                .await
+                .map_err(|err| {
+                    eprint!("Error {:}", &err);
+                    err
+                })
+                .unwrap();
+
+            let card = {
+                let mut deck = self.deck.lock().await;
+                let size = deck.cards.len();
+                let nth = generate_random_number(seed, 0..size);
+                let card = deck.cards.remove(nth);
+                card
+            };
 
             let card_point = card.show_point();
             let points = self.points + card_point;
