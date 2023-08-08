@@ -53,6 +53,23 @@ stateDiagram-v2
 ```
 
 ```mermaid
+classDiagram
+    class Game {
+
+    }
+    class Table {
+
+    }
+    class Player {
+        - id: String
+        - name: String
+        + new(id: String, name: String)
+        + new_without_id(id: String, name: String)
+        + get_id(&self): String
+    }
+```
+
+```mermaid
 sequenceDiagram
     participant DApp as DApp
     participant Middleware as Middleware
