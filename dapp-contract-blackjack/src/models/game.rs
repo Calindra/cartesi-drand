@@ -41,6 +41,10 @@ pub mod game {
         }
 
         pub fn add_player(&mut self, player: Player) -> Result<(), &'static str> {
+            if self.players.iter().any(|p| p.get_id() == player.get_id()) {
+                return Err("Player already registered.");
+            }
+
             self.players.push(player);
             Ok(())
         }
@@ -135,6 +139,7 @@ pub mod game {
             Ok(())
         }
 
+        // Transforms the game into a table.
         pub fn round_start(self, nth_decks: usize) -> Result<Table, &'static str> {
             if self.players.len() < 2 {
                 Err("Minimum number of players not reached.")?;
