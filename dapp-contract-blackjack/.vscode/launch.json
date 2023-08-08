@@ -7,6 +7,43 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'cartesi-drand'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=cartesi-drand",
+                    "--package=cartesi-drand"
+                ],
+                "filter": {
+                    "name": "cartesi-drand",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'cartesi-drand'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=cartesi-drand",
+                    "--package=cartesi-drand"
+                ],
+                "filter": {
+                    "name": "cartesi-drand",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'dapp-contract-blackjack'",
             "cargo": {
                 "args": [
@@ -44,35 +81,17 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'dapp-contract-blackjack'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=dapp-contract-blackjack",
-                    "--package=dapp-contract-blackjack"
-                ],
-                "filter": {
-                    "name": "dapp-contract-blackjack",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'dapp-contract-blackjack'",
+            "name": "Debug integration test 'main_test'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=dapp-contract-blackjack",
+                    "--test=main_test",
                     "--package=dapp-contract-blackjack"
                 ],
                 "filter": {
-                    "name": "dapp-contract-blackjack",
-                    "kind": "bin"
+                    "name": "main_test",
+                    "kind": "test"
                 }
             },
             "args": [],

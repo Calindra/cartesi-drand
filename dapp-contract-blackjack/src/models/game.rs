@@ -6,7 +6,7 @@ pub mod game {
         },
         util::random::generate_id,
     };
-    use std::{cell::RefCell, sync::Arc};
+    use std::sync::Arc;
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -41,6 +41,10 @@ pub mod game {
         }
 
         pub fn add_player(&mut self, player: Player) -> Result<(), &'static str> {
+            if self.players.iter().any(|p| p.get_id() == player.get_id()) {
+                return Err("Player already registered.");
+            }
+
             self.players.push(player);
             Ok(())
         }
@@ -59,6 +63,10 @@ pub mod game {
             self.games.first_mut().ok_or("No games available.")
         }
 
+        pub fn first_game_available_owned(&mut self) -> Result<Game, &'static str> {
+            self.games.pop().ok_or("No games available.")
+        }
+
         pub fn show_games_id_available(&self) -> Vec<String> {
             self.games.iter().map(|game| game.id.clone()).collect()
         }
@@ -73,6 +81,9 @@ pub mod game {
             Ok(game)
         }
 
+        /**
+         * Players are cleared from the game.
+         */
         pub fn realocate_table_to_game(&mut self, table: Table) {
             let mut game = table.game;
             game.players.clear();
@@ -128,6 +139,7 @@ pub mod game {
             Ok(())
         }
 
+        // Transforms the game into a table.
         pub fn round_start(self, nth_decks: usize) -> Result<Table, &'static str> {
             if self.players.len() < 2 {
                 Err("Minimum number of players not reached.")?;
@@ -144,8 +156,6 @@ pub mod game {
         pub deck: Arc<Mutex<Deck>>,
         pub players_with_hand: Vec<PlayerHand>,
         game: Game,
-        is_finished: bool,
-        round: RefCell<usize>,
     }
 
     impl Table {
@@ -154,10 +164,13 @@ pub mod game {
             let mut players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks)?;
             let deck = Arc::new(Mutex::new(deck));
-            let round = RefCell::new(1);
 
             for player in game.players.iter() {
-                let player_hand = PlayerHand::new(player.clone(), deck.clone(), round.clone());
+                let player_hand = PlayerHand::new(
+                    player.clone(),
+                    deck.clone(),
+                    // RefCell::from(ref_table),
+                );
                 players_with_hand.push(player_hand);
             }
 
@@ -167,13 +180,7 @@ pub mod game {
                 deck,
                 players_with_hand,
                 game,
-                is_finished: false,
-                round,
             })
-        }
-
-        pub fn drop_table(self) -> Game {
-            self.game
         }
 
         pub fn any_player_can_hit(&self) -> bool {

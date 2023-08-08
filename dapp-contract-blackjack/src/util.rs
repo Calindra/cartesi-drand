@@ -1,7 +1,7 @@
 pub mod random {
-    use std::{env::var as env, error::Error, ops::Range};
+    use std::{env::var as env, error::Error, net::SocketAddr, ops::Range, str::FromStr};
 
-    use hyper::{body, client::HttpConnector, Body, Client, Request, Response, StatusCode};
+    use hyper::{body, Body, Client, Request, StatusCode};
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
@@ -12,33 +12,28 @@ pub mod random {
         rng.gen_range(range)
     }
 
-    async fn call_random_api(
-        client: &Client<HttpConnector>,
-        request: Request<Body>,
-    ) -> Result<(StatusCode, Response<Body>), Box<dyn Error>> {
-        let response = client.request(request).await?;
-
-        let status_response = response.status();
-        println!("Receive random status {}", &status_response);
-
-        Ok((status_response, response))
-    }
-
-    pub async fn need_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
+    pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
         println!("Calling random...");
 
         let client = Client::new();
         let server_addr = env("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let uri = format!("{}/random?timestamp={}", server_addr, timestamp);
+        let server_addr = server_addr.trim_end_matches("/");
+
+        let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
+
+        println!("Calling random at {:}", &uri);
 
         loop {
             let request = Request::builder()
-                .method("POST")
-                .uri(uri.to_owned())
+                .method(hyper::Method::POST)
+                .uri(&uri)
                 .header("Content-Type", "application/json")
                 .body(Body::empty())?;
 
-            let (status_response, body) = call_random_api(&client, request).await?;
+            let response = client.request(request).await?;
+
+            let status_response = response.status();
+            println!("Receive random status {}", &status_response);
 
             match status_response {
                 StatusCode::NOT_FOUND => {
@@ -46,7 +41,7 @@ pub mod random {
                 }
 
                 StatusCode::OK => {
-                    let body = body::to_bytes(body).await?;
+                    let body = body::to_bytes(response).await?;
                     let body = String::from_utf8(body.to_vec())?;
                     return Ok(body);
                 }
@@ -87,4 +82,16 @@ pub mod json {
             }
         })
     }
+}
+
+pub mod env {
+    macro_rules! check_if_dotenv_is_loaded {
+        () => {{
+            let is_env_loaded = dotenv::dotenv().ok().is_some();
+            assert!(is_env_loaded);
+            is_env_loaded
+        }};
+    }
+
+    pub(crate) use check_if_dotenv_is_loaded;
 }

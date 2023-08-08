@@ -1,13 +1,23 @@
+mod common;
+#[path = "../src/main.rs"]
+mod main;
+#[path = "../src/models/mod.rs"]
+mod models;
+#[path = "../src/util.rs"]
+mod util;
+
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
-        handle_request_action,
+        common::common::setup_hit_random,
+        main::handle_request_action,
         models::{
             game::game::{Game, Manager},
             player::player::Player,
         },
-        util::json::decode_payload,
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
     };
+
     use serde_json::json;
     use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
@@ -55,7 +65,7 @@ mod contract_blackjack_tests {
 
         let result = handle_request_action(&data, manager.clone(), false).await;
 
-        assert!(result.is_ok(), "Result is not ok");
+        assert!(result.is_ok(), "Result is not ok: {:}", result.unwrap_err());
 
         let manager = manager.lock().await;
 
@@ -168,7 +178,8 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
-        let mut game = Game::default();
+        let mut manager = Manager::new_with_games(10);
+        let mut game = manager.first_game_available_owned().unwrap();
 
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
@@ -180,12 +191,13 @@ mod contract_blackjack_tests {
         let size = table.players_with_hand.len();
         assert_eq!(size, 2);
 
-        let mut game = table.drop_table();
+        manager.realocate_table_to_game(table);
+        let game = manager.first_game_available().unwrap();
 
         let player = Player::new_without_id("Eve".to_string());
         game.player_join(player).unwrap();
 
-        assert_eq!(game.players.len(), 3);
+        assert_eq!(game.players.len(), 1);
     }
 
     #[tokio::test]
@@ -206,6 +218,9 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn size_of_deck_while_players_hit() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
         let mut game = Game::default();
 
         for name in ["Alice", "Bob"] {
@@ -227,7 +242,7 @@ mod contract_blackjack_tests {
             let run = || async {
                 let task = tokio::spawn(async move {
                     while player.points <= 11 {
-                        if let Err(res) = player.hit().await {
+                        if let Err(res) = player.hit(0).await {
                             println!("{:}", res);
                             break;
                         } else {
@@ -251,7 +266,11 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn hit_card_never_busted() {
-        let mut game = Game::default();
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
+        let mut manager = Manager::new_with_games(1);
+        let mut game = manager.first_game_available_owned().unwrap();
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
@@ -264,11 +283,12 @@ mod contract_blackjack_tests {
 
         assert!(first_player.is_some(), "First player not found.");
 
+        let timestamp = 1691386341757;
         let first_player = first_player.unwrap();
         let mut i = 1;
 
         while first_player.points <= 11 {
-            let res = first_player.hit().await;
+            let res = first_player.hit(timestamp).await;
 
             assert!(res.is_ok(), "Player is busted.");
 

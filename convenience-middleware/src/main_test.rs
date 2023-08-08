@@ -34,7 +34,7 @@ mod middleware_tests {
         ($x:expr ) => {
             let server = Server::run();
             server.expect(
-                Expectation::matching(request::method_path("POST", "/finish"))
+                Expectation::matching(request::method_path(hyper::Method::POST.as_str(), "/finish"))
                     .times(1..)
                     .respond_with($x),
             );

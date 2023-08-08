@@ -73,7 +73,7 @@ pub mod rollup {
         body: Value,
         sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
-        println!("Handling inspect");
+        println!("Handling advance");
 
         println!("body {:}", &body);
 

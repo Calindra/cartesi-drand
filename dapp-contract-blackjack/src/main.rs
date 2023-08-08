@@ -1,11 +1,11 @@
-use std::{borrow::BorrowMut, env, mem::size_of, sync::Arc};
+use std::{env, mem::size_of, sync::Arc};
 
-mod main_test;
 mod models;
 mod rollups;
 mod util;
 
 use dotenv::dotenv;
+use rollups::rollup::rollup;
 use serde_json::{json, Value};
 use tokio::{
     fs::File,
@@ -17,10 +17,13 @@ use tokio::{
 };
 use util::json::{decode_payload, generate_message};
 
-use crate::{
-    models::{game::game::Manager, player::player::Player},
-    rollups::rollup::rollup,
-};
+use crate::models::{game::game::Manager, player::player::Player};
+
+struct Metadata {
+    address: String,
+    timestamp: u64,
+    input_index: u64,
+}
 
 fn get_payload_from_root(root: &Value) -> Option<Value> {
     let root = root.as_object()?;
@@ -30,12 +33,20 @@ fn get_payload_from_root(root: &Value) -> Option<Value> {
     Some(payload)
 }
 
-fn get_address_metadata_from_root(root: &Value) -> Option<String> {
+fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
     let root = root.as_object()?;
     let root = root.get("data")?.as_object()?;
     let metadata = root.get("metadata")?.as_object()?;
+
     let address = metadata.get("msg_sender")?.as_str()?;
-    Some(address.to_owned())
+    let timestamp = metadata.get("timestamp")?.as_u64()?;
+    let input_index = metadata.get("input_index")?.as_u64()?;
+
+    Some(Metadata {
+        address: address.to_owned(),
+        timestamp,
+        input_index,
+    })
 }
 
 fn get_from_payload_action(payload: &Value) -> Option<String> {
@@ -62,7 +73,7 @@ fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
         .as_str()
         .ok_or("Field name isnt a string")
         .and_then(|name| {
-            if name.len() > 3 && name.len() < 255 {
+            if name.len() >= 3 && name.len() <= 255 {
                 Ok(name)
             } else {
                 Err("Name need between 3 and 255 characters")
@@ -85,15 +96,16 @@ pub async fn handle_request_action(
 
             let encoded_name = bs58::encode(&player_name).into_string();
 
-            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
-            let address_owner = address_owner.trim_start_matches("0x");
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
 
             // Add player to manager
-            let mut manager = manager.lock().await;
             let player = Player::new(address_encoded.clone(), player_name.to_string());
+            let mut manager = manager.lock().await;
             manager.add_player(player)?;
 
+            // Persist player
             if need_write {
                 let address_owner_obj = json!({ "address": address_owner });
                 let address_path = format!("../data/address/{}.json", address_encoded);
@@ -115,6 +127,8 @@ pub async fn handle_request_action(
                 "name": player_name,
             }));
 
+            println!("Response: {:}", response);
+
             return Ok(Some(response));
         }
         Some("show_games") => {
@@ -125,11 +139,14 @@ pub async fn handle_request_action(
                 "games": games,
             }));
 
+            println!("Response: {:}", response);
+
             return Ok(Some(response));
         }
 
         Some("start_game") => {
             let input = payload.get("input").ok_or("Invalid field input")?;
+
             let mut manager = manager.lock().await;
             let game_id = input
                 .get("game_id")
@@ -143,9 +160,10 @@ pub async fn handle_request_action(
         }
         Some("hit") => {
             // Address
-            let address_owner = get_address_metadata_from_root(root).ok_or("Invalid address")?;
-            let address_owner = address_owner.trim_start_matches("0x");
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
+            let timestamp = metadata.timestamp;
 
             // Game ID
             let input = payload.get("input").ok_or("Invalid field input")?;
@@ -158,7 +176,7 @@ pub async fn handle_request_action(
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
             let player = table.find_player_by_id(&address_encoded)?;
-            player.hit().await?;
+            player.hit(timestamp).await?;
         }
 
         Some("stand") => {
@@ -170,25 +188,27 @@ pub async fn handle_request_action(
     Ok(None)
 }
 
-async fn handle_game(
-    game: Arc<Mutex<Manager>>,
-    receiver: &mut Receiver<Value>,
-) -> Result<(), &'static str> {
-    while let Some(value) = receiver.recv().await {
-        println!("Received value: {}", value);
-        // @todo need return responses
-        let _ = handle_request_action(&value, game.clone(), true).await?;
-    }
-
-    Ok(())
-}
-
-async fn start_listener(game: Arc<Mutex<Manager>>, mut receiver: Receiver<Value>) {
+fn start_listener(
+    manager: Arc<Mutex<Manager>>,
+    mut receiver: Receiver<Value>,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        while let Err(err) = handle_game(game.clone(), receiver.borrow_mut()).await {
-            eprintln!("Listener Error: {}", err);
+        loop {
+            let receive = receiver.recv().await;
+
+            if let Some(value) = receive {
+                println!("Received value: {}", value);
+
+                // @todo need return responses
+                let _ = handle_request_action(&value, manager.clone(), true)
+                    .await
+                    .map_err(|err| {
+                        eprintln!("Listener Error: {}", err);
+                        err
+                    });
+            }
         }
-    });
+    })
 }
 
 fn start_sender(sender: Sender<Value>) {
@@ -209,5 +229,5 @@ async fn main() {
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
     start_sender(tx);
-    start_listener(manager, rx).await;
+    let _ = start_listener(manager, rx).await;
 }
