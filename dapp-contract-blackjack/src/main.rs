@@ -1,4 +1,4 @@
-use std::{borrow::BorrowMut, env, mem::size_of, sync::Arc};
+use std::{env, mem::size_of, sync::Arc};
 
 mod models;
 mod rollups;
@@ -101,10 +101,11 @@ pub async fn handle_request_action(
             let address_encoded = bs58::encode(address_owner).into_string();
 
             // Add player to manager
-            let mut manager = manager.lock().await;
             let player = Player::new(address_encoded.clone(), player_name.to_string());
+            let mut manager = manager.lock().await;
             manager.add_player(player)?;
 
+            // Persist player
             if need_write {
                 let address_owner_obj = json!({ "address": address_owner });
                 let address_path = format!("../data/address/{}.json", address_encoded);
@@ -126,6 +127,8 @@ pub async fn handle_request_action(
                 "name": player_name,
             }));
 
+            println!("Response: {:}", response);
+
             return Ok(Some(response));
         }
         Some("show_games") => {
@@ -136,11 +139,14 @@ pub async fn handle_request_action(
                 "games": games,
             }));
 
+            println!("Response: {:}", response);
+
             return Ok(Some(response));
         }
 
         Some("start_game") => {
             let input = payload.get("input").ok_or("Invalid field input")?;
+
             let mut manager = manager.lock().await;
             let game_id = input
                 .get("game_id")
@@ -182,25 +188,27 @@ pub async fn handle_request_action(
     Ok(None)
 }
 
-async fn handle_game(
-    game: Arc<Mutex<Manager>>,
-    receiver: &mut Receiver<Value>,
-) -> Result<(), &'static str> {
-    while let Some(value) = receiver.recv().await {
-        println!("Received value: {}", value);
-        // @todo need return responses
-        let _ = handle_request_action(&value, game.clone(), true).await?;
-    }
-
-    Ok(())
-}
-
-async fn start_listener(game: Arc<Mutex<Manager>>, mut receiver: Receiver<Value>) {
+fn start_listener(
+    manager: Arc<Mutex<Manager>>,
+    mut receiver: Receiver<Value>,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        while let Err(err) = handle_game(game.clone(), receiver.borrow_mut()).await {
-            eprintln!("Listener Error: {}", err);
+        loop {
+            let receive = receiver.recv().await;
+
+            if let Some(value) = receive {
+                println!("Received value: {}", value);
+
+                // @todo need return responses
+                let _ = handle_request_action(&value, manager.clone(), true)
+                    .await
+                    .map_err(|err| {
+                        eprintln!("Listener Error: {}", err);
+                        err
+                    });
+            }
         }
-    });
+    })
 }
 
 fn start_sender(sender: Sender<Value>) {
@@ -221,5 +229,5 @@ async fn main() {
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
     start_sender(tx);
-    start_listener(manager, rx).await;
+    let _ = start_listener(manager, rx).await;
 }
