@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod middleware_tests {
+    use std::sync::Once;
+
     use crate::{
         is_drand_beacon,
         models::models::{AppState, Beacon, Item},
@@ -16,7 +18,7 @@ mod middleware_tests {
     use httptest::{
         matchers::*,
         responders::{self, *},
-        Expectation, Server,
+        Expectation, ServerPool,
     };
     use serde_json::json;
 
@@ -29,20 +31,28 @@ mod middleware_tests {
         }};
     }
 
+    static SERVER: ServerPool = ServerPool::new(1);
+    static BIND_SERVER: Once = Once::new();
+
     #[macro_export]
     macro_rules! mock_rollup_server {
         ($x:expr ) => {
-            let server = Server::run();
+            let server = SERVER.get_server();
+
             server.expect(
-                Expectation::matching(request::method_path(hyper::Method::POST.as_str(), "/finish"))
-                    .times(1..)
-                    .respond_with($x),
+                Expectation::matching(request::method_path(
+                    hyper::Method::POST.as_str(),
+                    "/finish",
+                ))
+                .times(1..)
+                .respond_with($x),
             );
-            let url = server.url("/finish");
-            std::env::set_var(
-                "ROLLUP_HTTP_SERVER_URL",
-                format!("http://localhost:{}", url.port().unwrap()),
-            );
+
+            BIND_SERVER.call_once(|| {
+                let url = server.url_str("");
+                let url = url.trim_end_matches("/");
+                std::env::set_var("ROLLUP_HTTP_SERVER_URL", url);
+            });
         };
     }
 
