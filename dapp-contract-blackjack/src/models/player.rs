@@ -173,7 +173,7 @@ pub mod player {
         /**
          * Add the value of the card to the player's hand.
          */
-        async fn stand(&mut self) -> Result<(), ()> {
+        pub async fn stand(&mut self) -> Result<(), &'static str> {
             self.is_standing = true;
             Ok(())
         }

@@ -147,15 +147,20 @@ pub async fn handle_request_action(
         Some("start_game") => {
             let input = payload.get("input").ok_or("Invalid field input")?;
 
-            let mut manager = manager.lock().await;
+            // Parsing JSON
             let game_id = input
                 .get("game_id")
                 .ok_or("Invalid field game_id")?
                 .as_str()
                 .ok_or("Invalid game_id")?;
 
+            let mut manager = manager.lock().await;
+
+            // Get game and make owner
             let game = manager.drop_game(game_id.to_string())?;
+            // Generate table from game
             let table = game.round_start(2)?;
+            // Add table to manager
             manager.add_table(table);
         }
         Some("hit") => {
@@ -180,7 +185,24 @@ pub async fn handle_request_action(
         }
 
         Some("stand") => {
-            todo!("stand")
+            let input = payload.get("input").ok_or("Invalid field input")?;
+
+            // Parsing JSON
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
+            let address_encoded = bs58::encode(address_owner).into_string();
+
+            let mut manager = manager.lock().await;
+            let table = manager.get_table(game_id)?;
+            let player = table.find_player_by_id(&address_encoded)?;
+
+            player.stand().await?;
         }
         _ => Err("Invalid action")?,
     }
@@ -191,6 +213,7 @@ pub async fn handle_request_action(
 fn start_listener(
     manager: Arc<Mutex<Manager>>,
     mut receiver: Receiver<Value>,
+    sender_middleware: Sender<Value>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         loop {
@@ -200,12 +223,19 @@ fn start_listener(
                 println!("Received value: {}", value);
 
                 // @todo need return responses
-                let _ = handle_request_action(&value, manager.clone(), true)
+                let value = handle_request_action(&value, manager.clone(), true)
                     .await
                     .map_err(|err| {
                         eprintln!("Listener Error: {}", err);
                         err
                     });
+
+                if let Ok(Some(value)) = value {
+                    let _ = sender_middleware.send(value).await.map_err(|err| {
+                        eprintln!("Send to middleware error: {}", err);
+                        err
+                    });
+                }
             }
         }
     })
@@ -213,8 +243,19 @@ fn start_listener(
 
 fn start_sender(sender: Sender<Value>) {
     tokio::spawn(async move {
-        while let Err(resp) = rollup(&sender).await {
-            eprintln!("Sender error: {}", resp);
+        loop {
+            if let Err(resp) = rollup(&sender).await {
+                eprintln!("Sender error: {}", resp);
+            }
+        }
+    });
+}
+
+fn listener_send_message_to_middleware(mut receiver: Receiver<Value>) {
+    tokio::spawn(async move {
+        while let Some(value) = receiver.recv().await {
+            println!("Received value: {}", value);
+            todo!();
         }
     });
 }
@@ -222,12 +263,15 @@ fn start_sender(sender: Sender<Value>) {
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-
-    let manager = Arc::new(Mutex::new(Manager::default()));
-    let (tx, rx) = channel::<Value>(size_of::<Value>());
-
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
-    start_sender(tx);
-    let _ = start_listener(manager, rx).await;
+    const SLOTS: usize = 10;
+
+    let manager = Arc::new(Mutex::new(Manager::new_with_games(SLOTS)));
+    let (sender_rollup, receiver_rollup) = channel::<Value>(size_of::<Value>());
+    let (sender_middl, receiver_middl) = channel::<Value>(size_of::<Value>());
+
+    start_sender(sender_rollup);
+    listener_send_message_to_middleware(receiver_middl);
+    let _ = start_listener(manager, receiver_rollup, sender_middl).await;
 }
