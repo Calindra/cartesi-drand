@@ -1,6 +1,5 @@
 pub mod player {
     use std::{
-        cell::RefCell,
         error::Error,
         fmt::{self, Display},
         sync::Arc,
@@ -8,10 +7,7 @@ pub mod player {
 
     use tokio::sync::Mutex;
 
-    use crate::models::{
-        card::card::{Card, Deck, Rank},
-        game::game::Table,
-    };
+    use crate::models::card::card::{Card, Deck, Rank};
 
     use crate::util::random::{call_seed, generate_random_number};
 
@@ -78,8 +74,8 @@ pub mod player {
         pub points: u8,
         pub is_standing: bool,
         deck: Arc<Mutex<Deck>>,
-        round: usize,
-        // table: RefCell<Table>,
+        round: u8,
+        // table: Table,
     }
 
     impl Display for PlayerHand {
@@ -95,20 +91,19 @@ pub mod player {
     }
 
     impl PlayerHand {
-        pub fn new(
-            player: Arc<Mutex<Player>>,
-            deck: Arc<Mutex<Deck>>,
-            // table: RefCell<Table>,
-        ) -> Self {
+        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>) -> Self {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
                 is_standing: false,
                 points: 0,
                 deck,
-                round: 0,
-                // table,
+                round: 1,
             }
+        }
+
+        pub fn get_round(&self) -> u8 {
+            self.round.clone()
         }
 
         pub fn get_player_id(&self) -> Result<String, Box<dyn Error>> {
@@ -166,6 +161,7 @@ pub mod player {
 
             self.is_standing = self.is_standing || self.points >= 21;
             self.hand.0.push(card);
+            self.round += 1;
 
             Ok(())
         }

@@ -156,31 +156,62 @@ pub mod game {
         pub deck: Arc<Mutex<Deck>>,
         pub players_with_hand: Vec<PlayerHand>,
         game: Game,
+        round: u8,
     }
 
     impl Table {
+        pub fn get_round(&self) -> u8 {
+            self.round
+        }
+
         fn new(game: Game, nth_decks: usize) -> Result<Self, &'static str> {
             // let bets = Vec::new();
-            let mut players_with_hand = Vec::new();
-            let deck = Deck::new_with_capacity(nth_decks)?;
-            let deck = Arc::new(Mutex::new(deck));
+            let players_with_hand = Vec::new();
+            let deck = Deck::new_with_capacity(nth_decks).map(|deck| Arc::new(Mutex::new(deck)))?;
 
-            for player in game.players.iter() {
-                let player_hand = PlayerHand::new(
-                    player.clone(),
-                    deck.clone(),
-                    // RefCell::from(ref_table),
-                );
-                players_with_hand.push(player_hand);
-            }
-
-            // @TODO: Implement bet.
-
-            Ok(Table {
+            let mut table = Self {
                 deck,
                 players_with_hand,
                 game,
-            })
+                round: 1,
+            };
+
+            table.game.players.iter().for_each(|player| {
+                let player = player.clone();
+                let player_hand = PlayerHand::new(player, table.deck.clone());
+                table.players_with_hand.push(player_hand);
+            });
+
+            // @TODO: Implement bet.
+
+            Ok(table)
+        }
+
+        pub async fn hit_player(
+            &mut self,
+            player_id: &str,
+            timestamp: u64,
+        ) -> Result<(), &'static str> {
+            let round = self.round;
+            let player = self.find_player_by_id(player_id)?;
+
+            if round != player.get_round() {
+                Err("Round is not the same. Waiting for another players.")?;
+            }
+
+            player.hit(timestamp).await?;
+
+            self.next_round();
+
+            Ok(())
+        }
+
+        fn next_round(&mut self) {
+            if self.any_player_can_hit() {
+                return;
+            }
+
+            self.round = self.round + 1;
         }
 
         pub fn any_player_can_hit(&self) -> bool {

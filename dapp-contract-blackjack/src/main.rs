@@ -180,8 +180,7 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
-            let player = table.find_player_by_id(&address_encoded)?;
-            player.hit(timestamp).await?;
+            table.hit_player(&address_encoded, timestamp).await?;
         }
 
         Some("stand") => {
