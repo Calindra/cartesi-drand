@@ -19,7 +19,7 @@ mod contract_blackjack_tests {
     };
 
     use serde_json::json;
-    use std::{ops::Rem, sync::Arc};
+    use std::{borrow::BorrowMut, ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
 
     #[tokio::test]
@@ -228,40 +228,28 @@ mod contract_blackjack_tests {
             game.player_join(player).unwrap();
         }
 
-        let table = game.round_start(1).unwrap();
+        let mut table = game.round_start(1).unwrap();
+        let timestamp: u64 = 1691386341757;
 
-        let size = table.deck.lock().await.cards.len();
+        for player in table.players_with_hand.iter_mut() {
+            let player = Box::new(player);
 
-        assert_eq!(size, 52);
+            while player.points <= 11 {
+                let result = player.hit(timestamp).await;
 
-        let i = Arc::new(Mutex::new(0));
-        let mut tasks = Vec::new();
-
-        for mut player in table.players_with_hand {
-            let i = i.clone();
-            let run = || async {
-                let task = tokio::spawn(async move {
-                    while player.points <= 11 {
-                        if let Err(res) = player.hit(0).await {
-                            println!("{:}", res);
-                            break;
-                        } else {
-                            let mut i = i.lock().await;
-                            *i = *i + 1;
-                        }
-                    }
-                });
-                task.await
-            };
-
-            tasks.push(run);
+                if let Err(err) = result {
+                    eprintln!("{:}", err);
+                }
+            }
+            println!("{:}", player);
         }
 
-        for run_task in tasks {
-            run_task().await.unwrap();
-        }
+        let is_any_more_than_21 = table
+            .players_with_hand
+            .iter()
+            .any(|player| player.points > 21);
 
-        assert_ne!(*i.lock().await, 52);
+        assert_eq!(is_any_more_than_21, false);
     }
 
     #[tokio::test]
