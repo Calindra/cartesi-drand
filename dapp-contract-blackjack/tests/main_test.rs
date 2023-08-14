@@ -191,7 +191,7 @@ mod contract_blackjack_tests {
         let size = table.players_with_hand.len();
         assert_eq!(size, 2);
 
-        manager.realocate_table_to_game(table);
+        manager.reallocate_table_to_game(table);
         let game = manager.first_game_available().unwrap();
 
         let player = Player::new_without_id("Eve".to_string());

@@ -10,9 +10,9 @@ pub mod game {
     use tokio::sync::Mutex;
 
     pub struct Manager {
-        pub games: Vec<Game>,
+        pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: Vec<Player>,
-        pub tables: Vec<Table>,
+        pub tables: Vec<Table>, // games running
     }
 
     impl Default for Manager {
@@ -84,7 +84,7 @@ pub mod game {
         /**
          * Players are cleared from the game.
          */
-        pub fn realocate_table_to_game(&mut self, table: Table) {
+        pub fn reallocate_table_to_game(&mut self, table: Table) {
             let mut game = table.game;
             game.players.clear();
             self.games.push(game);

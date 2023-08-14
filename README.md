@@ -82,3 +82,34 @@ When an input backend execution requesting a random number arrives, it will forc
 We know that the user’s DApp calls the rollup server, we change the arrow direction to make the problem easier to think about. In reality, DApps will call our middleware and our middleware will call the rollup server.
 
 The DApp’s owner can run an instance of the Convenience API to provide this random number functionality.
+
+## How to run
+
+Start the Rollups in host mode:
+```shell
+docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
+```
+
+Start the middleware:
+```shell
+cd convenience-middleware/ && cargo run
+```
+
+Start the drand-provider:
+```shell
+cd convenience-drand-provider/ && yarn && yarn dev
+```
+
+Run this smoke test 3x
+```shell
+curl http://localhost:8080/random?timestamp=123
+```
+
+Run the DApp contract
+```shell
+export MIDDLEWARE_HTTP_SERVER_URL=http://localhost:8080
+cd dapp-contract-blackjack/ && cargo run
+```
+
+
+
