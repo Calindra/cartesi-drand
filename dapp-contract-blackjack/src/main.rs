@@ -240,10 +240,10 @@ fn start_listener(
     })
 }
 
-fn start_sender(sender: Sender<Value>) {
+fn start_sender(manager: Arc<Mutex<Manager>>, sender: Sender<Value>) {
     tokio::spawn(async move {
         loop {
-            if let Err(resp) = rollup(&sender).await {
+            if let Err(resp) = rollup(manager.clone(), &sender).await {
                 eprintln!("Sender error: {}", resp);
             }
         }
@@ -270,7 +270,7 @@ async fn main() {
     let (sender_rollup, receiver_rollup) = channel::<Value>(size_of::<Value>());
     let (sender_middl, receiver_middl) = channel::<Value>(size_of::<Value>());
 
-    start_sender(sender_rollup);
+    start_sender(manager.clone(), sender_rollup);
     listener_send_message_to_middleware(receiver_middl);
     let _ = start_listener(manager, receiver_rollup, sender_middl).await;
 }

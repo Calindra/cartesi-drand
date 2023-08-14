@@ -1,12 +1,21 @@
 pub mod rollup {
     use hyper::{
-        body::to_bytes, client::HttpConnector, header, Body, Client, Method, Request, StatusCode,
+        body::to_bytes, client::HttpConnector, header, Body, Client, Method, Request, Response,
+        StatusCode,
     };
     use serde_json::{from_str, json, Value};
-    use std::{env, error::Error, str::from_utf8};
-    use tokio::sync::mpsc::Sender;
+    use std::{env, error::Error, str::from_utf8, sync::Arc};
+    use tokio::sync::{mpsc::Sender, Mutex};
 
-    pub async fn rollup(sender: &Sender<Value>) -> Result<(), Box<dyn Error>> {
+    use crate::{
+        models::game::game::Manager,
+        util::json::{decode_payload, generate_message},
+    };
+
+    pub async fn rollup(
+        manager: Arc<Mutex<Manager>>,
+        sender: &Sender<Value>,
+    ) -> Result<(), Box<dyn Error>> {
         println!("Starting loop...");
 
         let client = Client::new();
@@ -41,7 +50,8 @@ pub mod rollup {
                         handle_advance(&client, &server_addr[..], body, sender).await?
                     }
                     "inspect_state" => {
-                        handle_inspect(&client, &server_addr[..], body, sender).await?
+                        handle_inspect(manager.clone(), &client, &server_addr[..], body, sender)
+                            .await?
                     }
                     &_ => {
                         eprintln!("Unknown request type");
@@ -53,6 +63,7 @@ pub mod rollup {
     }
 
     async fn handle_inspect(
+        manager: Arc<Mutex<Manager>>,
         client: &Client<HttpConnector>,
         server_addr: &str,
         body: Value,
@@ -62,7 +73,25 @@ pub mod rollup {
 
         println!("body {:}", &body);
 
-        sender.send(body).await?;
+        // sender.send(body).await?;
+        // handle_request_action(&body, manager, false).await?;
+
+        let payload = get_payload_from_root(&body).ok_or("Invalid payload")?;
+        let action = get_from_payload_action(&payload);
+        match action.as_deref() {
+            Some("show_games") => {
+                let manager = manager.lock().await;
+                let games = manager.show_games_id_available();
+
+                let response = generate_message(json!({
+                    "games": games,
+                }));
+
+                println!("Response: {:}", response);
+                let _ = send_report(response.clone()).await;
+            },
+            _ => Err("Invalid inspect")?,
+        };
 
         Ok("accept")
     }
@@ -85,7 +114,8 @@ pub mod rollup {
     pub(crate) async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env ROLLUP_HTTP_SERVER_URL is not set");
+        let server_addr =
+            std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env ROLLUP_HTTP_SERVER_URL is not set");
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -95,5 +125,19 @@ pub mod rollup {
 
         let _ = client.request(req).await?;
         Ok("accept")
+    }
+
+    fn get_payload_from_root(root: &Value) -> Option<Value> {
+        let root = root.as_object()?;
+        let root = root.get("data")?.as_object()?;
+        let payload = root.get("payload")?.as_str()?;
+        let payload = decode_payload(payload)?;
+        Some(payload)
+    }
+
+    fn get_from_payload_action(payload: &Value) -> Option<String> {
+        let input = payload.get("input")?.as_object()?;
+        let action = input.get("action")?.as_str()?;
+        Some(action.to_owned())
     }
 }
