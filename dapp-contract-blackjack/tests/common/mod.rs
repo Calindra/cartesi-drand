@@ -43,9 +43,11 @@ pub mod common {
 
         BIND_SERVER.call_once(|| {
             set_var("MIDDLEWARE_HTTP_SERVER_URL", &url);
+            set_var("ROLLUP_HTTP_SERVER_URL", &url);
         });
 
         assert!(std::env::var("MIDDLEWARE_HTTP_SERVER_URL").is_ok());
+        assert!(std::env::var("ROLLUP_HTTP_SERVER_URL").is_ok());
 
         println!("Server listening on {}", &url);
 

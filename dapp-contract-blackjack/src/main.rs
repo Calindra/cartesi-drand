@@ -5,7 +5,7 @@ mod rollups;
 mod util;
 
 use dotenv::dotenv;
-use rollups::rollup::rollup;
+use rollups::rollup::{rollup, send_report};
 use serde_json::{json, Value};
 use tokio::{
     fs::File,
@@ -140,7 +140,7 @@ pub async fn handle_request_action(
             }));
 
             println!("Response: {:}", response);
-
+            let _ = send_report(response.clone()).await;
             return Ok(Some(response));
         }
 
