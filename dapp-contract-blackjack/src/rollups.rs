@@ -88,7 +88,9 @@ pub mod rollup {
                 }));
 
                 println!("Response: {:}", response);
-                let _ = send_report(response.clone()).await;
+                let json_as_hex = hex::encode(response.to_string());
+                let report = json!({ "payload": format!("0x{}", json_as_hex) });
+                let _ = send_report(report.clone()).await;
             },
             _ => Err("Invalid inspect")?,
         };
