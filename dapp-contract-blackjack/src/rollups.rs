@@ -83,13 +83,12 @@ pub mod rollup {
                 let manager = manager.lock().await;
                 let games = manager.show_games_id_available();
 
-                let response = generate_message(json!({
+                let response = json!({
                     "games": games,
-                }));
-
-                println!("Response: {:}", response);
+                });
                 let json_as_hex = hex::encode(response.to_string());
                 let report = json!({ "payload": format!("0x{}", json_as_hex) });
+                println!("Report: {:}", report);
                 let _ = send_report(report.clone()).await;
             },
             _ => Err("Invalid inspect")?,
