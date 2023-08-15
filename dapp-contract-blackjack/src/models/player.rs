@@ -122,8 +122,12 @@ pub mod player {
             self.round.clone()
         }
 
-        pub fn get_player_id(&self) -> Result<String, Box<dyn Error>> {
-            Ok(self.player.id.to_owned())
+        pub fn get_player_id(&self) -> String {
+            self.player.id.to_owned()
+        }
+
+        pub fn get_player_ref(&self) -> Arc<Player> {
+            self.player.clone()
         }
 
         /**

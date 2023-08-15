@@ -14,6 +14,7 @@ pub mod game {
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
         pub tables: Vec<Table>, // games running
+        scoreboards: Vec<Scoreboard>,
     }
 
     impl Default for Manager {
@@ -22,6 +23,7 @@ pub mod game {
                 games: Vec::new(),
                 tables: Vec::new(),
                 players: HashMap::new(),
+                scoreboards: Vec::new(),
             }
         }
     }
@@ -38,6 +40,7 @@ pub mod game {
                 games,
                 tables: Vec::with_capacity(game_size),
                 players: HashMap::new(),
+                scoreboards: Vec::new(),
             }
         }
 
@@ -94,6 +97,24 @@ pub mod game {
          * Players are cleared from the game.
          */
         pub fn reallocate_table_to_game(&mut self, table: Table) {
+            let players = table.game.players.iter().cloned().collect();
+
+            let mut winner: Option<Arc<Player>> = None;
+            let mut winner_points = 0;
+
+            for hand in table.players_with_hand.iter() {
+                if winner.is_none() || hand.points > winner_points {
+                    winner = Some(hand.get_player_ref());
+                    winner_points = hand.points;
+                } else if hand.points == winner_points {
+                    winner = None;
+                    break;
+                }
+            }
+
+            let scoreboard = Scoreboard::new(table.game.get_id(), players, winner);
+            self.scoreboards.push(scoreboard);
+
             let mut game = table.game;
             game.players.clear();
             self.games.push(game);
@@ -114,14 +135,16 @@ pub mod game {
                 .ok_or("Table not found or not started.")
         }
 
-        pub fn get_table_owned(&mut self, id: &str) -> Result<Table, &'static str> {
+        pub fn stop_game(&mut self, id: &str) -> Result<(), &'static str> {
             let index = self
                 .tables
                 .iter_mut()
                 .position(|table| table.game.get_id() == id)
                 .ok_or("Table not found or not started.")?;
             let table = self.tables.swap_remove(index);
-            Ok(table)
+            self.reallocate_table_to_game(table);
+
+            Ok(())
         }
 
         pub fn player_join(
@@ -157,6 +180,15 @@ pub mod game {
         players: Vec<Arc<Player>>,
         winner: Option<Arc<Player>>,
     }
+    impl Scoreboard {
+        fn new(game_id: &str, players: Vec<Arc<Player>>, winner: Option<Arc<Player>>) -> Self {
+            Scoreboard {
+                game_id: game_id.to_string(),
+                players,
+                winner,
+            }
+        }
+    }
 
     /**
      * This is where the game is initialized.
@@ -181,7 +213,11 @@ pub mod game {
         }
 
         // Transforms the game into a table.
-        pub fn round_start(self, nth_decks: usize, last_timestamp: u64) -> Result<Table, &'static str> {
+        pub fn round_start(
+            self,
+            nth_decks: usize,
+            last_timestamp: u64,
+        ) -> Result<Table, &'static str> {
             if self.players.len() < 2 {
                 Err("Minimum number of players not reached.")?;
             }
@@ -237,7 +273,10 @@ pub mod game {
             let player = self.find_player_by_id(player_id)?;
             let player_round = player.get_round();
             if round != player.get_round() {
-                println!("Game round {}; Player round {}; Player id {};", round, player_round, player_id);
+                println!(
+                    "Game round {}; Player round {}; Player id {};",
+                    round, player_round, player_id
+                );
                 Err("Round is not the same. Waiting for another players.")?;
             }
 
@@ -266,7 +305,7 @@ pub mod game {
         pub fn find_player_by_id(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
             self.players_with_hand
                 .iter_mut()
-                .find(|player| player.get_player_id().is_ok_and(|p_id| p_id == id))
+                .find(|player| player.get_player_id() == id)
                 .ok_or("Player not found.")
         }
 

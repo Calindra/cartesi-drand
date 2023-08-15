@@ -197,9 +197,7 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
 
-            let table = manager.get_table_owned(game_id)?;
-
-            manager.reallocate_table_to_game(table);
+            manager.stop_game(game_id)?;
         }
 
         Some("show_hands") => {
