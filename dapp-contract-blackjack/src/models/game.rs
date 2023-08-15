@@ -6,12 +6,13 @@ pub mod game {
         },
         util::random::generate_id,
     };
-    use std::sync::Arc;
+    use serde_json::json;
+    use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
         pub games: Vec<Game>, // games to be started. A player can join this game
-        pub players: Vec<Arc<Player>>,
+        pub players: HashMap<String, Arc<Player>>,
         pub tables: Vec<Table>, // games running
     }
 
@@ -20,7 +21,7 @@ pub mod game {
             Manager {
                 games: Vec::new(),
                 tables: Vec::new(),
-                players: Vec::new(),
+                players: HashMap::new(),
             }
         }
     }
@@ -36,37 +37,27 @@ pub mod game {
             Manager {
                 games,
                 tables: Vec::with_capacity(game_size),
-                players: Vec::new(),
+                players: HashMap::new(),
             }
         }
 
         pub fn add_player(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
-            if self.players.iter().any(|p| p.get_id() == player.get_id()) {
+            if self.players.contains_key(&player.get_id()) {
                 return Err("Player already registered.");
             }
 
-            self.players.push(player);
+            self.players.insert(player.get_id(), player);
             Ok(())
         }
 
         pub fn remove_player_by_id(&mut self, id: String) -> Result<Arc<Player>, &'static str> {
-            let index = self
-                .players
-                .iter()
-                .position(|player| player.get_id() == id)
-                .ok_or("Player not found.")?;
-            let player = self.players.remove(index);
+            let player = self.players.remove(&id).ok_or("Player not found.")?;
             Ok(player)
         }
 
         pub fn get_player_ref(&mut self, address: String) -> Result<Arc<Player>, &'static str> {
-            let index = self
-                .players
-                .iter()
-                .position(|player| player.get_id() == address)
-                .ok_or("No player found.")?;
-            let player = self.players.swap_remove(index);
-            self.players.push(player.clone());
+            let player = self.remove_player_by_id(address)?;
+            self.players.insert(player.get_id(), player.clone());
             Ok(player)
         }
 
@@ -122,6 +113,49 @@ pub mod game {
                 .find(|table| table.game.get_id() == id)
                 .ok_or("Table not found or not started.")
         }
+
+        pub fn get_table_owned(&mut self, id: &str) -> Result<Table, &'static str> {
+            let index = self
+                .tables
+                .iter_mut()
+                .position(|table| table.game.get_id() == id)
+                .ok_or("Table not found or not started.")?;
+            let table = self.tables.swap_remove(index);
+            Ok(table)
+        }
+
+        pub fn player_join(
+            &mut self,
+            game_id: String,
+            player: Arc<Player>,
+        ) -> Result<(), &'static str> {
+            if !self.players.contains_key(&player.get_id()) {
+                // self.add_player(player.clone())?;
+                return Err("Player isnt not registered");
+            }
+
+            let game = self.get_game_by_id(game_id)?;
+
+            if game.players.len() >= 7 {
+                return Err("Maximum number of players reached.");
+            }
+
+            if game.players.iter().any(|p| p.get_id() == player.get_id()) {
+                return Err("Player already registered.");
+            }
+
+            game.players.push(player);
+            Ok(())
+        }
+    }
+
+    /**
+     * The scoreboard is where the game is finished.
+     */
+    pub struct Scoreboard {
+        game_id: String,
+        players: Vec<Arc<Player>>,
+        winner: Option<Arc<Player>>,
     }
 
     /**
@@ -144,15 +178,6 @@ pub mod game {
     impl Game {
         pub fn get_id(&self) -> &str {
             &self.id
-        }
-
-        pub fn player_join(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
-            if self.players.len() >= 7 {
-                return Err("Maximum number of players reached.");
-            }
-
-            self.players.push(player);
-            Ok(())
         }
 
         // Transforms the game into a table.
@@ -241,6 +266,12 @@ pub mod game {
                 .iter_mut()
                 .find(|player| player.get_player_id().is_ok_and(|p_id| p_id == id))
                 .ok_or("Player not found.")
+        }
+
+        pub fn generate_hands(&self) -> serde_json::Value {
+            json!({
+                "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<serde_json::Value>>()
+            })
         }
     }
 }

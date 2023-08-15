@@ -150,8 +150,7 @@ pub async fn handle_request_action(
                 .as_str()
                 .ok_or("Invalid game_id")?;
 
-            let game = manager.get_game_by_id(game_id.to_string())?;
-            game.player_join(player.clone())?;
+            manager.player_join(game_id.to_owned(), player.clone())?;
         }
         Some("show_games") => {
             let manager = manager.lock().await;
@@ -179,12 +178,51 @@ pub async fn handle_request_action(
             let mut manager = manager.lock().await;
 
             // Get game and make owner
-            let game = manager.drop_game(game_id.to_string())?;
+            let game = manager.drop_game(game_id.to_owned())?;
             // Generate table from game
             let table = game.round_start(2)?;
             // Add table to manager
             manager.add_table(table);
         }
+
+        Some("stop_game") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
+
+            // Parsing JSON
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let mut manager = manager.lock().await;
+
+            let table = manager.get_table_owned(game_id)?;
+
+            manager.reallocate_table_to_game(table);
+        }
+
+        Some("show_hands") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
+
+            // Parsing JSON
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let mut manager = manager.lock().await;
+
+            let table = manager.get_table(game_id)?;
+            let hands = table.generate_hands();
+            let result = generate_message(hands);
+
+            println!("Response: {:}", result);
+
+            return Ok(Some(result));
+        }
+
         Some("hit") => {
             // Address
             let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;

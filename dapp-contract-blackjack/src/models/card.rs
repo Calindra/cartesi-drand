@@ -1,6 +1,8 @@
 pub mod card {
     use std::fmt::Display;
 
+    use serde::Serialize;
+
     #[derive(Clone)]
     pub enum Suit {
         Spades,   // Espadas
@@ -19,6 +21,19 @@ pub mod card {
             };
 
             write!(f, "{}", suit)
+        }
+    }
+
+    impl Suit {
+        pub fn get_suit(&self) -> String {
+            let suit = match self {
+                Suit::Spades => "Spades",
+                Suit::Hearts => "Hearts",
+                Suit::Diamonds => "Diamonds",
+                Suit::Clubs => "Clubs",
+            };
+
+            suit.to_string()
         }
     }
 
@@ -60,6 +75,23 @@ pub mod card {
         }
     }
 
+    impl Rank {
+        pub fn get_rank(&self) -> String {
+            let rank = self.clone() as u8;
+            if rank > 1 && rank < 11 {
+                rank.to_string()
+            } else {
+                match self {
+                    Rank::Ace => "A".to_string(),
+                    Rank::Jack => "J".to_string(),
+                    Rank::Queen => "Q".to_string(),
+                    Rank::King => "K".to_string(),
+                    _ => "".to_string(),
+                }
+            }
+        }
+    }
+
     pub struct Card {
         pub suit: Suit,
         pub rank: Rank,
@@ -77,6 +109,10 @@ pub mod card {
             }
 
             point
+        }
+
+        pub fn serialize(&self) -> String {
+            format!("{}-{}", self.rank.get_rank(), self.suit.get_suit())
         }
     }
 

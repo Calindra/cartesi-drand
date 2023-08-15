@@ -25,7 +25,7 @@ pub mod random {
 
         loop {
             let request = Request::builder()
-                .method(hyper::Method::POST)
+                .method(hyper::Method::GET)
                 .uri(&uri)
                 .header("Content-Type", "application/json")
                 .body(Body::empty())?;

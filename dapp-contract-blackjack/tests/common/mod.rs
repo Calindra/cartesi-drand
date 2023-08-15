@@ -19,7 +19,7 @@ pub mod common {
 
         add_expectation(
             all_of![
-                request::method_path(hyper::Method::POST.as_str(), "/random"),
+                request::method_path(hyper::Method::GET.as_str(), "/random"),
                 request::query(url_decoded(contains(key("timestamp"))))
             ],
             json_encoded(message),

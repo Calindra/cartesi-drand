@@ -11,10 +11,7 @@ mod contract_blackjack_tests {
     use crate::{
         common::common::setup_hit_random,
         main::handle_request_action,
-        models::{
-            game::game::{Game, Manager},
-            player::player::Player,
-        },
+        models::{game::game::Manager, player::player::Player},
         util::{env::check_if_dotenv_is_loaded, json::decode_payload},
     };
 
@@ -51,7 +48,6 @@ mod contract_blackjack_tests {
     #[tokio::test]
     async fn should_create_player() {
         let manager = Manager::default();
-        let manager = Arc::new(Mutex::new(manager));
 
         // Based on this: https://docs.cartesi.io/cartesi-rollups/api/rollup/finish/
         let payload = json!({
@@ -63,9 +59,17 @@ mod contract_blackjack_tests {
 
         let data = factory_message(payload);
 
+        let manager = Arc::new(Mutex::new(manager));
+
         let result = handle_request_action(&data, manager.clone(), false).await;
 
         assert!(result.is_ok(), "Result is not ok: {:}", result.unwrap_err());
+        assert!(result.unwrap().is_some(), "Result is not some");
+
+        let address = "0xdeadbeef";
+        let address = bs58::encode(address[2..].to_string()).into_string();
+
+        println!("Address {}", address);
 
         let manager = manager.lock().await;
 
@@ -73,7 +77,7 @@ mod contract_blackjack_tests {
 
         assert_eq!(size, 1);
 
-        let player = manager.players.get(0).unwrap();
+        let player = manager.players.get(&address).unwrap();
 
         println!("{:}", player);
     }
@@ -86,20 +90,23 @@ mod contract_blackjack_tests {
 
         // Get ref for first game
         let game = manager.first_game_available().unwrap();
-        let game_id = game.get_id().to_owned();
+        let game = game.get_id().to_owned();
 
         // Add players
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game.to_owned(), player).unwrap();
         }
 
+        let game = manager.get_game_by_id(game.to_owned()).unwrap();
         assert_eq!(game.players.len(), 2);
+        let game = game.get_id().to_owned();
 
         // Start this game
-        let game = manager.drop_game(game_id).unwrap();
+        let game = manager.drop_game(game).unwrap();
         let table = game.round_start(1);
 
         assert!(table.is_ok(), "Table is not ok");
@@ -142,13 +149,14 @@ mod contract_blackjack_tests {
     async fn start_game() {
         let mut manager = Manager::new_with_games(10);
         let game = manager.first_game_available().unwrap();
-        let game_id = game.get_id().to_owned();
+        let game = game.get_id().to_owned();
 
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game.to_owned(), player).unwrap();
         }
 
         let manager = Arc::new(Mutex::new(manager));
@@ -157,7 +165,7 @@ mod contract_blackjack_tests {
         let payload = json!({
             "input": {
                 "action": "start_game",
-                "game_id": game_id,
+                "game_id": game,
             }
         });
 
@@ -180,42 +188,60 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn only_player_inside_match_after_game_started() {
-        let mut manager = Manager::new_with_games(10);
-        let mut game = manager.first_game_available_owned().unwrap();
+        let mut manager = Manager::new_with_games(1);
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
 
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game_id.to_owned(), player).unwrap();
         }
+
+        let game = manager.drop_game(game_id.to_owned()).unwrap();
+        assert_eq!(game.players.len(), 2);
 
         let table = game.round_start(1).unwrap();
         let size = table.players_with_hand.len();
         assert_eq!(size, 2);
 
         manager.reallocate_table_to_game(table);
+
         let game = manager.first_game_available().unwrap();
+        let game = game.get_id().to_owned();
 
         let player = Player::new_without_id("Eve".to_string());
         let player = Arc::new(player);
-        game.player_join(player).unwrap();
+        manager.add_player(player.clone()).unwrap();
+        manager.player_join(game.to_owned(), player).unwrap();
+
+        let game = manager.get_game_by_id(game).unwrap();
 
         assert_eq!(game.players.len(), 1);
     }
 
     #[tokio::test]
     async fn size_of_deck_when_game_started() {
-        let mut game = Game::default();
+        let mut manager = Manager::new_with_games(1);
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game_id.to_owned(), player).unwrap();
         }
 
+        let game = manager.first_game_available_owned().unwrap();
         let table = game.round_start(1).unwrap();
 
+        manager.add_table(table);
+
+        let table = manager.get_table(&game_id).unwrap();
         let size = table.deck.lock().await.cards.len();
 
         assert_eq!(size, 52);
@@ -226,14 +252,21 @@ mod contract_blackjack_tests {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
 
-        let mut game = Game::default();
+        let mut manager = Manager::new_with_games(1);
+
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game_id.to_owned(), player).unwrap();
         }
 
+        let game = manager.first_game_available_owned().unwrap();
+        assert_eq!(game_id, game.get_id().to_owned());
         let mut table = game.round_start(1).unwrap();
         let timestamp: u64 = 1691386341757;
 
@@ -259,40 +292,150 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
+    async fn join_in_game_not_started() {
+        let mut manager = Manager::new_with_games(1);
+
+        let game_id = manager.first_game_available().unwrap();
+        let game_id = game_id.get_id().to_owned();
+
+        // First player
+        let player = Player::new_without_id("Alice".to_string());
+        let player = Arc::from(player);
+        manager.add_player(player.clone()).unwrap();
+        manager.player_join(game_id.to_owned(), player).unwrap();
+
+        // Second player
+        let id = String::from("0xdeadbeef");
+        let id = bs58::encode(id[2..].to_string()).into_string();
+        let player = Player::new(id, "Bob".to_string());
+        let player = Arc::from(player);
+
+        manager.add_player(player).unwrap();
+
+        // Mock request from middleware
+        let payload = json!({
+            "input": {
+                "action": "join_game",
+                "game_id": game_id,
+            }
+        });
+
+        let manager = Arc::new(Mutex::new(manager));
+
+        let data = factory_message(payload);
+
+        let result = handle_request_action(&data, manager.clone(), false).await;
+
+        assert!(result.is_ok())
+    }
+
+    #[tokio::test]
+    async fn show_hands_of_table() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
+        let mut manager = Manager::new_with_games(1);
+        let game = manager.first_game_available().unwrap();
+        let game_id = game.get_id().to_owned();
+
+        for name in ["Alice", "Bob"] {
+            let player = Player::new_without_id(name.to_string());
+            let player = Arc::new(player);
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game_id.to_owned(), player).unwrap();
+        }
+
+        let game = manager.first_game_available_owned().unwrap();
+        let mut table = game.round_start(1).unwrap();
+
+        let timestamp: u64 = 1691386341757;
+
+        loop {
+            for player in table.players_with_hand.iter_mut() {
+                if player.points <= 11 {
+                    player.hit(timestamp).await.unwrap();
+                }
+            }
+
+            let hands = table.generate_hands();
+            println!("{:}", hands);
+
+            if table
+                .players_with_hand
+                .iter()
+                .all(|player| player.points > 11)
+            {
+                break;
+            }
+        }
+
+        manager.add_table(table);
+        let manager = Arc::from(Mutex::from(manager));
+
+        // Mock request from middleware
+        let payload = json!({
+            "input": {
+                "action": "show_hands",
+                "game_id": game_id,
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        // Call function used to see what action need for
+        let response = handle_request_action(&data, manager.clone(), false).await;
+
+        assert!(
+            response.is_ok(),
+            "Result is not ok {:}",
+            response.unwrap_err()
+        );
+    }
+
+    #[tokio::test]
     async fn hit_card_never_busted() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
 
         let mut manager = Manager::new_with_games(1);
-        let mut game = manager.first_game_available_owned().unwrap();
+        let game = manager.first_game_available().unwrap();
+        let game = game.get_id().to_owned();
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
             let player = Arc::new(player);
-            game.player_join(player).unwrap();
+            manager.add_player(player.clone()).unwrap();
+            manager.player_join(game.to_owned(), player).unwrap();
         }
 
+        let game = manager.first_game_available_owned().unwrap();
         let mut table = game.round_start(1).unwrap();
 
-        let first_player = table.players_with_hand.get_mut(0);
-
-        assert!(first_player.is_some(), "First player not found.");
-
         let timestamp = 1691386341757;
-        let first_player = first_player.unwrap();
         let mut i = 1;
 
-        while first_player.points <= 11 {
-            let res = first_player.hit(timestamp).await;
+        loop {
+            for player in table.players_with_hand.iter_mut() {
+                if player.points <= 11 {
+                    let result = player.hit(timestamp).await;
+                    println!("{:}", &player);
+                    assert!(result.is_ok(), "Player is busted.");
 
-            assert!(res.is_ok(), "Player is busted.");
+                    let size = table.deck.lock().await.cards.len();
+                    assert_eq!(size.rem(52), (52 - i) % 52);
 
-            let size = table.deck.lock().await.cards.len();
+                    i = i + 1;
+                }
+            }
 
-            assert_eq!(size.rem(52), (52 - i) % 52);
-
-            println!("{:}", &first_player);
-            i = i + 1;
+            if table
+                .players_with_hand
+                .iter()
+                .all(|player| player.points > 11)
+            {
+                break;
+            }
         }
     }
 }
