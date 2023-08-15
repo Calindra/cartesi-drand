@@ -1,5 +1,5 @@
 pub mod random {
-    use std::{env, error::Error, ops::Range};
+    use std::{env, error::Error, ops::Range, time::Duration};
 
     use hyper::{body, Body, Client, Request, StatusCode};
     use rand::prelude::*;
@@ -38,6 +38,7 @@ pub mod random {
             match status_response {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
+                    tokio::time::sleep(Duration::from_secs(6)).await;
                 }
 
                 StatusCode::OK => {
