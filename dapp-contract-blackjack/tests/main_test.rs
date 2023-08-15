@@ -100,7 +100,8 @@ mod contract_blackjack_tests {
 
         // Start this game
         let game = manager.drop_game(game_id).unwrap();
-        let table = game.round_start(1);
+        let timestamp: u64 = 1691386341757;
+        let table = game.round_start(1, timestamp);
 
         assert!(table.is_ok(), "Table is not ok");
 
@@ -190,7 +191,8 @@ mod contract_blackjack_tests {
             game.player_join(player).unwrap();
         }
 
-        let table = game.round_start(1).unwrap();
+        let timestamp: u64 = 1691386341757;
+        let table = game.round_start(1, timestamp).unwrap();
         let size = table.players_with_hand.len();
         assert_eq!(size, 2);
 
@@ -214,7 +216,8 @@ mod contract_blackjack_tests {
             game.player_join(player).unwrap();
         }
 
-        let table = game.round_start(1).unwrap();
+        let timestamp: u64 = 1691386341757;
+        let table = game.round_start(1, timestamp).unwrap();
 
         let size = table.deck.lock().await.cards.len();
 
@@ -234,8 +237,8 @@ mod contract_blackjack_tests {
             game.player_join(player).unwrap();
         }
 
-        let mut table = game.round_start(1).unwrap();
         let timestamp: u64 = 1691386341757;
+        let mut table = game.round_start(1, timestamp).unwrap();
 
         for player in table.players_with_hand.iter_mut() {
             let player = Box::new(player);
@@ -272,7 +275,8 @@ mod contract_blackjack_tests {
             game.player_join(player).unwrap();
         }
 
-        let mut table = game.round_start(1).unwrap();
+        let timestamp: u64 = 1691386341757;
+        let mut table = game.round_start(1, timestamp).unwrap();
 
         let first_player = table.players_with_hand.get_mut(0);
 
