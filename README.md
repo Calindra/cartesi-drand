@@ -92,12 +92,14 @@ docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../d
 
 Start the middleware:
 ```shell
-cd convenience-middleware/ && cargo run
+cd convenience-middleware/
+cargo run
 ```
 
 Start the drand-provider:
 ```shell
-cd convenience-drand-provider/ && yarn && yarn dev
+cd convenience-drand-provider/
+yarn && yarn dev
 ```
 
 Run this smoke test 3x
@@ -108,8 +110,37 @@ curl http://localhost:8080/random?timestamp=123
 Run the DApp contract
 ```shell
 export MIDDLEWARE_HTTP_SERVER_URL=http://localhost:8080
-cd dapp-contract-blackjack/ && cargo run
+cd dapp-contract-blackjack/
+cargo run
 ```
 
+New player:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Bob\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Alice\"}}" --accountIndex 1
+```
 
+List games:
+```shell
+curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
+```
 
+Join game:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}" --accountIndex 1
+```
+
+Start game:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
+```
+
+Hit:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
+```

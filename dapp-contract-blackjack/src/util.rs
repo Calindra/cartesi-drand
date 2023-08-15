@@ -37,7 +37,7 @@ pub mod random {
 
             match status_response {
                 StatusCode::NOT_FOUND => {
-                    println!("No pending random request, trying again");
+                    println!("No pending random request, trying again... uri = {}", uri);
                 }
 
                 StatusCode::OK => {
