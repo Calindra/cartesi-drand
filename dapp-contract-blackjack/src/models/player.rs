@@ -77,7 +77,6 @@ pub mod player {
         deck: Arc<Mutex<Deck>>,
         round: u8,
         pub last_timestamp: u64,
-        // table: Table,
     }
 
     impl Display for PlayerHand {
