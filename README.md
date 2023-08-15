@@ -129,18 +129,19 @@ curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_ga
 Join game:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}" --accountIndex 1
+export GAME_ID=7b0f20c8-7730-4faf-af23-94039fcb8f94
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
 
 Start game:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"${GAME_ID}\"}}"
 ```
 
 Hit:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"ba17c370-4787-4dc6-88af-6d52f3183f64\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
 ```
