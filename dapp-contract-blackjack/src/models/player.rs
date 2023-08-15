@@ -151,9 +151,9 @@ pub mod player {
             }
 
             self.is_standing = self.is_standing || self.points >= 21;
+            println!("round {}; points {}; card {:};", self.round, self.points, card);
             self.hand.0.push(card);
             self.round += 1;
-
             Ok(())
         }
 
