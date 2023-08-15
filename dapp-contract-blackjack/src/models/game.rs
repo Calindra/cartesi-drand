@@ -210,8 +210,9 @@ pub mod game {
         ) -> Result<(), &'static str> {
             let round = self.round;
             let player = self.find_player_by_id(player_id)?;
-
+            let player_round = player.get_round();
             if round != player.get_round() {
+                println!("Game round {}; Player round {}; Player id {};", round, player_round, player_id);
                 Err("Round is not the same. Waiting for another players.")?;
             }
 

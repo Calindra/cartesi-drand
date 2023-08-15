@@ -104,7 +104,8 @@ yarn && yarn dev
 
 Run this smoke test 3x
 ```shell
-curl http://localhost:8080/random?timestamp=123
+export TIMESTAMP=`date +%s`
+curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 ```
 
 Run the DApp contract
@@ -129,7 +130,7 @@ curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_ga
 Join game:
 ```shell
 cd frontend-console
-export GAME_ID=7b0f20c8-7730-4faf-af23-94039fcb8f94
+export GAME_ID=e0770491-78c8-403d-a3c8-158ab9c394bc
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
