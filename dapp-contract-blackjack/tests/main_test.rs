@@ -269,6 +269,7 @@ mod contract_blackjack_tests {
         assert_eq!(game_id, game.get_id().to_owned());
         let mut table = game.round_start(1).unwrap();
         let timestamp: u64 = 1691386341757;
+        let mut table = game.round_start(1, timestamp).unwrap();
 
         for player in table.players_with_hand.iter_mut() {
             let player = Box::new(player);

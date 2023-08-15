@@ -181,12 +181,12 @@ pub mod game {
         }
 
         // Transforms the game into a table.
-        pub fn round_start(self, nth_decks: usize) -> Result<Table, &'static str> {
+        pub fn round_start(self, nth_decks: usize, last_timestamp: u64) -> Result<Table, &'static str> {
             if self.players.len() < 2 {
                 Err("Minimum number of players not reached.")?;
             }
 
-            Table::new(self, nth_decks)
+            Table::new(self, nth_decks, last_timestamp)
         }
     }
 
@@ -205,7 +205,7 @@ pub mod game {
             self.round
         }
 
-        fn new(game: Game, nth_decks: usize) -> Result<Self, &'static str> {
+        fn new(game: Game, nth_decks: usize, last_timestamp: u64) -> Result<Self, &'static str> {
             // let bets = Vec::new();
             let players_with_hand = Vec::new();
             let deck = Deck::new_with_capacity(nth_decks).map(|deck| Arc::new(Mutex::new(deck)))?;
@@ -219,7 +219,7 @@ pub mod game {
 
             table.game.players.iter().for_each(|player| {
                 let player = player.clone();
-                let player_hand = PlayerHand::new(player, table.deck.clone());
+                let player_hand = PlayerHand::new(player, table.deck.clone(), last_timestamp);
                 table.players_with_hand.push(player_hand);
             });
 
@@ -235,12 +235,14 @@ pub mod game {
         ) -> Result<(), &'static str> {
             let round = self.round;
             let player = self.find_player_by_id(player_id)?;
-
+            let player_round = player.get_round();
             if round != player.get_round() {
+                println!("Game round {}; Player round {}; Player id {};", round, player_round, player_id);
                 Err("Round is not the same. Waiting for another players.")?;
             }
 
             player.hit(timestamp).await?;
+            player.last_timestamp = timestamp;
 
             self.next_round();
 
@@ -258,7 +260,7 @@ pub mod game {
         pub fn any_player_can_hit(&self) -> bool {
             self.players_with_hand
                 .iter()
-                .any(|player| !player.is_standing)
+                .any(|player| !player.is_standing && self.round == player.get_round())
         }
 
         pub fn find_player_by_id(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {

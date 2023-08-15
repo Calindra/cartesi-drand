@@ -83,6 +83,17 @@ We know that the user’s DApp calls the rollup server, we change the arrow dire
 
 The DApp’s owner can run an instance of the Convenience API to provide this random number functionality.
 
+## Middleware
+
+The middleware provides 2 endpoints
+
+**/finish**  
+Replace the Rollup's finish endpoint with this one. Example: http://localhost:8080/finish
+
+**/random?timestamp=[timestamp]**  
+Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529  
+It will return 404 when the seed isn't available.
+
 ## How to run
 
 Start the Rollups in host mode:
@@ -92,24 +103,82 @@ docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../d
 
 Start the middleware:
 ```shell
-cd convenience-middleware/ && cargo run
+cd convenience-middleware/
+cargo run
 ```
 
 Start the drand-provider:
 ```shell
-cd convenience-drand-provider/ && yarn && yarn dev
+cd convenience-drand-provider/
+yarn && yarn dev
 ```
 
-Run this smoke test 3x
+Run this smoke test:
 ```shell
-curl http://localhost:8080/random?timestamp=123
+export TIMESTAMP=`date +%s`
+curl http://localhost:8080/random?timestamp=${TIMESTAMP}
+sleep 10
+curl http://localhost:8080/random?timestamp=${TIMESTAMP}
+sleep 10
+curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 ```
 
 Run the DApp contract
 ```shell
 export MIDDLEWARE_HTTP_SERVER_URL=http://localhost:8080
-cd dapp-contract-blackjack/ && cargo run
+cd dapp-contract-blackjack/
+cargo run
 ```
 
+New player:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Bob\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Alice\"}}" --accountIndex 1
+```
 
+List games:
+```shell
+curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
+```
 
+Join game:
+```shell
+cd frontend-console
+export GAME_ID=f01c4591-dd3b-4259-bedf-e39b677217d4
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+```
+
+Start game:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"${GAME_ID}\"}}"
+```
+
+Hit:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+```
+
+Stand:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+```
+
+Show hands:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"show_hands\",\"game_id\":\"${GAME_ID}\"}}"
+```
+
+Call player timeout:
+```shell
+cd frontend-console
+yarn start input send --payload "{\"input\":{\"action\":\"timeout\",\"game_id\":\"${GAME_ID}\"}}"
+```
+All players who are delayed for more than 3 minutes will be in the `stand` state.

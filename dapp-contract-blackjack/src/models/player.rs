@@ -76,6 +76,7 @@ pub mod player {
         pub is_standing: bool,
         deck: Arc<Mutex<Deck>>,
         round: u8,
+        pub last_timestamp: u64,
         // table: Table,
     }
 
@@ -91,7 +92,7 @@ pub mod player {
     }
 
     impl PlayerHand {
-        pub fn new(player: Arc<Player>, deck: Arc<Mutex<Deck>>) -> Self {
+        pub fn new(player: Arc<Player>, deck: Arc<Mutex<Deck>>, last_timestamp: u64) -> Self {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
@@ -99,6 +100,7 @@ pub mod player {
                 points: 0,
                 deck,
                 round: 1,
+                last_timestamp,
             }
         }
 
@@ -167,9 +169,9 @@ pub mod player {
             }
 
             self.is_standing = self.is_standing || self.points >= 21;
+            println!("round {}; points {}; card {:};", self.round, self.points, card);
             self.hand.0.push(card);
             self.round += 1;
-
             Ok(())
         }
 

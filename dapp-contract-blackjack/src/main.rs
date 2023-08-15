@@ -167,7 +167,7 @@ pub async fn handle_request_action(
 
         Some("start_game") => {
             let input = payload.get("input").ok_or("Invalid field input")?;
-
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
             // Parsing JSON
             let game_id = input
                 .get("game_id")
@@ -180,7 +180,7 @@ pub async fn handle_request_action(
             // Get game and make owner
             let game = manager.drop_game(game_id.to_owned())?;
             // Generate table from game
-            let table = game.round_start(2)?;
+            let table = game.round_start(2, metadata.timestamp)?;
             // Add table to manager
             manager.add_table(table);
         }
@@ -260,7 +260,7 @@ pub async fn handle_request_action(
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
             let player = table.find_player_by_id(&address_encoded)?;
-
+            player.last_timestamp = metadata.timestamp;
             player.stand().await?;
         }
         _ => Err("Invalid action")?,
