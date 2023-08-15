@@ -69,7 +69,7 @@ pub mod player {
      * Player's hand for specific round while playing.
      */
     pub struct PlayerHand {
-        player: Arc<Mutex<Player>>,
+        player: Arc<Player>,
         hand: Hand,
         pub points: u8,
         pub is_standing: bool,
@@ -80,8 +80,7 @@ pub mod player {
 
     impl Display for PlayerHand {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-            let player = self.player.try_lock().or(Err(fmt::Error))?;
-            let player_name = &player.name;
+            let player_name = &self.player.name;
             write!(
                 f,
                 "{{ name: {:}, points: {:}, hand: {:} }}",
@@ -91,7 +90,7 @@ pub mod player {
     }
 
     impl PlayerHand {
-        pub fn new(player: Arc<Mutex<Player>>, deck: Arc<Mutex<Deck>>) -> Self {
+        pub fn new(player: Arc<Player>, deck: Arc<Mutex<Deck>>) -> Self {
             PlayerHand {
                 player,
                 hand: Hand(Vec::new()),
@@ -107,8 +106,7 @@ pub mod player {
         }
 
         pub fn get_player_id(&self) -> Result<String, Box<dyn Error>> {
-            let player = self.player.try_lock()?;
-            Ok(player.id.to_owned())
+            Ok(self.player.id.to_owned())
         }
 
         /**
@@ -133,14 +131,7 @@ pub mod player {
                 Err("No cards in the deck.")?;
             }
 
-            // @todo: use seed from the player
-            let seed = call_seed(timestamp)
-                .await
-                .map_err(|err| {
-                    eprint!("Error {:}", &err);
-                    err
-                })
-                .unwrap();
+            let seed = call_seed(timestamp).await.or(Err("No cant call seed"))?;
 
             let card = {
                 let mut deck = self.deck.lock().await;

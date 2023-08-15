@@ -22,7 +22,7 @@ use crate::models::{game::game::Manager, player::player::Player};
 struct Metadata {
     address: String,
     timestamp: u64,
-    input_index: u64,
+    // input_index: u64,
 }
 
 fn get_payload_from_root(root: &Value) -> Option<Value> {
@@ -40,12 +40,12 @@ fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
 
     let address = metadata.get("msg_sender")?.as_str()?;
     let timestamp = metadata.get("timestamp")?.as_u64()?;
-    let input_index = metadata.get("input_index")?.as_u64()?;
+    // let input_index = metadata.get("input_index")?.as_u64()?;
 
     Some(Metadata {
         address: address.to_owned(),
         timestamp,
-        input_index,
+        // input_index,
     })
 }
 
@@ -103,6 +103,7 @@ pub async fn handle_request_action(
             // Add player to manager
             let player = Player::new(address_encoded.clone(), player_name.to_string());
             let mut manager = manager.lock().await;
+            let player = Arc::new(player);
             manager.add_player(player)?;
 
             // Persist player
@@ -130,6 +131,27 @@ pub async fn handle_request_action(
             println!("Response: {:}", response);
 
             return Ok(Some(response));
+        }
+        Some("join_game") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
+
+            // Address
+            let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+            let address_owner = metadata.address.trim_start_matches("0x");
+            let address_encoded = bs58::encode(address_owner).into_string();
+
+            let mut manager = manager.lock().await;
+            let player = manager.get_player_ref(address_encoded.clone())?;
+
+            // Parsing JSON
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let game = manager.get_game_by_id(game_id.to_string())?;
+            game.player_join(player.clone())?;
         }
         Some("show_games") => {
             let manager = manager.lock().await;

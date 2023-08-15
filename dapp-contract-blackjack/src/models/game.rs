@@ -11,7 +11,7 @@ pub mod game {
 
     pub struct Manager {
         pub games: Vec<Game>, // games to be started. A player can join this game
-        pub players: Vec<Player>,
+        pub players: Vec<Arc<Player>>,
         pub tables: Vec<Table>, // games running
     }
 
@@ -40,7 +40,7 @@ pub mod game {
             }
         }
 
-        pub fn add_player(&mut self, player: Player) -> Result<(), &'static str> {
+        pub fn add_player(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
             if self.players.iter().any(|p| p.get_id() == player.get_id()) {
                 return Err("Player already registered.");
             }
@@ -49,7 +49,7 @@ pub mod game {
             Ok(())
         }
 
-        pub fn remove_player_by_id(&mut self, id: String) -> Result<Player, &'static str> {
+        pub fn remove_player_by_id(&mut self, id: String) -> Result<Arc<Player>, &'static str> {
             let index = self
                 .players
                 .iter()
@@ -59,8 +59,26 @@ pub mod game {
             Ok(player)
         }
 
+        pub fn get_player_ref(&mut self, address: String) -> Result<Arc<Player>, &'static str> {
+            let index = self
+                .players
+                .iter()
+                .position(|player| player.get_id() == address)
+                .ok_or("No player found.")?;
+            let player = self.players.swap_remove(index);
+            self.players.push(player.clone());
+            Ok(player)
+        }
+
         pub fn first_game_available(&mut self) -> Result<&mut Game, &'static str> {
             self.games.first_mut().ok_or("No games available.")
+        }
+
+        pub fn get_game_by_id(&mut self, id: String) -> Result<&mut Game, &'static str> {
+            self.games
+                .iter_mut()
+                .find(|game| game.id == id)
+                .ok_or("Game not found.")
         }
 
         pub fn first_game_available_owned(&mut self) -> Result<Game, &'static str> {
@@ -111,7 +129,7 @@ pub mod game {
      */
     pub struct Game {
         id: String,
-        pub players: Vec<Arc<Mutex<Player>>>,
+        pub players: Vec<Arc<Player>>,
     }
 
     impl Default for Game {
@@ -128,12 +146,10 @@ pub mod game {
             &self.id
         }
 
-        pub fn player_join(&mut self, player: Player) -> Result<(), &'static str> {
+        pub fn player_join(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
             if self.players.len() >= 7 {
                 return Err("Maximum number of players reached.");
             }
-
-            let player = Arc::new(Mutex::new(player));
 
             self.players.push(player);
             Ok(())

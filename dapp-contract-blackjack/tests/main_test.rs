@@ -19,7 +19,7 @@ mod contract_blackjack_tests {
     };
 
     use serde_json::json;
-    use std::{borrow::BorrowMut, ops::Rem, sync::Arc};
+    use std::{ops::Rem, sync::Arc};
     use tokio::sync::Mutex;
 
     #[tokio::test]
@@ -92,6 +92,7 @@ mod contract_blackjack_tests {
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
@@ -146,6 +147,7 @@ mod contract_blackjack_tests {
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
@@ -184,6 +186,7 @@ mod contract_blackjack_tests {
         for name in ["Alice", "Bob"] {
             let name = name.to_string();
             let player = Player::new_without_id(name);
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
@@ -195,6 +198,7 @@ mod contract_blackjack_tests {
         let game = manager.first_game_available().unwrap();
 
         let player = Player::new_without_id("Eve".to_string());
+        let player = Arc::new(player);
         game.player_join(player).unwrap();
 
         assert_eq!(game.players.len(), 1);
@@ -206,6 +210,7 @@ mod contract_blackjack_tests {
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
@@ -225,6 +230,7 @@ mod contract_blackjack_tests {
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
@@ -262,6 +268,7 @@ mod contract_blackjack_tests {
 
         for name in ["Alice", "Bob"] {
             let player = Player::new_without_id(name.to_string());
+            let player = Arc::new(player);
             game.player_join(player).unwrap();
         }
 
