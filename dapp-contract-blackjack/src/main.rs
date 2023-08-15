@@ -161,7 +161,7 @@ pub async fn handle_request_action(
             }));
 
             println!("Response: {:}", response);
-            let _ = send_report(response.clone()).await;
+            // let _ = send_report(response.clone()).await;
             return Ok(Some(response));
         }
 
@@ -216,11 +216,11 @@ pub async fn handle_request_action(
 
             let table = manager.get_table(game_id)?;
             let hands = table.generate_hands();
-            let result = generate_message(hands);
+            let response = generate_message(hands);
 
-            println!("Response: {:}", result);
+            println!("Response: {:}", response);
 
-            return Ok(Some(result));
+            return Ok(Some(response));
         }
 
         Some("hit") => {
@@ -313,8 +313,8 @@ fn start_sender(manager: Arc<Mutex<Manager>>, sender: Sender<Value>) {
 fn listener_send_message_to_middleware(mut receiver: Receiver<Value>) {
     tokio::spawn(async move {
         while let Some(value) = receiver.recv().await {
-            println!("Received value: {}", value);
-            todo!();
+            println!("Send value to middleware: {}", value);
+            let _ = send_report(value).await;
         }
     });
 }

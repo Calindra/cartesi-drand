@@ -90,7 +90,7 @@ pub mod rollup {
                 let report = json!({ "payload": format!("0x{}", json_as_hex) });
                 println!("Report: {:}", report);
                 let _ = send_report(report.clone()).await;
-            },
+            }
             _ => Err("Invalid inspect")?,
         };
 
@@ -115,8 +115,7 @@ pub mod rollup {
     pub(crate) async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr =
-            std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env ROLLUP_HTTP_SERVER_URL is not set");
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
