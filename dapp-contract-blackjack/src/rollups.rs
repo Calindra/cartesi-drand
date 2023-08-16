@@ -91,6 +91,26 @@ pub mod rollup {
                 println!("Report: {:}", report);
                 let _ = send_report(report.clone()).await;
             }
+            Some("show_hands") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+    
+                // Parsing JSON
+                let game_id = input
+                    .get("game_id")
+                    .ok_or("Invalid field game_id")?
+                    .as_str()
+                    .ok_or("Invalid game_id")?;
+    
+                let mut manager = manager.lock().await;
+    
+                let table = manager.get_table(game_id)?;
+                let hands = table.generate_hands();
+                let json_as_hex = hex::encode(hands.to_string());
+                let report = json!({ "payload": format!("0x{}", json_as_hex) });
+    
+                println!("Report: {:}", report);
+                let _ = send_report(report.clone()).await;
+            }
             _ => Err("Invalid inspect")?,
         };
 
