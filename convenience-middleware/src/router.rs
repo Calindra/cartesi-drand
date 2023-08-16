@@ -4,7 +4,7 @@ pub mod routes {
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
         models::models::{AppState, RequestRollups, Timestamp},
-        rollup::server::send_finish_and_retrieve_input,
+        rollup::{server::send_finish_and_retrieve_input, has_input_inside_input},
     };
 
     #[post("/finish")]
@@ -16,7 +16,11 @@ pub mod routes {
 
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
-            return HttpResponse::Ok().body(item.request);
+            if has_input_inside_input(&item.request) {
+                return HttpResponse::Ok().body(item.request);
+            } else {
+                return HttpResponse::Accepted().finish();
+            }
         }
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
             Some(input) => input,
@@ -44,7 +48,11 @@ pub mod routes {
 
         // Dispatch the input to the DApp
         let body = serde_json::to_string(&rollup_input).unwrap();
-        return HttpResponse::Ok().body(body);
+        if has_input_inside_input(&body) {
+            return HttpResponse::Ok().body(body);
+        } else {
+            return HttpResponse::Accepted().finish();
+        }
     }
 
     #[get("/random")]
