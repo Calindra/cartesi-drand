@@ -1,6 +1,6 @@
+use crate::utils::util::deserialize_obj;
 use hyper::{Body, Response};
 use serde::{Deserialize, Serialize};
-use crate::utils::util::deserialize_obj;
 
 pub mod server {
     use hyper::{Body, Response};
@@ -106,13 +106,20 @@ pub(crate) async fn parse_input_from_response(
     Ok(result_deserialization)
 }
 
-pub(crate) fn has_input_inside_input(body: &String)  -> bool {
+pub(crate) fn has_input_inside_input(body: &String) -> bool {
     let result_deserialization = serde_json::from_str::<RollupInput>(body);
     let rollup_input = match result_deserialization {
         Ok(input) => input,
         Err(_) => return false,
     };
-    let value = deserialize_obj(&rollup_input.data.payload);
+    let json = rollup_input.data.payload.trim_start_matches("0x");
+    let json = hex::decode(json);
+    let json = match json {
+        Ok(json) => json,
+        Err(_) => return false,
+    };
+    let json = std::str::from_utf8(&json).unwrap();
+    let value = deserialize_obj(json);
     let value = match value {
         Some(json) => json,
         None => return false,
