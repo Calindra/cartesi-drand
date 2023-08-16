@@ -151,6 +151,7 @@ pub async fn handle_request_action(
                 .ok_or("Invalid game_id")?;
 
             manager.player_join(game_id.to_owned(), player.clone())?;
+            println!("Player joined: name {} game_id {}", player.name, game_id);
         }
         Some("show_games") => {
             let manager = manager.lock().await;
@@ -161,7 +162,7 @@ pub async fn handle_request_action(
             }));
 
             println!("Response: {:}", response);
-            // let _ = send_report(response.clone()).await;
+
             return Ok(Some(response));
         }
 
@@ -183,6 +184,7 @@ pub async fn handle_request_action(
             let table = game.round_start(2, metadata.timestamp)?;
             // Add table to manager
             manager.add_table(table);
+            println!("Game started: game_id {}", game_id);
         }
 
         Some("stop_game") => {
@@ -260,6 +262,7 @@ pub async fn handle_request_action(
             let player = table.find_player_by_id(&address_encoded)?;
             player.last_timestamp = metadata.timestamp;
             player.stand().await?;
+            println!("Stand: {} game_id {}", player.get_player_ref().name, game_id);
         }
         _ => Err("Invalid action")?,
     }

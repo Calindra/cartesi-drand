@@ -40,7 +40,7 @@ pub mod player {
      */
     pub struct Player {
         id: String,
-        name: String,
+        pub(crate) name: String,
     }
 
     impl Display for Player {
