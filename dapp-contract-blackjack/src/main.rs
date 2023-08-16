@@ -17,7 +17,7 @@ use tokio::{
 };
 use util::json::{decode_payload, generate_message};
 
-use crate::models::{game::game::Manager, player::player::Player};
+use crate::models::{game::{game::Manager, self}, player::player::Player};
 
 struct Metadata {
     address: String,
@@ -241,9 +241,10 @@ pub async fn handle_request_action(
 
             let manager = manager.lock().await;
 
+            println!("Finding score by table_id {} and game_id {} ...", table_id, game_id);
             let scoreboard = manager
                 .get_scoreboard(table_id, game_id)
-                .ok_or(format!("Not found score by table_id {}", table_id))?;
+                .ok_or("Scoreboard not found searching by table_id")?;
 
             let response = generate_message(scoreboard.to_json());
 
