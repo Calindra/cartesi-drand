@@ -243,7 +243,7 @@ mod middleware_tests {
     async fn test_request_finish_with_input_to_respond() {
         check_if_dotenv_is_loaded!();
         mock_rollup_server!(json_encoded(
-            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B7D"},"request_type":"advance_state"})
+            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
         ));
 
         let app_state = web::Data::new(AppState::new());
@@ -264,10 +264,10 @@ mod middleware_tests {
         check_if_dotenv_is_loaded!();
         mock_rollup_server!(responders::cycle![
             json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B7D"},"request_type":"advance_state"})
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
             ),
             json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d"},"request_type":"advance_state"})
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B22726F756E64223A343038383031312C2272616E646F6D6E657373223A2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222C227369676E6174757265223A22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227D2C22696E707574223A2230783030227D"},"request_type":"advance_state"})
             )
         ]);
 
@@ -301,7 +301,7 @@ mod middleware_tests {
         check_if_dotenv_is_loaded!();
         mock_rollup_server!(responders::cycle![
             json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B7D"},"request_type":"advance_state"})
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
             ),
             json_encoded(
                 json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d"},"request_type":"advance_state"})
@@ -317,7 +317,7 @@ mod middleware_tests {
 
         let mut app = test::init_service(app).await;
 
-        // the DApp call our middleware to start something
+        // // the DApp call our middleware to start something
         let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
 
