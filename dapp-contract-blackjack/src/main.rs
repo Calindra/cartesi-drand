@@ -237,13 +237,13 @@ pub async fn handle_request_action(
                 .get("table_id")
                 .ok_or("Invalid field table_id")?
                 .as_str()
-                .ok_or("Invalid table_id")?;
+                .ok_or("Invalid string table_id")?;
 
             let manager = manager.lock().await;
 
             let scoreboard = manager
                 .get_scoreboard(table_id, game_id)
-                .ok_or("Invalid table_id")?;
+                .ok_or(format!("Not found score by table_id {}", table_id))?;
 
             let response = generate_message(scoreboard.to_json());
 
