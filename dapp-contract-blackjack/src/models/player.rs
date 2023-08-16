@@ -8,7 +8,7 @@ pub mod player {
     use serde::Serialize;
     use tokio::sync::Mutex;
 
-    use crate::models::card::card::{Card, Deck, Rank};
+    use crate::models::{card::card::{Card, Deck, Rank}, game::game::Table};
 
     use crate::util::random::{call_seed, generate_random_number};
 

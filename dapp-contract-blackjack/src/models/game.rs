@@ -83,6 +83,12 @@ pub mod game {
             self.games.iter().map(|game| game.id.clone()).collect()
         }
 
+        pub fn get_scoreboard(&self, table_id: &str, game_id: &str) -> Option<&Scoreboard> {
+            self.scoreboards
+                .iter()
+                .find(|scoreboard| scoreboard.id == table_id && scoreboard.game_id == game_id)
+        }
+
         pub fn drop_game(&mut self, id: String) -> Result<Game, &'static str> {
             let index = self
                 .games
@@ -96,23 +102,11 @@ pub mod game {
         /**
          * Players are cleared from the game.
          */
-        pub fn reallocate_table_to_game(&mut self, table: Table) {
+        pub async fn reallocate_table_to_game(&mut self, table: Table) {
             let players = table.game.players.iter().cloned().collect();
 
-            let mut winner: Option<Arc<Player>> = None;
-            let mut winner_points = 0;
-
-            for hand in table.players_with_hand.iter() {
-                if winner.is_none() || hand.points > winner_points {
-                    winner = Some(hand.get_player_ref());
-                    winner_points = hand.points;
-                } else if hand.points == winner_points {
-                    winner = None;
-                    break;
-                }
-            }
-
-            let scoreboard = Scoreboard::new(table.game.get_id(), players, winner);
+            let winner = table.get_winner().await;
+            let scoreboard = Scoreboard::new(table.get_id(), table.game.get_id(), players, winner);
             self.scoreboards.push(scoreboard);
 
             let mut game = table.game;
@@ -176,17 +170,38 @@ pub mod game {
      * The scoreboard is where the game is finished.
      */
     pub struct Scoreboard {
+        id: String,
         game_id: String,
         players: Vec<Arc<Player>>,
         winner: Option<Arc<Player>>,
     }
     impl Scoreboard {
-        fn new(game_id: &str, players: Vec<Arc<Player>>, winner: Option<Arc<Player>>) -> Self {
+        fn new(
+            id: &str,
+            game_id: &str,
+            players: Vec<Arc<Player>>,
+            winner: Option<Arc<Player>>,
+        ) -> Self {
             Scoreboard {
+                id: id.to_string(),
                 game_id: game_id.to_string(),
                 players,
                 winner,
             }
+        }
+
+        pub fn to_json(&self) -> serde_json::Value {
+            let winner = self
+                .winner
+                .as_ref()
+                .map_or("DRAW".to_string(), |player| player.name.clone());
+
+            json!({
+                "id": self.id,
+                "game_id": self.game_id,
+                "players": self.players.iter().map(|player| player.name.clone()).collect::<Vec<String>>(),
+                "winner": winner,
+            })
         }
     }
 
@@ -234,11 +249,16 @@ pub mod game {
         pub players_with_hand: Vec<PlayerHand>,
         game: Game,
         round: u8,
+        id: String,
     }
 
     impl Table {
         pub fn get_round(&self) -> u8 {
             self.round
+        }
+
+        pub fn get_id(&self) -> &str {
+            &self.id
         }
 
         fn new(game: Game, nth_decks: usize, last_timestamp: u64) -> Result<Self, &'static str> {
@@ -251,6 +271,7 @@ pub mod game {
                 players_with_hand,
                 game,
                 round: 1,
+                id: generate_id(),
             };
 
             table.game.players.iter().for_each(|player| {
@@ -270,7 +291,7 @@ pub mod game {
             timestamp: u64,
         ) -> Result<(), &'static str> {
             let round = self.round;
-            let player = self.find_player_by_id(player_id)?;
+            let player = self.find_player_by_id_mut(player_id)?;
             let player_round = player.get_round();
             if round != player.get_round() {
                 println!(
@@ -302,7 +323,7 @@ pub mod game {
                 .any(|player| !player.is_standing && self.round == player.get_round())
         }
 
-        pub fn find_player_by_id(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
+        pub fn find_player_by_id_mut(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
             self.players_with_hand
                 .iter_mut()
                 .find(|player| player.get_player_id() == id)
@@ -313,6 +334,26 @@ pub mod game {
             json!({
                 "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<serde_json::Value>>()
             })
+        }
+
+        pub(crate) async fn get_winner(&self) -> Option<Arc<Player>> {
+            let mut winner: Option<Arc<Player>> = None;
+            let mut winner_points = 0;
+
+            // Safe for check hands, anyone cant pick a card.
+            let _deck = self.deck.lock().await;
+
+            for hand in self.players_with_hand.iter() {
+                if winner.is_none() || hand.points > winner_points {
+                    winner = Some(hand.get_player_ref());
+                    winner_points = hand.points;
+                } else if hand.points == winner_points {
+                    winner = None;
+                    break;
+                }
+            }
+
+            winner
         }
     }
 }

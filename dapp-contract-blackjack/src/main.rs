@@ -223,6 +223,37 @@ pub async fn handle_request_action(
             return Ok(Some(response));
         }
 
+        Some("show_winner") => {
+            let input = payload.get("input").ok_or("Invalid field input")?;
+
+            // Parsing JSON
+            let game_id = input
+                .get("game_id")
+                .ok_or("Invalid field game_id")?
+                .as_str()
+                .ok_or("Invalid game_id")?;
+
+            let table_id = input
+                .get("table_id")
+                .ok_or("Invalid field table_id")?
+                .as_str()
+                .ok_or("Invalid table_id")?;
+
+            let manager = manager.lock().await;
+
+            let scoreboard = manager
+                .get_scoreboard(table_id, game_id)
+                .ok_or("Invalid table_id")?;
+
+            let response = generate_message(scoreboard.to_json());
+
+            let response = generate_message(json!(response));
+
+            println!("Response: {:}", response);
+
+            return Ok(Some(response));
+        }
+
         Some("hit") => {
             // Address
             let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
@@ -259,10 +290,14 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
-            let player = table.find_player_by_id(&address_encoded)?;
+            let player = table.find_player_by_id_mut(&address_encoded)?;
             player.last_timestamp = metadata.timestamp;
             player.stand().await?;
-            println!("Stand: {} game_id {}", player.get_player_ref().name, game_id);
+            println!(
+                "Stand: {} game_id {}",
+                player.get_player_ref().name,
+                game_id
+            );
         }
         _ => Err("Invalid action")?,
     }
