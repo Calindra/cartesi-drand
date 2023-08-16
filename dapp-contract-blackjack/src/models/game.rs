@@ -332,6 +332,7 @@ pub mod game {
 
         pub fn generate_hands(&self) -> serde_json::Value {
             json!({
+                "table_id": self.id,
                 "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<serde_json::Value>>()
             })
         }
