@@ -199,7 +199,7 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
 
-            manager.stop_game(game_id)?;
+            manager.stop_game(game_id).await?;
         }
 
         Some("show_hands") => {
@@ -291,12 +291,13 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
-            let player = table.find_player_by_id_mut(&address_encoded)?;
-            player.last_timestamp = metadata.timestamp;
-            player.stand().await?;
+
+            let name = table.get_name_player(&address_encoded).unwrap();
+            table.stand_player(&address_encoded, metadata.timestamp)?;
+
             println!(
                 "Stand: {} game_id {}",
-                player.get_player_ref().name,
+                name,
                 game_id
             );
         }

@@ -181,8 +181,9 @@ pub mod player {
         /**
          * Add the value of the card to the player's hand.
          */
-        pub async fn stand(&mut self) -> Result<(), &'static str> {
+        pub async fn stand(&mut self, last_timestamp: u64) -> Result<(), &'static str> {
             self.is_standing = true;
+            self.last_timestamp = last_timestamp;
             Ok(())
         }
 

@@ -129,14 +129,14 @@ pub mod game {
                 .ok_or("Table not found or not started.")
         }
 
-        pub fn stop_game(&mut self, id: &str) -> Result<(), &'static str> {
+        pub async fn stop_game(&mut self, id: &str) -> Result<(), &'static str> {
             let index = self
                 .tables
                 .iter_mut()
                 .position(|table| table.game.get_id() == id)
                 .ok_or("Table not found or not started.")?;
             let table = self.tables.swap_remove(index);
-            self.reallocate_table_to_game(table);
+            self.reallocate_table_to_game(table).await;
 
             Ok(())
         }
@@ -246,21 +246,13 @@ pub mod game {
      */
     pub struct Table {
         pub deck: Arc<Mutex<Deck>>,
-        pub players_with_hand: Vec<PlayerHand>,
+        players_with_hand: Vec<PlayerHand>,
         game: Game,
         round: u8,
         id: String,
     }
 
     impl Table {
-        pub fn get_round(&self) -> u8 {
-            self.round
-        }
-
-        pub fn get_id(&self) -> &str {
-            &self.id
-        }
-
         fn new(game: Game, nth_decks: usize, last_timestamp: u64) -> Result<Self, &'static str> {
             // let bets = Vec::new();
             let players_with_hand = Vec::new();
@@ -285,13 +277,53 @@ pub mod game {
             Ok(table)
         }
 
+        pub fn get_round(&self) -> u8 {
+            self.round
+        }
+
+        pub fn get_id(&self) -> &str {
+            &self.id
+        }
+
+        pub fn get_name_player(&self, player_id: &str) -> Result<String, &'static str> {
+            let player = self.get_player_by_id(player_id)?;
+            Ok(player.get_player_ref().name.clone())
+        }
+
+        pub fn get_hand_size(&self) -> usize {
+            self.players_with_hand.len()
+        }
+
+        pub fn get_points(&self, player_id: &str) -> Result<u8, &'static str> {
+            let player = self.get_player_by_id(player_id)?;
+            Ok(player.points)
+        }
+
+        fn get_hand_ref(&mut self, player_id: &str) -> Option<&mut PlayerHand> {
+            self.players_with_hand
+                .iter_mut()
+                .find(|player| player_id == player.get_player_id())
+        }
+
+        pub fn is_any_player_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
+            self.players_with_hand
+                .iter()
+                .any(|player| condition(player))
+        }
+
+        pub fn is_all_players_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
+            self.players_with_hand
+                .iter()
+                .all(|player| condition(player))
+        }
+
         pub async fn hit_player(
             &mut self,
             player_id: &str,
             timestamp: u64,
         ) -> Result<(), &'static str> {
             let round = self.round;
-            let player = self.find_player_by_id_mut(player_id)?;
+            let player = self.get_player_by_id_mut(player_id)?;
             let player_round = player.get_round();
             if round != player.get_round() {
                 println!(
@@ -301,11 +333,22 @@ pub mod game {
                 Err("Round is not the same. Waiting for another players.")?;
             }
 
-            player.hit(timestamp).await?;
             player.last_timestamp = timestamp;
+            player.hit(timestamp).await?;
 
             self.next_round();
 
+            Ok(())
+        }
+
+        pub fn stand_player(
+            &mut self,
+            player_id: &str,
+            last_timestamp: u64,
+        ) -> Result<(), &'static str> {
+            let player = self.get_player_by_id_mut(player_id)?;
+            player.stand(last_timestamp);
+            self.next_round();
             Ok(())
         }
 
@@ -323,9 +366,16 @@ pub mod game {
                 .any(|player| !player.is_standing && self.round == player.get_round())
         }
 
-        pub fn find_player_by_id_mut(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
+        fn get_player_by_id_mut(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {
             self.players_with_hand
                 .iter_mut()
+                .find(|player| player.get_player_id() == id)
+                .ok_or("Player not found.")
+        }
+
+        pub fn get_player_by_id(&self, id: &str) -> Result<&PlayerHand, &'static str> {
+            self.players_with_hand
+                .iter()
                 .find(|player| player.get_player_id() == id)
                 .ok_or("Player not found.")
         }
