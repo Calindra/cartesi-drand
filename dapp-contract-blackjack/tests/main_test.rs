@@ -247,7 +247,6 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn size_of_deck_while_players_hit() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
@@ -263,7 +262,7 @@ mod contract_blackjack_tests {
             let player = Player::new_without_id(name.to_string());
             let player = Arc::new(player);
 
-            players.push(player.clone());
+            players.push(player.get_id());
             manager.add_player(player.clone()).unwrap();
             manager.player_join(&game_id, player).unwrap();
         }
@@ -275,15 +274,16 @@ mod contract_blackjack_tests {
         let mut table = game.round_start(1, timestamp).unwrap();
 
         while table.any_player_can_hit() {
-            for player in players.iter() {
-                let player_id = player.get_id();
+            for player_id in players.iter() {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
                     table.hit_player(&player_id, timestamp).await.unwrap();
+                } else {
+                    table.stand_player(&player_id, timestamp).unwrap();
                 }
 
-                println!("{:}", &player);
+                println!("{:}", &player_id);
             }
         }
 
@@ -331,7 +331,6 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn show_hands_of_table() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
@@ -355,7 +354,7 @@ mod contract_blackjack_tests {
 
         let timestamp: u64 = 1691386341757;
 
-        while table.is_any_player_has_condition(|player| player.points <= 11) {
+        while table.any_player_can_hit() {
             for player_id in players.iter() {
                 let points = table.get_points(player_id).unwrap();
                 if points <= 11 {
@@ -394,7 +393,6 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn hit_card_never_busted() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
@@ -419,19 +417,22 @@ mod contract_blackjack_tests {
         let timestamp = 1691386341757;
         let mut i = 1;
 
-        while table.is_any_player_has_condition(|player| player.points <= 11) {
+        while table.any_player_can_hit() {
             for player in players.iter() {
                 let player_id = player.get_id();
                 let points = table.get_points(&player_id).unwrap();
                 if points <= 11 {
                     let result = table.hit_player(&player_id, timestamp).await;
                     println!("{:}", &player);
+
                     assert!(result.is_ok(), "{:}", result.unwrap_err());
 
                     let size = table.deck.lock().await.cards.len();
                     assert_eq!(size.rem(52), (52 - i) % 52);
 
                     i = i + 1;
+                } else {
+                    table.stand_player(&player_id, timestamp).unwrap();
                 }
             }
         }
