@@ -121,6 +121,10 @@ pub mod player {
             })
         }
 
+        pub fn get_name(&self) -> String {
+            self.player.name.to_owned()
+        }
+
         pub fn get_round(&self) -> u8 {
             self.round.clone()
         }
@@ -133,16 +137,20 @@ pub mod player {
             self.player.clone()
         }
 
+        pub fn is_busted(&self) -> bool {
+            self.points > 21
+        }
+
         /**
          * Take a card from the deck and add it to the player's hand.
          */
         pub async fn hit(&mut self, timestamp: u64) -> Result<(), &'static str> {
-            if self.points >= 21 {
+            if self.is_busted() {
                 Err("Player is busted.")?;
             }
 
             if self.is_standing {
-                Err("Already standing.")?;
+                Err("Player is standing.")?;
             }
 
             let seed = call_seed(timestamp).await.or(Err("No cant call seed"))?;
@@ -170,7 +178,7 @@ pub mod player {
                 self.points = points;
             }
 
-            self.is_standing = self.is_standing || self.points >= 21;
+            self.is_standing = self.points >= 21;
             println!(
                 "Round {}; points {}; card {:}; Player {};",
                 self.round, self.points, card, self.player.name

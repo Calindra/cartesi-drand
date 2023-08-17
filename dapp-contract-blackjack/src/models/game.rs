@@ -356,17 +356,31 @@ pub mod game {
         }
 
         fn next_round(&mut self) {
-            if self.any_player_can_hit() {
-                return;
+            if self.can_advance_round() {
+                self.round += 1;
             }
-
-            self.round = self.round + 1;
         }
 
         pub fn any_player_can_hit(&self) -> bool {
             self.players_with_hand
                 .iter()
-                .any(|player| !player.is_standing && self.round == player.get_round())
+                .any(|player| !player.is_standing)
+        }
+
+        pub fn can_advance_round(&self) -> bool {
+            let result = self.players_with_hand.iter().all(|player| {
+                println!(
+                    "Player {} round {}; Table round {} is_standing {}",
+                    player.get_name(),
+                    player.get_round(),
+                    self.round,
+                    player.is_standing
+                );
+
+                player.is_standing || self.round != player.get_round()
+            });
+            println!("Can continue {}", result);
+            result
         }
 
         fn get_player_by_id_mut(&mut self, id: &str) -> Result<&mut PlayerHand, &'static str> {

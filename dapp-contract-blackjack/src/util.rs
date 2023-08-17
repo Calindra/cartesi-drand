@@ -13,8 +13,6 @@ pub mod random {
     }
 
     pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
-        println!("Calling random...");
-
         let client = Client::new();
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
         let server_addr = server_addr.trim_end_matches("/");
@@ -85,6 +83,7 @@ pub mod json {
     }
 }
 
+#[cfg(test)]
 pub mod env {
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
