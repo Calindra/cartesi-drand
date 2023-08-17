@@ -17,7 +17,7 @@ use tokio::{
 };
 use util::json::{decode_payload, generate_message};
 
-use crate::models::{game::{game::Manager, self}, player::player::Player};
+use crate::models::{game::game::Manager, player::player::Player};
 
 struct Metadata {
     address: String,
@@ -141,7 +141,7 @@ pub async fn handle_request_action(
             let address_encoded = bs58::encode(address_owner).into_string();
 
             let mut manager = manager.lock().await;
-            let player = manager.get_player_ref(address_encoded.clone())?;
+            let player = manager.get_player_ref(&address_encoded)?;
 
             // Parsing JSON
             let game_id = input
@@ -150,7 +150,7 @@ pub async fn handle_request_action(
                 .as_str()
                 .ok_or("Invalid game_id")?;
 
-            manager.player_join(game_id.to_owned(), player.clone())?;
+            manager.player_join(game_id, player.clone())?;
             println!("Player joined: name {} game_id {}", player.name, game_id);
         }
         Some("show_games") => {
@@ -179,7 +179,7 @@ pub async fn handle_request_action(
             let mut manager = manager.lock().await;
 
             // Get game and make owner
-            let game = manager.drop_game(game_id.to_owned())?;
+            let game = manager.drop_game(game_id)?;
             // Generate table from game
             let table = game.round_start(2, metadata.timestamp)?;
             // Add table to manager
@@ -199,7 +199,7 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
 
-            manager.stop_game(game_id.to_string()).await?;
+            manager.stop_game(game_id).await?;
         }
 
         Some("show_hands") => {
@@ -241,7 +241,10 @@ pub async fn handle_request_action(
 
             let manager = manager.lock().await;
 
-            println!("Finding score by table_id {} and game_id {} ...", table_id, game_id);
+            println!(
+                "Finding score by table_id {} and game_id {} ...",
+                table_id, game_id
+            );
             let scoreboard = manager
                 .get_scoreboard(table_id, game_id)
                 .ok_or("Scoreboard not found searching by table_id")?;
@@ -272,11 +275,11 @@ pub async fn handle_request_action(
 
             let mut manager = manager.lock().await;
             let table = manager.get_table(game_id)?;
-            let table_id = table.get_id().to_string();
+            let table_id = table.get_id().to_owned();
             table.hit_player(&address_encoded, timestamp).await?;
 
             if !table.any_player_can_hit() {
-                manager.stop_game(table_id).await?;
+                manager.stop_game(&table_id).await?;
             }
         }
 
@@ -298,17 +301,13 @@ pub async fn handle_request_action(
             let table = manager.get_table(game_id)?;
 
             let name = table.get_name_player(&address_encoded).unwrap();
-            let table_id = table.get_id().to_string();
+            let table_id = table.get_id().to_owned();
             table.stand_player(&address_encoded, metadata.timestamp)?;
 
             if !table.any_player_can_hit() {
-                manager.stop_game(table_id).await?;
+                manager.stop_game(&table_id).await?;
             }
-            println!(
-                "Stand: {} game_id {}",
-                name,
-                game_id
-            );
+            println!("Stand: {} game_id {}", name, game_id);
         }
         _ => Err("Invalid action")?,
     }

@@ -1,8 +1,6 @@
 pub mod card {
     use std::fmt::Display;
 
-    use serde::Serialize;
-
     #[derive(Clone)]
     pub enum Suit {
         Spades,   // Espadas
@@ -57,7 +55,7 @@ pub mod card {
     impl Display for Rank {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let rank = self.clone() as u8;
-            let rank_name: String = {
+            let rank_name = {
                 if rank > 1 && rank < 11 {
                     rank.to_string()
                 } else {

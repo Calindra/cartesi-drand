@@ -27,17 +27,17 @@ mod game_tests {
         let bob = Player::new(bob_address_encoded.clone(), "Bob".to_owned());
         let bob = Arc::new(bob);
         manager.add_player(bob.clone()).unwrap();
-        manager.player_join(game_id.to_owned(), bob).unwrap();
+        manager.player_join(&game_id, bob).unwrap();
 
         let alice_address = "70997970C51812dc3A010C7d01b50e0d17dc79C8";
         let alice_address_encoded = bs58::encode(alice_address).into_string();
         let alice = Player::new(alice_address_encoded.clone(), "Alice".to_owned());
         let alice = Arc::new(alice);
         manager.add_player(alice.clone()).unwrap();
-        manager.player_join(game_id.to_owned(), alice).unwrap();
+        manager.player_join(&game_id, alice).unwrap();
 
         // Get game and make owner
-        let game = manager.drop_game(game_id.to_owned()).unwrap();
+        let game = manager.drop_game(&game_id).unwrap();
 
         // Generate table from game
         let timestamp: u64 = 1691386341757;

@@ -141,6 +141,10 @@ pub mod player {
             self.points > 21
         }
 
+        pub fn get_points(&self) -> u8 {
+            self.points
+        }
+
         /**
          * Take a card from the deck and add it to the player's hand.
          */

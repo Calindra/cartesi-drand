@@ -52,12 +52,12 @@ pub mod game {
             Ok(())
         }
 
-        pub fn remove_player_by_id(&mut self, id: String) -> Result<Arc<Player>, &'static str> {
-            let player = self.players.remove(&id).ok_or("Player not found.")?;
+        pub fn remove_player_by_id(&mut self, id: &str) -> Result<Arc<Player>, &'static str> {
+            let player = self.players.remove(id).ok_or("Player not found.")?;
             Ok(player)
         }
 
-        pub fn get_player_ref(&mut self, address: String) -> Result<Arc<Player>, &'static str> {
+        pub fn get_player_ref(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.remove_player_by_id(address)?;
             self.players.insert(player.get_id(), player.clone());
             Ok(player)
@@ -67,7 +67,7 @@ pub mod game {
             self.games.first_mut().ok_or("No games available.")
         }
 
-        pub fn get_game_by_id(&mut self, id: String) -> Result<&mut Game, &'static str> {
+        pub fn get_game_by_id(&mut self, id: &str) -> Result<&mut Game, &'static str> {
             self.games
                 .iter_mut()
                 .find(|game| game.id == id)
@@ -88,7 +88,7 @@ pub mod game {
                 .find(|scoreboard| scoreboard.id == table_id && scoreboard.game_id == game_id)
         }
 
-        pub fn drop_game(&mut self, id: String) -> Result<Game, &'static str> {
+        pub fn drop_game(&mut self, id: &str) -> Result<Game, &'static str> {
             let index = self
                 .games
                 .iter()
@@ -128,7 +128,7 @@ pub mod game {
                 .ok_or("Table not found or not started.")
         }
 
-        pub async fn stop_game(&mut self, table_id: String) -> Result<(), &'static str> {
+        pub async fn stop_game(&mut self, table_id: &str) -> Result<(), &'static str> {
             let index = self
                 .tables
                 .iter_mut()
@@ -142,7 +142,7 @@ pub mod game {
 
         pub fn player_join(
             &mut self,
-            game_id: String,
+            game_id: &str,
             player: Arc<Player>,
         ) -> Result<(), &'static str> {
             if !self.players.contains_key(&player.get_id()) {
@@ -367,18 +367,20 @@ pub mod game {
         }
 
         pub fn can_advance_round(&self) -> bool {
+            println!("\nChecking if can advance round");
             let result = self.players_with_hand.iter().all(|player| {
                 println!(
-                    "Player {} round {}; Table round {} is_standing {}",
+                    "Player {} round {}; Table round {} is_standing {} points {}",
                     player.get_name(),
                     player.get_round(),
                     self.round,
-                    player.is_standing
+                    player.is_standing,
+                    player.points
                 );
 
                 player.is_standing || self.round != player.get_round()
             });
-            println!("Can continue {}", result);
+            println!("Can advance {}\n", result);
             result
         }
 
