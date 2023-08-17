@@ -41,6 +41,7 @@ pub mod player {
     /**
      * Player registration.
      */
+    #[derive(Debug)]
     pub struct Player {
         id: String,
         pub(crate) name: String,
