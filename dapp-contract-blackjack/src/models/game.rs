@@ -128,11 +128,11 @@ pub mod game {
                 .ok_or("Table not found or not started.")
         }
 
-        pub async fn stop_game(&mut self, id: &str) -> Result<(), &'static str> {
+        pub async fn stop_game(&mut self, table_id: String) -> Result<(), &'static str> {
             let index = self
                 .tables
                 .iter_mut()
-                .position(|table| table.game.get_id() == id)
+                .position(|table| table.id == table_id)
                 .ok_or("Table not found or not started.")?;
             let table = self.tables.swap_remove(index);
             self.reallocate_table_to_game(table).await;
