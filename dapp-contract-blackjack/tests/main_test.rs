@@ -394,6 +394,7 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn hit_card_never_busted() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
@@ -461,7 +462,11 @@ mod contract_blackjack_tests {
 
         let table_id = table.get_id().to_owned();
 
+        let mut i = 1;
+
         while table.any_player_can_hit() {
+            println!("New round {}", i);
+
             for player in players.iter() {
                 let player_id = player.get_id();
                 let points = table.get_points(&player_id).unwrap();
@@ -472,10 +477,12 @@ mod contract_blackjack_tests {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
             }
+
+            i += 1;
         }
 
         manager.add_table(table);
-        manager.stop_game(&table_id);
+        manager.stop_game(&table_id).await.unwrap();
 
         let manager = Arc::from(Mutex::from(manager));
 

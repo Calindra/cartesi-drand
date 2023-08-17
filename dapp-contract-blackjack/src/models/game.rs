@@ -3,7 +3,8 @@ pub mod game {
         models::{
             card::card::Deck,
             player::player::{Player, PlayerHand},
-        }, util::random::generate_id,
+        },
+        util::random::generate_id,
     };
     use serde_json::json;
     use std::{collections::HashMap, sync::Arc};
@@ -129,6 +130,8 @@ pub mod game {
         }
 
         pub async fn stop_game(&mut self, table_id: &str) -> Result<(), &'static str> {
+            println!("Stopping game {}", table_id);
+
             let index = self
                 .tables
                 .iter_mut()
