@@ -332,7 +332,6 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
-    #[ignore]
     async fn show_hands_of_table() {
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
@@ -356,16 +355,18 @@ mod contract_blackjack_tests {
 
         let timestamp: u64 = 1691386341757;
 
-        while table.is_all_players_has_condition(|player| player.points > 11) {
+        while table.is_any_player_has_condition(|player| player.points <= 11) {
             for player_id in players.iter() {
                 let points = table.get_points(player_id).unwrap();
                 if points <= 11 {
                     table.hit_player(player_id, timestamp).await.unwrap();
+                } else {
+                    table.stand_player(player_id, timestamp).unwrap();
                 }
             }
 
             let hands = table.generate_hands();
-            println!("{:}", hands);
+            println!("Hands: {:}", hands);
         }
 
         manager.add_table(table);

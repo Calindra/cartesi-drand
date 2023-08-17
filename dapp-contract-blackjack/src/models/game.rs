@@ -322,13 +322,14 @@ pub mod game {
             player_id: &str,
             timestamp: u64,
         ) -> Result<(), &'static str> {
-            let round = self.round;
+            let table_round = self.round;
             let player = self.get_player_by_id_mut(player_id)?;
             let player_round = player.get_round();
-            if round != player.get_round() {
+
+            if table_round != player_round {
                 println!(
                     "Game round {}; Player round {}; Player id {};",
-                    round, player_round, player_id
+                    table_round, player_round, player_id
                 );
                 Err("Round is not the same. Waiting for another players.")?;
             }
@@ -347,8 +348,10 @@ pub mod game {
             last_timestamp: u64,
         ) -> Result<(), &'static str> {
             let player = self.get_player_by_id_mut(player_id)?;
-            player.stand(last_timestamp);
+            player.stand(last_timestamp)?;
+
             self.next_round();
+
             Ok(())
         }
 
@@ -382,6 +385,7 @@ pub mod game {
 
         pub fn generate_hands(&self) -> serde_json::Value {
             json!({
+                "game_id": self.game.get_id(),
                 "table_id": self.id,
                 "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<serde_json::Value>>()
             })

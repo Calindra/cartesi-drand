@@ -8,7 +8,10 @@ pub mod player {
     use serde::Serialize;
     use tokio::sync::Mutex;
 
-    use crate::models::{card::card::{Card, Deck, Rank}, game::game::Table};
+    use crate::models::{
+        card::card::{Card, Deck, Rank},
+        game::game::Table,
+    };
 
     use crate::util::random::{call_seed, generate_random_number};
 
@@ -142,21 +145,17 @@ pub mod player {
                 Err("Already standing.")?;
             }
 
-            let deck_is_empty = {
-                let deck = self.deck.lock().await;
-                deck.cards.is_empty()
-            };
-
-            if deck_is_empty {
-                self.is_standing = true;
-                Err("No cards in the deck.")?;
-            }
-
             let seed = call_seed(timestamp).await.or(Err("No cant call seed"))?;
 
             let card = {
                 let mut deck = self.deck.lock().await;
                 let size = deck.cards.len();
+
+                if deck.cards.is_empty() {
+                    self.is_standing = true;
+                    Err("No cards in the deck.")?;
+                }
+
                 let nth = generate_random_number(seed, 0..size);
                 let card = deck.cards.remove(nth);
                 card
@@ -172,7 +171,10 @@ pub mod player {
             }
 
             self.is_standing = self.is_standing || self.points >= 21;
-            println!("Round {}; points {}; card {:}; Player {};", self.round, self.points, card, self.player.name);
+            println!(
+                "Round {}; points {}; card {:}; Player {};",
+                self.round, self.points, card, self.player.name
+            );
             self.hand.0.push(card);
             self.round += 1;
             Ok(())
@@ -181,7 +183,7 @@ pub mod player {
         /**
          * Add the value of the card to the player's hand.
          */
-        pub async fn stand(&mut self, last_timestamp: u64) -> Result<(), &'static str> {
+        pub fn stand(&mut self, last_timestamp: u64) -> Result<(), &'static str> {
             self.is_standing = true;
             self.last_timestamp = last_timestamp;
             Ok(())
