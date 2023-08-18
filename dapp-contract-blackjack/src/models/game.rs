@@ -184,6 +184,7 @@ pub mod game {
             players: Vec<Arc<Player>>,
             winner: Option<Arc<Player>>,
         ) -> Self {
+            println!("Scoreboard {}; game_id {}; winner {:?}", id, game_id, winner);
             Scoreboard {
                 id: id.to_string(),
                 game_id: game_id.to_string(),
