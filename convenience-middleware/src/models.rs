@@ -1,5 +1,5 @@
 pub mod models {
-    use std::{borrow::BorrowMut, cell::Cell, collections::{VecDeque,BTreeMap}, sync::Arc};
+    use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
     use serde::{Deserialize, Serialize};
     use sha3::{Digest, Sha3_256};
@@ -82,9 +82,9 @@ pub mod models {
                 .parse::<u64>()
                 .unwrap();
             let safe_seconds = std::env::var("DRAND_SAFE_SECONDS")
-            .expect("Missing env DRAND_SAFE_SECONDS")
-            .parse::<u64>()
-            .unwrap();
+                .expect("Missing env DRAND_SAFE_SECONDS")
+                .parse::<u64>()
+                .unwrap();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 drand_period,

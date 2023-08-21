@@ -33,7 +33,7 @@ export class DrandProvider {
     }
 
     lastPendingTime = 0
-    secondsToWait: number = 3;
+    secondsToWait: number = 6;
     private drandClient: HttpChainClient
     inputSender: InputSender
 
