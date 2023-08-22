@@ -1,0 +1,37 @@
+name: Rust
+
+on:
+  push:
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  riscv:
+    name: RiscV Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        working-directory: ./convenience-middleware/
+        run: cargo test --verbose
+      - name: Build
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: riscv64gc-unknown-linux-gnu
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          working-directory: ./convenience-middleware/
+          command: build
+          args: --release --target riscv64gc-unknown-linux-gnu
+      - name: Release
+        uses: docker://antonyurchenko/git-release:v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: target/riscv64gc-unknown-linux-gnu/release/cartesi-drand
