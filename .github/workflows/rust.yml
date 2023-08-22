@@ -11,9 +11,7 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Build
@@ -22,3 +20,20 @@ jobs:
     - name: Run tests
       working-directory: ./convenience-middleware/
       run: cargo test --verbose
+
+  riscv:
+    name: Windows Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: riscv64gc-unknown-linux-gnu
+          override: true
+      - uses: actions-rs/cargo@v1
+        working-directory: ./convenience-middleware/
+        with:
+          use-cross: true
+          command: build
+          args: --release --target riscv64gc-unknown-linux-gnu
