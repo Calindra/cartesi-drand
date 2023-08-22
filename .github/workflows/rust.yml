@@ -26,7 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        working-directory: ./convenience-middleware/
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -35,5 +34,6 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
+          working-directory: ./convenience-middleware/
           command: build
           args: --release --target riscv64gc-unknown-linux-gnu
