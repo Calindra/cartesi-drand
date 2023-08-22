@@ -26,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        working-directory: ./convenience-middleware/
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           target: riscv64gc-unknown-linux-gnu
           override: true
       - uses: actions-rs/cargo@v1
-        working-directory: ./convenience-middleware/
         with:
           use-cross: true
           command: build
