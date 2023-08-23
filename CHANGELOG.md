@@ -1,3 +1,7 @@
+## [0.2.0] - 2023-08-23
+### Added
+- Show scoreboard
+
 ## [0.1.9] - 2023-08-22
 ### Fixed
 - Stop issues (4)

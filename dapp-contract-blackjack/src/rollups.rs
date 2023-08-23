@@ -8,8 +8,13 @@ pub mod rollup {
     use tokio::sync::{mpsc::Sender, Mutex};
 
     use crate::{
-        models::{game::game::Manager, player::{player::Player, check_fields_create_player}},
-        util::json::{decode_payload, generate_message, write_json, get_address_metadata_from_root},
+        models::{
+            game::game::Manager,
+            player::{check_fields_create_player, player::Player},
+        },
+        util::json::{
+            decode_payload, generate_message, get_address_metadata_from_root, write_json,
+        },
     };
 
     pub async fn rollup(
@@ -108,6 +113,41 @@ pub mod rollup {
                 let table = manager.get_table(game_id)?;
                 let hands = table.generate_hands();
                 let json_as_hex = hex::encode(hands.to_string());
+                let report = json!({ "payload": format!("0x{}", json_as_hex) });
+
+                println!("Report: {:}", report);
+                let _ = send_report(report.clone()).await;
+            }
+            Some("show_winner") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+
+                // Parsing JSON
+                let game_id = input
+                    .get("game_id")
+                    .ok_or("Invalid field game_id")?
+                    .as_str()
+                    .ok_or("Invalid game_id")?;
+
+                let table_id = input
+                    .get("table_id")
+                    .ok_or("Invalid field table_id")?
+                    .as_str()
+                    .ok_or("Invalid string table_id")?;
+
+                let manager = manager.lock().await;
+
+                println!(
+                    "Finding score by table_id {} and game_id {} ...",
+                    table_id, game_id
+                );
+                let scoreboard = manager
+                    .get_scoreboard(table_id, game_id)
+                    .ok_or("Scoreboard not found searching by table_id")?;
+                
+                let response = json!({
+                    "scoreboard": scoreboard.to_json(),
+                });
+                let json_as_hex = hex::encode(response.to_string());
                 let report = json!({ "payload": format!("0x{}", json_as_hex) });
 
                 println!("Report: {:}", report);
