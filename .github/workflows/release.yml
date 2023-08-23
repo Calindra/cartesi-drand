@@ -34,4 +34,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          args: target/riscv64gc-unknown-linux-gnu/release/cartesi-drand
+          args: target/riscv64gc-unknown-linux-gnu/release/cartesi-drand target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack
