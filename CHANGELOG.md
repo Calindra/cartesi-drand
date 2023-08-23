@@ -1,4 +1,4 @@
-## [0.2.1] - 2023-08-23
+## [0.2.2] - 2023-08-23
 ### Added
 - Show game version
 - Show middleware version

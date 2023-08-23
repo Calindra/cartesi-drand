@@ -142,7 +142,7 @@ mod middleware_tests {
         assert_eq!(resp.status(), 404);
         assert_eq!(
             manager.lock().await.pending_beacon_timestamp.get(),
-            timestamp
+            timestamp + app_state.safe_seconds
         );
     }
 
