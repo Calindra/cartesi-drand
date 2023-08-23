@@ -79,7 +79,7 @@ async fn handle_inspect(
     let bytes: Vec<u8> = hex::decode(&payload).unwrap();
     let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
     println!("Handling inspect {}", inspect_decoded);
-    if inspect_decoded == "pending_drand_beacon" {
+    if inspect_decoded == "pendingdrandbeacon" {
         // todo: aqui tem que ser o timestamp mais recente do request de beacon em hex
         // manager.pending_beacon_timestamp 64bits => 8 bytes
         let manager = manager.lock().await;

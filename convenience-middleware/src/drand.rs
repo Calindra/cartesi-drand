@@ -7,7 +7,7 @@ use serde_json::json;
 use crate::{rollup::{RollupInput, self}, models::models::{AppState, DrandBeacon, PayloadWithBeacon}};
 
 pub(crate) fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
-    rollup_input.decoded_inspect() == "pending_drand_beacon"
+    rollup_input.decoded_inspect() == "pendingdrandbeacon"
 }
 
 pub(crate) async fn send_pending_beacon_report(app_state: &Data<AppState>) {

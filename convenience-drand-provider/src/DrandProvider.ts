@@ -45,9 +45,9 @@ export class DrandProvider {
 
     async pendingDrandBeacon() {
         try {
-            // url = "http://localhost:5005/inspect/pending_drand_beacon"
+            // url = "http://localhost:5005/inspect/pendingdrandbeacon"
             console.log(`${new Date().toISOString()}: Fetching pending drand beacon`)
-            const res = await this.inspectAxiosInstance.get<PendingDrandBeacon>('/pending_drand_beacon')
+            const res = await this.inspectAxiosInstance.get<PendingDrandBeacon>('/pendingdrandbeacon')
 
             if (Array.isArray(res.data.reports) && res.data.reports.length > 0) {
                 const firstReport = res.data.reports.at(0);

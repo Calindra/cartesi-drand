@@ -1,3 +1,7 @@
+## [0.1.4] - 2023-08-22
+### Added
+- Hex issues, changing pending_drand_beacon to pendingdrandbeacon
+
 ## [0.1.3] - 2023-08-22
 ### Added
 - Startup scripts
