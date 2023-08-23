@@ -60,7 +60,8 @@ pub mod routes {
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
     ) -> impl Responder {
-        let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp).await;
+        println!("Received random request from DApp timestamp={}", query.timestamp);
+        let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp);
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process
             return HttpResponse::Ok().body(randomness);
@@ -78,7 +79,7 @@ pub mod routes {
                 if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
                     println!("Is Drand!!! {:?}", beacon);
                     ctx.keep_newest_beacon(beacon);
-                    let randomness = ctx.get_randomness_for_timestamp(query.timestamp).await;
+                    let randomness = ctx.get_randomness_for_timestamp(query.timestamp);
                     if let Some(randomness) = randomness {
                         return HttpResponse::Ok().body(randomness);
                     }

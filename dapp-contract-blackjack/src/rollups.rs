@@ -59,6 +59,7 @@ pub mod rollup {
                     }
                 }
             }
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 
@@ -128,7 +129,7 @@ pub mod rollup {
         println!("body {:}", &body);
 
         sender.send(body).await?;
-        tokio::time::sleep(Duration::from_secs(6)).await;
+
         Ok("accept")
     }
 

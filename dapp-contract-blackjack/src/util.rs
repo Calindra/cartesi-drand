@@ -36,7 +36,7 @@ pub mod random {
             match status_response {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
-                    tokio::time::sleep(Duration::from_secs(6)).await;
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
 
                 StatusCode::OK => {
