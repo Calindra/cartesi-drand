@@ -11,6 +11,7 @@ pub mod game {
     use tokio::sync::Mutex;
 
     pub struct Manager {
+        pub scoreboard_id_seq: u64,
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
         pub tables: Vec<Table>, // games running
@@ -20,6 +21,7 @@ pub mod game {
     impl Default for Manager {
         fn default() -> Self {
             Manager {
+                scoreboard_id_seq: 0,
                 games: Vec::new(),
                 tables: Vec::new(),
                 players: HashMap::new(),
@@ -32,8 +34,10 @@ pub mod game {
         pub fn new_with_games(game_size: usize) -> Self {
             let mut games = Vec::with_capacity(game_size);
 
-            for _ in 0..game_size {
-                games.push(Game::default());
+            for i in 0..game_size {
+                let mut game = Game::default();
+                game.id = (i + 1).to_string();
+                games.push(game);
             }
 
             Manager {
@@ -41,6 +45,7 @@ pub mod game {
                 tables: Vec::with_capacity(game_size),
                 players: HashMap::new(),
                 scoreboards: Vec::new(),
+                scoreboard_id_seq: 0,
             }
         }
 
@@ -106,7 +111,9 @@ pub mod game {
             let players = table.game.players.iter().cloned().collect();
 
             let winner = table.get_winner().await;
-            let scoreboard = Scoreboard::new(table.get_id(), table.game.get_id(), players, winner);
+            self.scoreboard_id_seq += 1;
+            let scoreboard_id = self.scoreboard_id_seq.to_string();
+            let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
             self.scoreboards.push(scoreboard);
 
             let mut game = table.game;
@@ -184,7 +191,10 @@ pub mod game {
             players: Vec<Arc<Player>>,
             winner: Option<Arc<Player>>,
         ) -> Self {
-            println!("Scoreboard {}; game_id {}; winner {:?}", id, game_id, winner);
+            println!(
+                "Scoreboard {}; game_id {}; winner {:?}",
+                id, game_id, winner
+            );
             Scoreboard {
                 id: id.to_string(),
                 game_id: game_id.to_string(),

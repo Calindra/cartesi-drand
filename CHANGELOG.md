@@ -1,3 +1,7 @@
+## [0.2.3] - 2023-08-23
+### Changed
+- Change uuid to int seq to make it easy to test
+
 ## [0.2.2] - 2023-08-23
 ### Added
 - Show game version
