@@ -1,3 +1,9 @@
+## [0.2.1] - 2023-08-23
+### Added
+- Show game version
+- Show middleware version
+### Changed
+- Saving the safe query timestamp
 ## [0.2.0] - 2023-08-23
 ### Added
 - Show scoreboard

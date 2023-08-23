@@ -68,6 +68,7 @@ pub mod models {
         pub(crate) drand_period: u64,
         pub(crate) drand_genesis_time: u64,
         pub(crate) safe_seconds: u64,
+        pub(crate) version: String,
     }
 
     impl AppState {
@@ -85,11 +86,13 @@ pub mod models {
                 .expect("Missing env DRAND_SAFE_SECONDS")
                 .parse::<u64>()
                 .unwrap();
+            let version: Option<&str> = option_env!("CARGO_PKG_VERSION");
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 drand_period,
                 drand_genesis_time,
                 safe_seconds,
+                version: version.unwrap_or("unknown").to_string(),
             }
         }
         pub(crate) fn get_randomness_for_timestamp(
@@ -100,14 +103,15 @@ pub mod models {
                 Ok(manager) => manager,
                 Err(_) => return None,
             };
+            let safe_query_timestamp = query_timestamp + self.safe_seconds;
             match manager.last_beacon.take() {
                 Some(beacon) => {
                     println!(
                         "beacon time {} vs {} request time",
                         beacon.timestamp, query_timestamp
                     );
-                    // Check the beacon timestamp against the query timestamp
-                    if query_timestamp < beacon.timestamp - self.safe_seconds {
+                    // Check the beacon timestamp against the safe query timestamp
+                    if safe_query_timestamp < beacon.timestamp {
                         let salt = manager.randomness_salt.take() + 1;
                         manager.randomness_salt.set(salt);
 
@@ -118,13 +122,13 @@ pub mod models {
                         manager.last_beacon.set(Some(beacon));
                         Some(hex::encode(randomness))
                     } else {
-                        manager.set_pending_beacon_timestamp(query_timestamp);
+                        manager.set_pending_beacon_timestamp(safe_query_timestamp);
                         manager.last_beacon.set(Some(beacon));
                         None
                     }
                 }
                 None => {
-                    manager.set_pending_beacon_timestamp(query_timestamp);
+                    manager.set_pending_beacon_timestamp(safe_query_timestamp);
                     None
                 }
             }
@@ -242,11 +246,13 @@ mod test {
     }
 
     fn create_app_state() -> AppState {
+        let version: Option<&str> = option_env!("CARGO_PKG_VERSION");
         AppState {
             input_buffer_manager: Arc::new(Mutex::new(InputBufferManager::default())),
             drand_period: 3,
             drand_genesis_time: 1677685200,
             safe_seconds: 5,
+            version: version.unwrap_or("unknown").to_string(),
         }
     }
 

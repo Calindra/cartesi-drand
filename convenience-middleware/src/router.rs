@@ -12,7 +12,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        println!("Received finish request from DApp {:?}", body);
+        println!("Received finish request from DApp {:?} version={}", body, ctx.version);
 
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
@@ -60,7 +60,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
     ) -> impl Responder {
-        println!("Received random request from DApp timestamp={}", query.timestamp);
+        println!("Received random request from DApp timestamp={} version={}", query.timestamp, ctx.version);
         let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp);
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process

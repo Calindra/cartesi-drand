@@ -307,6 +307,9 @@ fn listener_send_message_to_middleware(mut receiver: Receiver<Value>) {
 
 #[tokio::main]
 async fn main() {
+    const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
+    println!("BlackJack v{}", VERSION.unwrap_or("unknown"));
+
     dotenv().ok();
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 

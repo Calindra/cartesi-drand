@@ -169,8 +169,11 @@ pub mod rollup {
         println!("Handling advance");
 
         println!("body {:}", &body);
-
-        // sender.send(body).await?;
+        let run_async = false;
+        if run_async {
+            sender.send(body).await?;
+            return Ok("accept")
+        }
         let payload = get_payload_from_root(&body).ok_or("Invalid payload")?;
         let action = get_from_payload_action(&payload);
 
