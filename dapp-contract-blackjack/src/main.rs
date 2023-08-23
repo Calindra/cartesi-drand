@@ -5,81 +5,21 @@ mod rollups;
 mod util;
 
 use dotenv::dotenv;
-use rollups::rollup::{rollup, send_report};
+use rollups::rollup::{get_from_payload_action, get_payload_from_root, rollup, send_report};
 use serde_json::{json, Value};
-use tokio::{
-    fs::File,
-    io::{self, AsyncWriteExt},
-    sync::{
-        mpsc::{channel, Receiver, Sender},
-        Mutex,
-    },
+use tokio::sync::{
+    mpsc::{channel, Receiver, Sender},
+    Mutex,
 };
-use util::json::{decode_payload, generate_message};
+use util::json::generate_message;
 
-use crate::models::{game::game::Manager, player::player::Player};
-
-struct Metadata {
-    address: String,
-    timestamp: u64,
-    // input_index: u64,
-}
-
-fn get_payload_from_root(root: &Value) -> Option<Value> {
-    let root = root.as_object()?;
-    let root = root.get("data")?.as_object()?;
-    let payload = root.get("payload")?.as_str()?;
-    let payload = decode_payload(payload)?;
-    Some(payload)
-}
-
-fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
-    let root = root.as_object()?;
-    let root = root.get("data")?.as_object()?;
-    let metadata = root.get("metadata")?.as_object()?;
-
-    let address = metadata.get("msg_sender")?.as_str()?;
-    let timestamp = metadata.get("timestamp")?.as_u64()?;
-    // let input_index = metadata.get("input_index")?.as_u64()?;
-
-    Some(Metadata {
-        address: address.to_owned(),
-        timestamp,
-        // input_index,
-    })
-}
-
-fn get_from_payload_action(payload: &Value) -> Option<String> {
-    let input = payload.get("input")?.as_object()?;
-    let action = input.get("action")?.as_str()?;
-    Some(action.to_owned())
-}
-
-async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
-    let mut file = File::create(path).await?;
-    let value = obj.to_string();
-    file.write_all(value.as_bytes()).await?;
-    Ok(())
-}
-
-/**
- * Example of call:
- * {"input":{"name":"Bob","action":"new_player"}}
- */
-fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
-    input
-        .get("name")
-        .ok_or("Field name dont exist")?
-        .as_str()
-        .ok_or("Field name isnt a string")
-        .and_then(|name| {
-            if name.len() >= 3 && name.len() <= 255 {
-                Ok(name)
-            } else {
-                Err("Name need between 3 and 255 characters")
-            }
-        })
-}
+use crate::{
+    models::{
+        game::game::Manager,
+        player::{check_fields_create_player, player::Player},
+    },
+    util::json::{get_address_metadata_from_root, write_json},
+};
 
 pub async fn handle_request_action(
     root: &Value,

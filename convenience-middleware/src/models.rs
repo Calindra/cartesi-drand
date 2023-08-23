@@ -92,7 +92,7 @@ pub mod models {
                 safe_seconds,
             }
         }
-        pub(crate) async fn get_randomness_for_timestamp(
+        pub(crate) fn get_randomness_for_timestamp(
             &self,
             query_timestamp: u64,
         ) -> Option<String> {

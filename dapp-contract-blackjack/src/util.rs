@@ -1,3 +1,8 @@
+pub struct Metadata {
+    pub address: String,
+    pub timestamp: u64,
+    // input_index: u64,
+}
 pub mod random {
     use std::{env, error::Error, ops::Range, time::Duration};
 
@@ -36,7 +41,7 @@ pub mod random {
             match status_response {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
-                    tokio::time::sleep(Duration::from_secs(6)).await;
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
 
                 StatusCode::OK => {
@@ -59,6 +64,9 @@ pub mod random {
 
 pub mod json {
     use serde_json::{json, Value};
+    use tokio::{fs::File, io::{AsyncWriteExt, self}};
+
+    use super::Metadata;
 
     pub fn decode_payload(payload: &str) -> Option<Value> {
         let payload = payload.trim_start_matches("0x");
@@ -79,6 +87,29 @@ pub mod json {
             "data": {
                 "payload": payload,
             }
+        })
+    }
+
+    pub async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
+        let mut file = File::create(path).await?;
+        let value = obj.to_string();
+        file.write_all(value.as_bytes()).await?;
+        Ok(())
+    }
+
+    pub fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
+        let root = root.as_object()?;
+        let root = root.get("data")?.as_object()?;
+        let metadata = root.get("metadata")?.as_object()?;
+    
+        let address = metadata.get("msg_sender")?.as_str()?;
+        let timestamp = metadata.get("timestamp")?.as_u64()?;
+        // let input_index = metadata.get("input_index")?.as_u64()?;
+    
+        Some(Metadata {
+            address: address.to_owned(),
+            timestamp,
+            // input_index,
         })
     }
 }

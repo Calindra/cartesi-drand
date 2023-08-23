@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 pub mod player {
     use std::{
         error::Error,
@@ -244,4 +246,23 @@ pub mod player {
             todo!();
         }
     }
+}
+
+/**
+ * Example of call:
+ * {"input":{"name":"Bob","action":"new_player"}}
+ */
+pub fn check_fields_create_player(input: &Value) -> Result<&str, &'static str> {
+    input
+        .get("name")
+        .ok_or("Field name dont exist")?
+        .as_str()
+        .ok_or("Field name isnt a string")
+        .and_then(|name| {
+            if name.len() >= 3 && name.len() <= 255 {
+                Ok(name)
+            } else {
+                Err("Name need between 3 and 255 characters")
+            }
+        })
 }
