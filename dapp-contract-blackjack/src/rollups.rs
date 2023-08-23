@@ -4,7 +4,7 @@ pub mod rollup {
         StatusCode,
     };
     use serde_json::{from_str, json, Value};
-    use std::{env, error::Error, str::from_utf8, sync::Arc};
+    use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
 
     use crate::{
@@ -128,7 +128,7 @@ pub mod rollup {
         println!("body {:}", &body);
 
         sender.send(body).await?;
-
+        tokio::time::sleep(Duration::from_secs(6)).await;
         Ok("accept")
     }
 
