@@ -146,7 +146,7 @@ curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_ga
 Join game:
 ```shell
 cd frontend-console
-export GAME_ID=b899a872-83ef-4abb-84f1-7ce2219e61b3
+export GAME_ID=1
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
@@ -179,8 +179,10 @@ curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_ha
 
 Show winner:
 ```shell
-export TABLE_ID=046ce495-223d-44bd-a348-266516b69b30
+export TABLE_ID=1
 yarn start input send --payload "{\"input\":{\"action\":\"show_winner\",\"table_id\":\"${TABLE_ID}\",\"game_id\":\"${GAME_ID}\"}}"
+
+curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_winner%22%2C%22game_id%22%3A%22${GAME_ID}%22%2C%22table_id%22%3A%22${TABLE_ID}%22%7D%7D
 ```
 
 Call player timeout:
