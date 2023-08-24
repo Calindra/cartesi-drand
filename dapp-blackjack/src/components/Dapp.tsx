@@ -1,7 +1,7 @@
 import React from "react";
 
 // We'll use ethers to interact with the Ethereum network and our contract
-import { BrowserProvider, parseUnits, ethers } from "ethers";
+import { BrowserProvider, parseUnits, ethers, isBytesLike, Signer } from "ethers";
 
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
@@ -14,11 +14,15 @@ import { BrowserProvider, parseUnits, ethers } from "ethers";
 import { NoWalletDetected } from "./NoWalletDetected";
 import { ConnectWallet } from "./ConnectWallet";
 import { Loading } from "./Loading";
-import { Transfer } from "./Transfer";
-import { TransactionErrorMessage } from "./TransactionErrorMessage";
-import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
-import { NoTokensMessage } from "./NoTokensMessage";
-
+// import { Transfer } from "./Transfer";
+// import { TransactionErrorMessage } from "./TransactionErrorMessage";
+// import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
+// import { NoTokensMessage } from "./NoTokensMessage";
+import { Provider } from "@ethersproject/providers";
+import { ICartesiDApp, ICartesiDApp__factory, IERC20Portal, IERC20Portal__factory, IERC721Portal, IERC721Portal__factory, IInputBox, IInputBox__factory } from "@cartesi/rollups";
+import InputBox from "../deployments/InputBox.json";
+import ERC721Portal from "../deployments/ERC721Portal.json";
+import ERC20Portal from "../deployments/ERC20Portal.json";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
 
@@ -48,6 +52,7 @@ export class Dapp extends React.Component {
     private _provider: any;
     private _token: ethers.Contract | any;
     private _pollDataInterval: any;
+    private _signer: any;
     constructor(props) {
         super(props);
 
@@ -109,6 +114,12 @@ export class Dapp extends React.Component {
                         <p>
                             Welcome <b>{this.state.selectedAddress}</b>.
                         </p>
+                        <button onClick={() => {
+                            this._newPlayer()
+                        }}>New Player</button>
+                        <button onClick={() => {
+                            this._joinGame()
+                        }}>Join Game</button>
                     </div>
                 </div>
 
@@ -173,7 +184,8 @@ export class Dapp extends React.Component {
         // Fetching the token data and the user's balance are specific to this
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
-        this._startPollingData();
+        this._readGames();
+        // this._startPollingData();
     }
 
     async _initializeEthers() {
@@ -194,8 +206,22 @@ export class Dapp extends React.Component {
         // It also provides an opportunity to request access to write
         // operations, which will be performed by the private key
         // that MetaMask manages for the user.
-        const _signer = await this._provider.getSigner();
+        this._signer = await this._provider.getSigner();
+    }
 
+    async _newPlayer() {
+        console.log('new player')
+        await Cartesi.sendInput({
+            action: 'new_player',
+            name: 'Bob'
+        }, this._signer, this._provider)
+    }
+
+    async _joinGame() {
+        await Cartesi.sendInput({
+            action: 'join_game',
+            game_id: '1'
+        }, this._signer, this._provider)
     }
 
     // The next two methods are needed to start and stop polling data. While
@@ -208,7 +234,7 @@ export class Dapp extends React.Component {
     async _startPollingData() {
         try {
             // We run it once immediately so we don't have to wait for it
-            await this._readGames();
+            await this._showHands();
         } catch (e) {
             console.error(e);
         }
@@ -225,6 +251,13 @@ export class Dapp extends React.Component {
         const games = await Cartesi.inspectWithJson({ action: 'show_games' })
         console.log(games)
         this.setState({ games })
+    }
+
+    async _showHands() {
+        console.log('show hands...')
+        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id: '1' })
+        console.log(hands)
+        this.setState({ hands })
     }
 
     // This method just clears part of the state.
@@ -273,6 +306,41 @@ export class Dapp extends React.Component {
 // const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
 const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
 class Cartesi {
+    static async sendInput(payload: any, signer: any, provider: any) {
+
+        const network = await provider.getNetwork();
+        console.log(`connected to chain ${network.chainId}`);
+
+        // connect to rollups,
+        const { dapp, inputContract } = await Cartesi.rollups(
+            network.chainId,
+            signer,
+        );
+
+        const signerAddress = await signer.getAddress();
+        console.log(`using account "${signerAddress}"`);
+
+        // use message from command line option, or from user prompt
+        console.log(`sending "${payload}"`);
+
+        // convert string to input bytes (if it's not already bytes-like)
+        const inputBytes = isBytesLike(payload)
+            ? payload
+            : ethers.toUtf8Bytes(payload);
+
+        // send transaction
+        const tx: any = await inputContract.addInput(dapp, inputBytes);
+        console.log(`transaction: ${tx.hash}`);
+        console.log("waiting for confirmation...");
+        const receipt = await tx.wait(1);
+        console.log(receipt)
+        // find reference to notice from transaction receipt
+        // const inputKeys = getInputKeys(receipt);
+        // console.log(
+        //     `input ${inputKeys.input_index} added`
+        // );
+    }
+
     static hex2a(hex: string) {
         var str = '';
         for (var i = 0; i < hex.length; i += 2) {
@@ -288,8 +356,79 @@ class Cartesi {
         const response = await fetch(`${CARTESI_INSPECT_ENDPOINT}/${jsonEncoded}`);
         const data = await response.json();
         console.log(data)
+        if (!data.reports?.length) {
+            return null
+        }
         const payload = Cartesi.hex2a(data.reports[0].payload.replace(/^0x/, ""))
         console.log({ payload })
         return JSON.parse(payload)
     }
+
+    /**
+ * Connect to instance of Rollups application
+ * @param chainId number of chain id of connected network
+ * @param provider provider or signer of connected network
+ * @param args args for connection logic
+ * @returns Connected rollups contracts
+ */
+    static async rollups(
+        chainId: number,
+        provider: Provider | Signer,
+    ): Promise<Contracts> {
+        const address = '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
+
+        if (!address) {
+            throw new Error("unable to resolve DApp address");
+        }
+
+        // const deployment = readDeployment(chainId, args);
+        // const InputBox = deployment.contracts["InputBox"];
+        // const ERC20Portal = deployment.contracts["ERC20Portal"];
+        // const ERC721Portal = deployment.contracts["ERC721Portal"];
+
+        // connect to contracts
+        const inputContract = IInputBox__factory.connect(
+            InputBox.address,
+            provider
+        );
+        const outputContract = ICartesiDApp__factory.connect(address, provider);
+        const erc20Portal = IERC20Portal__factory.connect(
+            ERC20Portal.address,
+            provider
+        );
+        const erc721Portal = IERC721Portal__factory.connect(
+            ERC721Portal.address,
+            provider
+        );
+
+
+        return {
+            dapp: address,
+            inputContract,
+            outputContract,
+            erc20Portal,
+            erc721Portal,
+            // deployment
+        };
+    };
 }
+
+interface Contracts {
+    dapp: string;
+    inputContract: IInputBox;
+    outputContract: ICartesiDApp;
+    erc20Portal: IERC20Portal;
+    erc721Portal: IERC721Portal;
+    // deployment: Deployment
+}
+
+export type Contract = {
+    address: string;
+    abi: any; // XXX: type it more? or any an existing package, like 'abitype'
+};
+
+export type Deployment = {
+    name: string;
+    chainId: string;
+    contracts: Record<string, Contract>;
+};
