@@ -321,7 +321,7 @@ class Cartesi {
         console.log(`using account "${signerAddress}"`);
 
         // use message from command line option, or from user prompt
-        console.log(`sending "${payload}"`);
+        console.log(`sending "${JSON.stringify(payload)}"`);
 
         // convert string to input bytes (if it's not already bytes-like)
         const inputBytes = isBytesLike(payload)

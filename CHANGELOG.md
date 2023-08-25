@@ -1,3 +1,7 @@
+## [0.2.5] - 2023-08-23
+### Add
+- Game env config to run async, default true
+
 ## [0.2.4] - 2023-08-23
 ### Fix
 - Inspect stopping the machine

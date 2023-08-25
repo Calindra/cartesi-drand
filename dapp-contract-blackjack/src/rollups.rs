@@ -169,8 +169,8 @@ pub mod rollup {
         println!("Handling advance");
 
         println!("body {:}", &body);
-        let run_async = false;
-        if run_async {
+        let run_async = std::env::var("RUN_GAME_ASYNC").unwrap_or("true".to_string());
+        if run_async == "true" {
             sender.send(body).await?;
             return Ok("accept")
         }
