@@ -70,7 +70,7 @@ pub mod routes {
         }
         if ctx.is_inspecting() {
             println!("When inspecting we does not call finish from /random endpoint.");
-            return HttpResponse::NotFound().finish();
+            return HttpResponse::BadRequest().finish();
         }
         // call finish to halt and wait the beacon
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
