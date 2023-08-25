@@ -52,6 +52,7 @@ pub mod random {
 
                 code => {
                     println!("Unknown status code {:}", code);
+                    return Err("Unexpected status code for random number".into())
                 }
             }
         }

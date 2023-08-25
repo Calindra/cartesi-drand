@@ -1,3 +1,7 @@
+## [0.2.6] - 2023-08-23
+### Changed
+- When is inspecting the middleware returns a bad request at /random endpoint
+
 ## [0.2.5] - 2023-08-23
 ### Add
 - Game env config to run async, default true
