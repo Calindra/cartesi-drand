@@ -61,6 +61,7 @@ pub mod models {
         pub(crate) last_beacon: Cell<Option<Beacon>>,
         pub(crate) pending_beacon_timestamp: Cell<u64>,
         pub(crate) randomness_salt: Cell<u64>,
+        pub(crate) is_inspecting: bool,
     }
 
     pub(crate) struct AppState {
@@ -166,6 +167,17 @@ pub mod models {
             let mut manager = self.input_buffer_manager.lock().await;
             return manager.consume_input();
         }
+        pub(crate) async fn set_inspecting(&self, value: bool) {
+            let mut manager = self.input_buffer_manager.lock().await;
+            manager.is_inspecting = value;
+        }
+        pub(crate) fn is_inspecting(&self) -> bool {
+            let manager = match self.input_buffer_manager.try_lock() {
+                Ok(manager) => manager,
+                Err(_) => return false,
+            };
+            manager.is_inspecting
+        }
     }
 
     impl Flag {
@@ -191,6 +203,7 @@ pub mod models {
                 last_beacon: Cell::new(None),
                 pending_beacon_timestamp: Cell::new(0),
                 randomness_salt: Cell::new(0),
+                is_inspecting: false,
             }
         }
     }
