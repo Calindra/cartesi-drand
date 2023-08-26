@@ -3,6 +3,7 @@ pub mod rollup {
         body::to_bytes, client::HttpConnector, header, Body, Client, Method, Request, Response,
         StatusCode,
     };
+    use hyper_tls::HttpsConnector;
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
@@ -23,7 +24,9 @@ pub mod rollup {
     ) -> Result<(), Box<dyn Error>> {
         println!("Starting loop...");
 
-        let client = Client::new();
+        // let client = Client::new();
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
 
         let mut status = "accept";
@@ -52,11 +55,11 @@ pub mod rollup {
 
                 status = match request_type {
                     "advance_state" => {
-                        handle_advance(manager.clone(), &client, &server_addr[..], body, sender)
+                        handle_advance(manager.clone(), &server_addr[..], body, sender)
                             .await?
                     }
                     "inspect_state" => {
-                        handle_inspect(manager.clone(), &client, &server_addr[..], body, sender)
+                        handle_inspect(manager.clone(), &server_addr[..], body, sender)
                             .await?
                     }
                     &_ => {
@@ -65,13 +68,13 @@ pub mod rollup {
                     }
                 }
             }
+            println!("waiting 5s...");
             tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 
     async fn handle_inspect(
         manager: Arc<Mutex<Manager>>,
-        client: &Client<HttpConnector>,
         server_addr: &str,
         body: Value,
         sender: &Sender<Value>,
@@ -161,7 +164,6 @@ pub mod rollup {
 
     async fn handle_advance(
         manager: Arc<Mutex<Manager>>,
-        client: &Client<HttpConnector>,
         server_addr: &str,
         body: Value,
         sender: &Sender<Value>,
@@ -340,7 +342,9 @@ pub mod rollup {
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
-        let client = hyper::Client::new();
+        // let client = hyper::Client::new();
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
