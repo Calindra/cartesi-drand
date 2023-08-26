@@ -18,20 +18,8 @@ import { ConnectWallet } from "./ConnectWallet";
 // import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 // import { NoTokensMessage } from "./NoTokensMessage";
 import { Cartesi } from "../cartesi/Cartesi";
-import { Card10 } from "./cards/Card10";
-import { CardK } from "./cards/CardK";
-import { CardA } from "./cards/CardA";
-import { Card2 } from "./cards/Card2";
-import { Card3 } from "./cards/Card3";
-import { Card4 } from "./cards/Card4";
-import { Card5 } from "./cards/Card5";
-import { Card6 } from "./cards/Card6";
-import { Card7 } from "./cards/Card7";
-import { Card8 } from "./cards/Card8";
-import { Card9 } from "./cards/Card9";
-import { CardJ } from "./cards/CardJ";
-import { CardQ } from "./cards/CardQ";
-import { CardBack } from "./cards/CardBack";
+import { Card } from "./cards/Card";
+import { SuitType } from "./cards/Suit";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
 
@@ -104,22 +92,6 @@ export class Dapp extends React.Component {
                         networkError={this.state.networkError}
                         dismiss={() => this._dismissNetworkError()}
                     />
-                    <div>
-                        <CardBack />
-                        <CardA suit="hearts" />
-                        <Card2 suit="clubs" />
-                        <Card3 suit="diamonds" />
-                        <Card4 suit="clubs" />
-                        <Card5 suit="clubs" />
-                        <Card6 suit="clubs" />
-                        <Card7 suit="clubs" />
-                        <Card8 suit="clubs" />
-                        <Card9 suit="clubs" />
-                        <Card10 suit="spades" />
-                        <CardJ suit="spades" />
-                        <CardQ suit="spades" />
-                        <CardK suit="spades" />
-                    </div>
                 </div>
             );
         }
@@ -167,6 +139,20 @@ export class Dapp extends React.Component {
                 <div className="row">
                     <div className="col-12">
                         {JSON.stringify(this.state.hands || {})}
+                        {this.state.hands?.players?.map(playerHand => {
+                            return (
+                                <div key={playerHand.name} style={{ position: 'relative', height: '200px' }}>
+                                    {playerHand.name} - {playerHand.points}
+                                    {playerHand.hand?.map((card: SuitType, i: number) => {
+                                        return (
+                                            <div key={`${i}-${card}`} style={{ position: 'absolute', rotate: `${i * 12}deg`, translate: `${i * 12}px ${10 + i * 3}px` }}>
+                                                <Card name={card} />
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
@@ -236,6 +222,7 @@ export class Dapp extends React.Component {
         this._initializeEthers();
         this._readGames();
         this._loadUserData(userAddress);
+        this._showHands("1");
         // this._startPollingData();
     }
     private async _loadUserData(userAddress: any) {
@@ -312,6 +299,7 @@ export class Dapp extends React.Component {
     async _showHands(game_id: string) {
         console.log('show hands...')
         const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
+        // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
         if (hands) {
             this.setState({ hands })
         }
