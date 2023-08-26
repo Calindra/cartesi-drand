@@ -18,6 +18,20 @@ import { ConnectWallet } from "./ConnectWallet";
 // import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 // import { NoTokensMessage } from "./NoTokensMessage";
 import { Cartesi } from "../cartesi/Cartesi";
+import { Card10 } from "./cards/Card10";
+import { CardK } from "./cards/CardK";
+import { CardA } from "./cards/CardA";
+import { Card2 } from "./cards/Card2";
+import { Card3 } from "./cards/Card3";
+import { Card4 } from "./cards/Card4";
+import { Card5 } from "./cards/Card5";
+import { Card6 } from "./cards/Card6";
+import { Card7 } from "./cards/Card7";
+import { Card8 } from "./cards/Card8";
+import { Card9 } from "./cards/Card9";
+import { CardJ } from "./cards/CardJ";
+import { CardQ } from "./cards/CardQ";
+import { CardBack } from "./cards/CardBack";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
 
@@ -84,11 +98,29 @@ export class Dapp extends React.Component {
         // clicks a button. This callback just calls the _connectWallet method.
         if (!this.state.selectedAddress) {
             return (
-                <ConnectWallet
-                    connectWallet={() => this._connectWallet()}
-                    networkError={this.state.networkError}
-                    dismiss={() => this._dismissNetworkError()}
-                />
+                <div>
+                    <ConnectWallet
+                        connectWallet={() => this._connectWallet()}
+                        networkError={this.state.networkError}
+                        dismiss={() => this._dismissNetworkError()}
+                    />
+                    <div>
+                        <CardBack />
+                        <CardA suit="hearts" />
+                        <Card2 suit="clubs" />
+                        <Card3 suit="diamonds" />
+                        <Card4 suit="clubs" />
+                        <Card5 suit="clubs" />
+                        <Card6 suit="clubs" />
+                        <Card7 suit="clubs" />
+                        <Card8 suit="clubs" />
+                        <Card9 suit="clubs" />
+                        <Card10 suit="spades" />
+                        <CardJ suit="spades" />
+                        <CardQ suit="spades" />
+                        <CardK suit="spades" />
+                    </div>
+                </div>
             );
         }
 
