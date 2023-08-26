@@ -89,7 +89,7 @@ export class DrandProvider {
         this.configureInputSender()
         while (this.desiredState === 'RUNNING') {
             let pending = await this.pendingDrandBeacon()
-            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secondsToWait)) {
+            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < Date.now() / 1000) {
                 const beacon = await fetchBeacon(this.drandClient)
                 console.log('sending beacon', beacon.round)
                 this.inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
