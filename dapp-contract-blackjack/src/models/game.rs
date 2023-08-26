@@ -6,8 +6,8 @@ pub mod game {
         },
         util::random::generate_id,
     };
-    use serde_json::json;
-    use std::{collections::HashMap, sync::Arc};
+    use serde_json::{json, from_str, Value};
+    use std::{collections::HashMap, sync::Arc, fs};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -63,10 +63,19 @@ pub mod game {
             Ok(player)
         }
 
-        pub fn get_player_ref(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
-            let player = self.remove_player_by_id(address)?;
-            self.players.insert(player.get_id(), player.clone());
-            Ok(player)
+        pub fn get_player_by_b58_address(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
+            let address_path = format!("./data/address/{}.json", address);
+            println!("Reading {}", address_path);
+            let content_result = fs::read_to_string(address_path);
+            let content = match content_result {
+                Ok(content) => content,
+                Err(_) => return Err("Player not found"),
+            };
+            let json = from_str::<Value>(&content).expect("Decoding player json error");
+            let name = json["name"].as_str().ok_or("Json name error").unwrap_or("No name");
+            let player = Player::new(address.to_string(), name.to_owned());
+            let arc_player = Arc::new(player);
+            Ok(arc_player)
         }
 
         pub fn first_game_available(&mut self) -> Result<&mut Game, &'static str> {
@@ -155,10 +164,6 @@ pub mod game {
             game_id: &str,
             player: Arc<Player>,
         ) -> Result<(), &'static str> {
-            if !self.players.contains_key(&player.get_id()) {
-                // self.add_player(player.clone())?;
-                return Err("Player isnt not registered");
-            }
 
             let game = self.get_game_by_id(game_id)?;
 

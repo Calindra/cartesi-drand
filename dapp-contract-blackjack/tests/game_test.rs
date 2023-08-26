@@ -14,7 +14,7 @@ mod game_tests {
     use crate::models::{game::game::Manager, player::player::Player};
 
     #[tokio::test]
-    async fn get_winner_tests() {
+    async fn game_get_winner_tests() {
         let mut manager = Manager::new_with_games(1);
 
         // Get ref for first game

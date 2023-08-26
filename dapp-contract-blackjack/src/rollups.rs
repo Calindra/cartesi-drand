@@ -250,7 +250,7 @@ pub mod rollup {
                 let address_encoded = bs58::encode(address_owner).into_string();
 
                 let mut manager = manager.lock().await;
-                let player = manager.get_player_ref(&address_encoded)?;
+                let player = manager.get_player_by_b58_address(&address_encoded)?;
 
                 // Parsing JSON
                 let game_id = input

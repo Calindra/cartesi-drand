@@ -39,13 +39,7 @@ pub async fn handle_request_action(
             let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
             let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
-
-            // Add player to manager
-            let player = Player::new(address_encoded.clone(), player_name.to_string());
-            let mut manager = manager.lock().await;
-            let player = Arc::new(player);
-            manager.add_player(player)?;
-
+            
             // Persist player
             if need_write {
                 let address_owner_obj = json!({ "address": address_owner, "name": player_name });
@@ -81,7 +75,7 @@ pub async fn handle_request_action(
             let address_encoded = bs58::encode(address_owner).into_string();
 
             let mut manager = manager.lock().await;
-            let player = manager.get_player_ref(&address_encoded)?;
+            let player = manager.get_player_by_b58_address(&address_encoded)?;
 
             // Parsing JSON
             let game_id = input
