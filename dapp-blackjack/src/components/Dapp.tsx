@@ -107,14 +107,26 @@ export class Dapp extends React.Component {
                             Black Jack
                         </h1>
                         <p>
-                            Welcome <b>{this.state.selectedAddress}</b>.
+                            Welcome <b>{this.state.player?.name ?? this.state.selectedAddress}</b>.
                         </p>
                         <button onClick={() => {
                             this._newPlayer()
                         }}>New Player</button>
                         <button onClick={() => {
-                            this._joinGame()
+                            this._joinGame("1")
                         }}>Join Game</button>
+                        <button onClick={() => {
+                            this._startGame("1")
+                        }}>Start Game</button>
+                        <button onClick={() => {
+                            this._chooseHit("1")
+                        }}>Hit</button>
+                        <button onClick={() => {
+                            this._chooseStand("1")
+                        }}>Stand</button>
+                        <button onClick={() => {
+                            this._showHands("1")
+                        }}>Show hands</button>
                     </div>
                 </div>
 
@@ -122,11 +134,22 @@ export class Dapp extends React.Component {
 
                 <div className="row">
                     <div className="col-12">
-                        {JSON.stringify(this.state.games?.games || {})}
+                        {JSON.stringify(this.state.hands || {})}
                     </div>
                 </div>
             </div>
         );
+    }
+    private async _chooseStand(game_id: string) {
+        await Cartesi.sendInput({ action: "stand", game_id }, this._signer, this._provider)
+    }
+
+    private async _chooseHit(game_id: string) {
+        await Cartesi.sendInput({ action: "hit", game_id }, this._signer, this._provider)
+    }
+
+    private async _startGame(game_id: string) {
+        await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
     }
 
     componentWillUnmount() {
@@ -180,7 +203,13 @@ export class Dapp extends React.Component {
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
         this._readGames();
+        this._loadUserData(userAddress);
         // this._startPollingData();
+    }
+    private async _loadUserData(userAddress: any) {
+        console.log('read player...')
+        const player = await Cartesi.inspectWithJson({ "action": "show_player", "address": userAddress })
+        this.setState({ player })
     }
 
     async _initializeEthers() {
@@ -212,10 +241,10 @@ export class Dapp extends React.Component {
         }, this._signer, this._provider)
     }
 
-    async _joinGame() {
+    async _joinGame(game_id: string) {
         await Cartesi.sendInput({
             action: 'join_game',
-            game_id: '1'
+            game_id
         }, this._signer, this._provider)
     }
 
@@ -229,7 +258,7 @@ export class Dapp extends React.Component {
     async _startPollingData() {
         try {
             // We run it once immediately so we don't have to wait for it
-            await this._showHands();
+            await this._showHands("1");
         } catch (e) {
             console.error(e);
         }
@@ -248,11 +277,12 @@ export class Dapp extends React.Component {
         this.setState({ games })
     }
 
-    async _showHands() {
+    async _showHands(game_id: string) {
         console.log('show hands...')
-        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id: '1' })
-        console.log(hands)
-        this.setState({ hands })
+        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
+        if (hands) {
+            this.setState({ hands })
+        }
     }
 
     // This method just clears part of the state.
