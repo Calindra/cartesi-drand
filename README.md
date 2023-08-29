@@ -191,3 +191,27 @@ cd frontend-console
 yarn start input send --payload "{\"input\":{\"action\":\"timeout\",\"game_id\":\"${GAME_ID}\"}}"
 ```
 All players who are delayed for more than 3 minutes will be in the `stand` state.
+
+## Production Mode
+
+
+```shell
+docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml up
+```
+
+```shell
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Bob\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Alice\"}}" --accountIndex 1
+
+echo "Join"
+export GAME_ID=1
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+
+echo "Start"
+yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"${GAME_ID}\"}}"
+
+echo "Hit"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+```

@@ -1,3 +1,15 @@
+## [0.2.7] - 2023-08-23
+### Changed
+- When is inspecting the middleware returns a bad request at /random endpoint
+
+## [0.2.5] - 2023-08-23
+### Add
+- Game env config to run async, default true
+
+## [0.2.4] - 2023-08-23
+### Fix
+- Inspect stopping the machine
+
 ## [0.2.3] - 2023-08-23
 ### Changed
 - Change uuid to int seq to make it easy to test

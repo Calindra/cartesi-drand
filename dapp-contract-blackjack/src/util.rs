@@ -7,6 +7,7 @@ pub mod random {
     use std::{env, error::Error, ops::Range, time::Duration};
 
     use hyper::{body, Body, Client, Request, StatusCode};
+    use hyper_tls::HttpsConnector;
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
@@ -18,7 +19,9 @@ pub mod random {
     }
 
     pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
-        let client = Client::new();
+        // let client = Client::new();
+        let https = HttpsConnector::new();
+        let client = Client::builder().build::<_, hyper::Body>(https);
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
         let server_addr = server_addr.trim_end_matches("/");
 
@@ -52,6 +55,7 @@ pub mod random {
 
                 code => {
                     println!("Unknown status code {:}", code);
+                    return Err("Unexpected status code for random number".into())
                 }
             }
         }

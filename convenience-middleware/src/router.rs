@@ -28,12 +28,14 @@ pub mod routes {
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
+                ctx.set_inspecting(false).await;
                 if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
                     println!("Is Drand!!! {:?}", beacon);
                     ctx.keep_newest_beacon(beacon);
                 }
             }
             "inspect_state" => {
+                ctx.set_inspecting(true).await;
                 if is_querying_pending_beacon(&rollup_input) {
                     send_pending_beacon_report(&ctx).await;
 
@@ -66,6 +68,10 @@ pub mod routes {
             // we already have the randomness to continue the process
             return HttpResponse::Ok().body(randomness);
         }
+        if ctx.is_inspecting() {
+            println!("When inspecting we does not call finish from /random endpoint.");
+            return HttpResponse::BadRequest().finish();
+        }
         // call finish to halt and wait the beacon
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
             Some(input) => input,
@@ -73,6 +79,7 @@ pub mod routes {
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
+                ctx.set_inspecting(false).await;
                 // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
                 ctx.store_input(&rollup_input).await;
 
@@ -86,6 +93,7 @@ pub mod routes {
                 }
             }
             "inspect_state" => {
+                ctx.set_inspecting(true).await;
                 if is_querying_pending_beacon(&rollup_input) {
                     send_pending_beacon_report(&ctx).await;
 

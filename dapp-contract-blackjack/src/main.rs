@@ -48,7 +48,7 @@ pub async fn handle_request_action(
 
             // Persist player
             if need_write {
-                let address_owner_obj = json!({ "address": address_owner });
+                let address_owner_obj = json!({ "address": address_owner, "name": player_name });
                 let address_path = format!("./data/address/{}.json", address_encoded);
 
                 write_json(&address_path, &address_owner_obj)
@@ -56,7 +56,7 @@ pub async fn handle_request_action(
                     .or(Err("Could not write address"))?;
 
                 let player_path = format!("./data/names/{}.json", encoded_name);
-                let player = json!({ "name": encoded_name });
+                let player = json!({ "name": encoded_name, "address": metadata.address });
                 write_json(&player_path, &player)
                     .await
                     .or(Err("Could not write player"))?;

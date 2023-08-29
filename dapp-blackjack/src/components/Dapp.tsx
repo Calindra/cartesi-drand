@@ -1,7 +1,7 @@
 import React from "react";
 
 // We'll use ethers to interact with the Ethereum network and our contract
-import { BrowserProvider, parseUnits, ethers, isBytesLike, Signer } from "ethers";
+import { BrowserProvider, ethers } from "ethers";
 
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
@@ -13,16 +13,13 @@ import { BrowserProvider, parseUnits, ethers, isBytesLike, Signer } from "ethers
 // logic. They just render HTML.
 import { NoWalletDetected } from "./NoWalletDetected";
 import { ConnectWallet } from "./ConnectWallet";
-import { Loading } from "./Loading";
 // import { Transfer } from "./Transfer";
 // import { TransactionErrorMessage } from "./TransactionErrorMessage";
 // import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 // import { NoTokensMessage } from "./NoTokensMessage";
-import { Provider } from "@ethersproject/providers";
-import { ICartesiDApp, ICartesiDApp__factory, IERC20Portal, IERC20Portal__factory, IERC721Portal, IERC721Portal__factory, IInputBox, IInputBox__factory } from "@cartesi/rollups";
-import InputBox from "../deployments/InputBox.json";
-import ERC721Portal from "../deployments/ERC721Portal.json";
-import ERC20Portal from "../deployments/ERC20Portal.json";
+import { Cartesi } from "../cartesi/Cartesi";
+import { Card } from "./cards/Card";
+import { SuitType } from "./cards/Suit";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
 
@@ -89,18 +86,20 @@ export class Dapp extends React.Component {
         // clicks a button. This callback just calls the _connectWallet method.
         if (!this.state.selectedAddress) {
             return (
-                <ConnectWallet
-                    connectWallet={() => this._connectWallet()}
-                    networkError={this.state.networkError}
-                    dismiss={() => this._dismissNetworkError()}
-                />
+                <div>
+                    <ConnectWallet
+                        connectWallet={() => this._connectWallet()}
+                        networkError={this.state.networkError}
+                        dismiss={() => this._dismissNetworkError()}
+                    />
+                </div>
             );
         }
 
         // If the token data or the user's balance hasn't loaded yet, we show
         // a loading component.
         if (!this.state.games) {
-            return <Loading />;
+            // return <Loading />;
         }
 
         // If everything is loaded, we render the application.
@@ -112,14 +111,26 @@ export class Dapp extends React.Component {
                             Black Jack
                         </h1>
                         <p>
-                            Welcome <b>{this.state.selectedAddress}</b>.
+                            Welcome <b>{this.state.player?.name ?? this.state.selectedAddress}</b>.
                         </p>
                         <button onClick={() => {
                             this._newPlayer()
                         }}>New Player</button>
                         <button onClick={() => {
-                            this._joinGame()
+                            this._joinGame("1")
                         }}>Join Game</button>
+                        <button onClick={() => {
+                            this._startGame("1")
+                        }}>Start Game</button>
+                        <button onClick={() => {
+                            this._chooseHit("1")
+                        }}>Hit</button>
+                        <button onClick={() => {
+                            this._chooseStand("1")
+                        }}>Stand</button>
+                        <button onClick={() => {
+                            this._showHands("1")
+                        }}>Show hands</button>
                     </div>
                 </div>
 
@@ -127,11 +138,36 @@ export class Dapp extends React.Component {
 
                 <div className="row">
                     <div className="col-12">
-                        {JSON.stringify(this.state.games.games)}
+                        {JSON.stringify(this.state.hands || {})}
+                        {this.state.hands?.players?.map(playerHand => {
+                            return (
+                                <div key={playerHand.name} style={{ position: 'relative', height: '200px' }}>
+                                    {playerHand.name} - {playerHand.points}
+                                    {playerHand.hand?.map((card: SuitType, i: number) => {
+                                        return (
+                                            <div key={`${i}-${card}`} style={{ position: 'absolute', rotate: `${i * 12}deg`, translate: `${i * 12}px ${10 + i * 3}px` }}>
+                                                <Card name={card} />
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
         );
+    }
+    private async _chooseStand(game_id: string) {
+        await Cartesi.sendInput({ action: "stand", game_id }, this._signer, this._provider)
+    }
+
+    private async _chooseHit(game_id: string) {
+        await Cartesi.sendInput({ action: "hit", game_id }, this._signer, this._provider)
+    }
+
+    private async _startGame(game_id: string) {
+        await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
     }
 
     componentWillUnmount() {
@@ -185,7 +221,14 @@ export class Dapp extends React.Component {
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
         this._readGames();
+        this._loadUserData(userAddress);
+        this._showHands("1");
         // this._startPollingData();
+    }
+    private async _loadUserData(userAddress: any) {
+        console.log('read player...')
+        const player = await Cartesi.inspectWithJson({ "action": "show_player", "address": userAddress })
+        this.setState({ player })
     }
 
     async _initializeEthers() {
@@ -213,14 +256,14 @@ export class Dapp extends React.Component {
         console.log('new player')
         await Cartesi.sendInput({
             action: 'new_player',
-            name: 'Bob'
+            name: 'Oshiro'
         }, this._signer, this._provider)
     }
 
-    async _joinGame() {
+    async _joinGame(game_id: string) {
         await Cartesi.sendInput({
             action: 'join_game',
-            game_id: '1'
+            game_id
         }, this._signer, this._provider)
     }
 
@@ -234,7 +277,7 @@ export class Dapp extends React.Component {
     async _startPollingData() {
         try {
             // We run it once immediately so we don't have to wait for it
-            await this._showHands();
+            await this._showHands("1");
         } catch (e) {
             console.error(e);
         }
@@ -253,11 +296,13 @@ export class Dapp extends React.Component {
         this.setState({ games })
     }
 
-    async _showHands() {
+    async _showHands(game_id: string) {
         console.log('show hands...')
-        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id: '1' })
-        console.log(hands)
-        this.setState({ hands })
+        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
+        // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
+        if (hands) {
+            this.setState({ hands })
+        }
     }
 
     // This method just clears part of the state.
@@ -303,132 +348,3 @@ export class Dapp extends React.Component {
 }
 
 
-// const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
-const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
-class Cartesi {
-    static async sendInput(payload: any, signer: any, provider: any) {
-
-        const network = await provider.getNetwork();
-        console.log(`connected to chain ${network.chainId}`);
-
-        // connect to rollups,
-        const { dapp, inputContract } = await Cartesi.rollups(
-            network.chainId,
-            signer,
-        );
-
-        const signerAddress = await signer.getAddress();
-        console.log(`using account "${signerAddress}"`);
-
-        // use message from command line option, or from user prompt
-        console.log(`sending "${payload}"`);
-
-        // convert string to input bytes (if it's not already bytes-like)
-        const inputBytes = isBytesLike(payload)
-            ? payload
-            : ethers.toUtf8Bytes(payload);
-
-        // send transaction
-        const tx: any = await inputContract.addInput(dapp, inputBytes);
-        console.log(`transaction: ${tx.hash}`);
-        console.log("waiting for confirmation...");
-        const receipt = await tx.wait(1);
-        console.log(receipt)
-        // find reference to notice from transaction receipt
-        // const inputKeys = getInputKeys(receipt);
-        // console.log(
-        //     `input ${inputKeys.input_index} added`
-        // );
-    }
-
-    static hex2a(hex: string) {
-        var str = '';
-        for (var i = 0; i < hex.length; i += 2) {
-            var v = parseInt(hex.substring(i, i + 2), 16);
-            if (v) str += String.fromCharCode(v);
-        }
-        return str;
-    }
-
-    static async inspectWithJson(json: any) {
-        const jsonString = JSON.stringify({ input: json });
-        const jsonEncoded = encodeURIComponent(jsonString)
-        const response = await fetch(`${CARTESI_INSPECT_ENDPOINT}/${jsonEncoded}`);
-        const data = await response.json();
-        console.log(data)
-        if (!data.reports?.length) {
-            return null
-        }
-        const payload = Cartesi.hex2a(data.reports[0].payload.replace(/^0x/, ""))
-        console.log({ payload })
-        return JSON.parse(payload)
-    }
-
-    /**
- * Connect to instance of Rollups application
- * @param chainId number of chain id of connected network
- * @param provider provider or signer of connected network
- * @param args args for connection logic
- * @returns Connected rollups contracts
- */
-    static async rollups(
-        chainId: number,
-        provider: Provider | Signer,
-    ): Promise<Contracts> {
-        const address = '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
-
-        if (!address) {
-            throw new Error("unable to resolve DApp address");
-        }
-
-        // const deployment = readDeployment(chainId, args);
-        // const InputBox = deployment.contracts["InputBox"];
-        // const ERC20Portal = deployment.contracts["ERC20Portal"];
-        // const ERC721Portal = deployment.contracts["ERC721Portal"];
-
-        // connect to contracts
-        const inputContract = IInputBox__factory.connect(
-            InputBox.address,
-            provider
-        );
-        const outputContract = ICartesiDApp__factory.connect(address, provider);
-        const erc20Portal = IERC20Portal__factory.connect(
-            ERC20Portal.address,
-            provider
-        );
-        const erc721Portal = IERC721Portal__factory.connect(
-            ERC721Portal.address,
-            provider
-        );
-
-
-        return {
-            dapp: address,
-            inputContract,
-            outputContract,
-            erc20Portal,
-            erc721Portal,
-            // deployment
-        };
-    };
-}
-
-interface Contracts {
-    dapp: string;
-    inputContract: IInputBox;
-    outputContract: ICartesiDApp;
-    erc20Portal: IERC20Portal;
-    erc721Portal: IERC721Portal;
-    // deployment: Deployment
-}
-
-export type Contract = {
-    address: string;
-    abi: any; // XXX: type it more? or any an existing package, like 'abitype'
-};
-
-export type Deployment = {
-    name: string;
-    chainId: string;
-    contracts: Record<string, Contract>;
-};

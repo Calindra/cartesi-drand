@@ -1,6 +1,6 @@
 [package]
 name = "dapp-contract-blackjack"
-version = "0.2.3"
+version = "0.2.5"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,6 +17,7 @@ serde = { version = "1.0.171", features = ["derive", "rc"] }
 bs58 = "0.5.0"
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 hex = { version = "0.4.3", features = ["serde"] }
+hyper-tls = "0.5.0"
 
 [dev-dependencies]
 httptest = "0.15.4"

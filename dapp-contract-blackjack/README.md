@@ -77,3 +77,6 @@ sequenceDiagram
         Middleware->>DApp: Retorna resultado do /finish novamente
     end
 ```
+
+Env variables  
+RUN_GAME_ASYNC=true
