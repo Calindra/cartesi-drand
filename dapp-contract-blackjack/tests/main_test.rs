@@ -6,17 +6,20 @@ mod models;
 #[path = "../src/util.rs"]
 mod util;
 
+#[path = "./helper.rs"]
+mod helper;
+
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
         common::common::setup_hit_random,
         main::handle_request_action,
         models::{game::game::Manager, player::player::Player},
-        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload}, helper::clean_files,
     };
 
     use serde_json::json;
-    use std::{ops::Rem, sync::Arc};
+    use std::{ops::Rem, sync::Arc, fs};
     use tokio::sync::Mutex;
 
     #[tokio::test]
@@ -25,12 +28,12 @@ mod contract_blackjack_tests {
         assert_eq!(manager.games.len(), 10);
     }
 
-    fn factory_message(payload: serde_json::Value) -> serde_json::Value {
+    fn factory_message(payload: serde_json::Value, msg_sender: String) -> serde_json::Value {
         let payload = hex::encode(payload.to_string());
         let payload = format!("0x{}", payload);
 
         let metadata = json!({
-            "msg_sender": "0xdeadbeef",
+            "msg_sender": msg_sender,
             "epoch_index": 0u64,
             "input_index": 0u64,
             "block_number": 123u64,
@@ -47,6 +50,7 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn should_create_player() {
+        let _ = fs::remove_file("./data/address/65XcW9pNgCYpDPTShmKjow4rR3B2NJfBzzx3WFNFHJBaE7CMwu9A5D7.json");
         let manager = Manager::default();
 
         // Based on this: https://docs.cartesi.io/cartesi-rollups/api/rollup/finish/
@@ -57,28 +61,30 @@ mod contract_blackjack_tests {
             }
         });
 
-        let data = factory_message(payload);
+        let data = factory_message(
+            payload,
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+        );
 
         let manager = Arc::new(Mutex::new(manager));
 
-        let result = handle_request_action(&data, manager.clone(), false).await;
+        let result = handle_request_action(&data, manager.clone(), true).await;
 
         assert!(result.is_ok(), "Result is not ok: {:}", result.unwrap_err());
         assert!(result.unwrap().is_some(), "Result is not some");
 
-        let address = "0xdeadbeef";
+        let address = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
         let address = bs58::encode(address[2..].to_string()).into_string();
 
         println!("Address {}", address);
 
-        let manager = manager.lock().await;
+        let mut manager = manager.lock().await;
 
-        let size = manager.players.len();
-
-        assert_eq!(size, 1);
-
-        let player = manager.players.get(&address).unwrap();
-
+        let player = manager.get_player_by_b58_address(&address).unwrap();
+        assert_eq!(
+            player.id,
+            "65XcW9pNgCYpDPTShmKjow4rR3B2NJfBzzx3WFNFHJBaE7CMwu9A5D7"
+        );
         println!("{:}", player);
     }
 
@@ -121,7 +127,10 @@ mod contract_blackjack_tests {
         });
 
         // Generate complete message with payload
-        let data = factory_message(payload);
+        let data = factory_message(
+            payload,
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+        );
 
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
@@ -169,7 +178,10 @@ mod contract_blackjack_tests {
         });
 
         // Generate complete message with payload
-        let data = factory_message(payload);
+        let data = factory_message(
+            payload,
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+        );
 
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
@@ -293,7 +305,7 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
-    async fn join_in_game_not_started() {
+    async fn join_in_game_not_started_should_be_ok() {
         let mut manager = Manager::new_with_games(1);
 
         let game_id = manager.first_game_available().unwrap();
@@ -305,29 +317,38 @@ mod contract_blackjack_tests {
         manager.add_player(player.clone()).unwrap();
         manager.player_join(&game_id, player).unwrap();
 
-        // Second player
-        let id = String::from("0xdeadbeef");
-        let id = bs58::encode(id[2..].to_string()).into_string();
-        let player = Player::new(id, "Bob".to_string());
-        let player = Arc::from(player);
-
-        manager.add_player(player).unwrap();
-
-        // Mock request from middleware
-        let payload = json!({
-            "input": {
-                "action": "join_game",
-                "game_id": game_id,
-            }
-        });
-
         let manager = Arc::new(Mutex::new(manager));
+        {
+            let payload = json!({
+                "input": {
+                    "name": "Bob",
+                    "action": "new_player"
+                }
+            });
 
-        let data = factory_message(payload);
+            let data = factory_message(
+                payload,
+                "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+            );
+            let _ = handle_request_action(&data, manager.clone(), false).await;
+        }
+        {
+            // Mock request from middleware
+            let payload = json!({
+                "input": {
+                    "action": "join_game",
+                    "game_id": game_id,
+                }
+            });
+            let data = factory_message(
+                payload,
+                "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+            );
 
-        let result = handle_request_action(&data, manager.clone(), false).await;
-
-        assert!(result.is_ok())
+            let result = handle_request_action(&data, manager.clone(), false).await;
+            println!("result = {:?}", result);
+            assert!(result.is_ok())
+        }
     }
 
     #[tokio::test]
@@ -380,7 +401,10 @@ mod contract_blackjack_tests {
         });
 
         // Generate complete message with payload
-        let data = factory_message(payload);
+        let data = factory_message(
+            payload,
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+        );
 
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
@@ -440,6 +464,7 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn should_show_winner_by_action() {
+        clean_files();
         check_if_dotenv_is_loaded!();
         let _server = setup_hit_random().await;
 
@@ -488,16 +513,16 @@ mod contract_blackjack_tests {
         let manager = Arc::from(Mutex::from(manager));
 
         // Mock request from middleware
-        let payload = json!({
-            "input": {
-                "action": "show_winner",
-                "game_id": game_id,
-                "table_id": table_id,
-            }
-        });
-
-        // Generate complete message with payload
-        let data = factory_message(payload);
+        let data = factory_message(
+            json!({
+                "input": {
+                    "action": "show_winner",
+                    "game_id": game_id,
+                    "table_id": table_id,
+                }
+            }),
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266".to_string(),
+        );
 
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false)

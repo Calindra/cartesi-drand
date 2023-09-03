@@ -1,7 +1,9 @@
 pub mod card {
     use std::fmt::Display;
 
-    #[derive(Clone)]
+    use serde::{Serialize, Deserialize};
+
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub enum Suit {
         Spades,   // Espadas
         Hearts,   // Copas
@@ -35,7 +37,7 @@ pub mod card {
         }
     }
 
-    #[derive(Clone, PartialEq)]
+    #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
     pub enum Rank {
         Ace = 1,
         Two,
@@ -90,6 +92,7 @@ pub mod card {
         }
     }
 
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct Card {
         pub suit: Suit,
         pub rank: Rank,
@@ -119,7 +122,7 @@ pub mod card {
             write!(f, "{:} de {:}", &self.rank, &self.suit)
         }
     }
-
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct Deck {
         pub cards: Vec<Card>,
     }

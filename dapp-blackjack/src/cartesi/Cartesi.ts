@@ -3,11 +3,12 @@ import { IInputBox__factory } from "@cartesi/rollups";
 import { ethers, Signer } from "ethers";
 import InputBox from "../deployments/InputBox.json";
 import DApp from "../deployments/dapp.json"
+import { InputAddedEvent } from "@cartesi/rollups/dist/src/types/contracts/inputs/IInputBox";
 
 // const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
 const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
 export class Cartesi {
-    static async sendInput(payload: any, signer: any, provider: any) {
+    static async sendInput(payload: any, signer: Signer, provider: any) {
 
         const network = await provider.getNetwork();
         console.log(`connected to chain ${network.chainId}`);
@@ -37,10 +38,10 @@ export class Cartesi {
         const receipt = await tx.wait(1);
         console.log(JSON.stringify(receipt))
         // find reference to notice from transaction receipt
-        // const inputKeys = getInputKeys(receipt);
-        // console.log(
-        //     `input ${inputKeys.input_index} added`
-        // );
+        const inputKeys = Cartesi.getInputKeys(receipt);
+        console.log(
+            `input ${inputKeys?.input_index} added`
+        );
     }
 
     static hex2a(hex: string) {
@@ -57,7 +58,6 @@ export class Cartesi {
         const jsonEncoded = encodeURIComponent(jsonString)
         const response = await fetch(`${CARTESI_INSPECT_ENDPOINT}/${jsonEncoded}`);
         const data = await response.json();
-        console.log(data)
         if (!data.reports?.length) {
             return null
         }
@@ -65,4 +65,31 @@ export class Cartesi {
         console.log({ payload })
         return JSON.parse(payload)
     }
+
+    /**
+     * Retrieve InputKeys from an InputAddedEvent
+     * @param receipt Blockchain transaction receipt
+     * @returns input identification keys
+     */
+    private static getInputKeys(receipt: any): InputKeys | null {
+        // get InputAddedEvent from transaction receipt
+        const event = receipt.events?.find((e) => e.event === "InputAdded");
+
+        if (!event) {
+            console.warn(`InputAdded event not found in receipt of transaction ${receipt.transactionHash}`);
+            return null
+        }
+
+        const inputAdded = event as InputAddedEvent | { args: any };
+        return {
+            input_index: inputAdded.args.inboxInputIndex.toNumber(),
+        };
+    };
 }
+
+export type InputKeys = {
+    epoch_index?: number;
+    input_index?: number;
+};
+
+

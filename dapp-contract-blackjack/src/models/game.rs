@@ -2,12 +2,13 @@ pub mod game {
     use crate::{
         models::{
             card::card::Deck,
-            player::player::{Player, PlayerHand},
+            player::player::{Player, PlayerHand, PlayerHandJson, Hand},
         },
-        util::random::generate_id,
+        util::{json::write_json, random::generate_id},
     };
-    use serde_json::{json, from_str, Value};
-    use std::{collections::HashMap, sync::Arc, fs};
+    use serde::{Deserialize, Serialize};
+    use serde_json::{from_str, json, Value};
+    use std::{collections::HashMap, fs, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -63,7 +64,10 @@ pub mod game {
             Ok(player)
         }
 
-        pub fn get_player_by_b58_address(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
+        pub fn get_player_by_b58_address(
+            &mut self,
+            address: &str,
+        ) -> Result<Arc<Player>, &'static str> {
             let address_path = format!("./data/address/{}.json", address);
             println!("Reading {}", address_path);
             let content_result = fs::read_to_string(address_path);
@@ -72,7 +76,10 @@ pub mod game {
                 Err(_) => return Err("Player not found"),
             };
             let json = from_str::<Value>(&content).expect("Decoding player json error");
-            let name = json["name"].as_str().ok_or("Json name error").unwrap_or("No name");
+            let name = json["name"]
+                .as_str()
+                .ok_or("Json name error")
+                .unwrap_or("No name");
             let player = Player::new(address.to_string(), name.to_owned());
             let arc_player = Arc::new(player);
             Ok(arc_player)
@@ -134,6 +141,23 @@ pub mod game {
             self.tables.push(table);
         }
 
+        pub fn get_json_table_by_id(&self, id: &str) -> Result<String, &'static str> {
+            let table = self.tables.iter().find(|table| table.id == id);
+            match table {
+                Some(table) => {
+                    let table_json = TableJson::from(&table);
+                    Ok(serde_json::to_string(&table_json).unwrap())
+                }
+                None => {
+                    let table_path = format!("./data/tables/{}.json", id);
+                    match fs::read_to_string(table_path) {
+                        Ok(content) => Ok(content),
+                        Err(_) => Err("Table not found"),
+                    }
+                }
+            }
+        }
+
         pub fn get_table(&mut self, id: &str) -> Result<&mut Table, &'static str> {
             if self.tables.is_empty() {
                 return Err("No tables running.");
@@ -154,6 +178,10 @@ pub mod game {
                 .position(|table| table.id == table_id)
                 .ok_or("Table not found or not started.")?;
             let table = self.tables.swap_remove(index);
+            let table_json = TableJson::from(&table);
+            let json = serde_json::to_string(&table_json).unwrap();
+            let table_path = format!("./data/tables/{}.json", table.id);
+            let _ = fs::write(table_path, json);
             self.reallocate_table_to_game(table).await;
 
             Ok(())
@@ -164,7 +192,6 @@ pub mod game {
             game_id: &str,
             player: Arc<Player>,
         ) -> Result<(), &'static str> {
-
             let game = self.get_game_by_id(game_id)?;
 
             if game.players.len() >= 7 {
@@ -226,6 +253,7 @@ pub mod game {
     /**
      * This is where the game is initialized.
      */
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct Game {
         id: String,
         pub players: Vec<Arc<Player>>,
@@ -259,15 +287,76 @@ pub mod game {
         }
     }
 
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct TableJson {
+        pub players_with_hand: Vec<PlayerHandJson>,
+        pub round: u8,
+        pub id: String,
+    }
+
+    impl TableJson {
+        fn from(table: &Table) -> TableJson {
+            let mut players_with_hand = Vec::new();
+            for ph in table.players_with_hand.to_vec() {
+                let player = Player {
+                    id: ph.get_player_id(),
+                    name: ph.get_name(),
+                };
+                players_with_hand.push(PlayerHandJson {
+                    player,
+                    hand: ph.hand.clone(),
+                    points: ph.points,
+                    is_standing: ph.is_standing,
+                    round: ph.round,
+                    last_timestamp: ph.last_timestamp,
+                });
+            }
+            TableJson {
+                players_with_hand,
+                round: table.round,
+                id: table.id.to_string(),
+            }
+        }
+
+        pub async fn get_scoreboard(&self) -> Scoreboard {
+            let deck = Arc::new(Mutex::new(Deck { cards: vec![] }));
+            let mut players_with_hand = vec![];
+            let mut players = vec![];
+            for player_hand in &self.players_with_hand {
+                let player = Arc::new(Player::new(player_hand.player.get_id(), player_hand.player.name.to_owned()));
+                players.push(player.clone());
+                let ph = PlayerHand {
+                    player: player.clone(),
+                    hand: Hand(player_hand.hand.0.to_vec()),
+                    points: player_hand.points,
+                    is_standing: player_hand.is_standing,
+                    deck: Arc::new(Mutex::new(Deck { cards: vec![] })),
+                    round: player_hand.round,
+                    last_timestamp: 0,
+                };
+                players_with_hand.push(ph);
+            }
+            let table = Table {
+                deck,
+                players_with_hand,
+                game: Game { id: "".to_owned(), players: vec![] },
+                round: self.round,
+                id: self.id.to_string(),
+            };
+            let winner = table.get_winner().await;
+            
+            Scoreboard::new(&self.id, table.game.get_id(), players, winner)
+        }
+    }
     /**
      * The table is where the game is played.
      */
     pub struct Table {
         pub deck: Arc<Mutex<Deck>>,
-        players_with_hand: Vec<PlayerHand>,
-        game: Game,
-        round: u8,
-        id: String,
+        pub players_with_hand: Vec<PlayerHand>,
+        pub game: Game,
+        pub round: u8,
+        pub id: String,
     }
 
     impl Table {

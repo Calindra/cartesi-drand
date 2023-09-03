@@ -15,7 +15,7 @@ use util::json::generate_message;
 
 use crate::{
     models::{
-        game::game::Manager,
+        game::game::{Manager, Scoreboard, Table, TableJson},
         player::{check_fields_create_player, player::Player},
     },
     util::json::{get_address_metadata_from_root, write_json},
@@ -39,7 +39,7 @@ pub async fn handle_request_action(
             let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
             let address_owner = metadata.address.trim_start_matches("0x");
             let address_encoded = bs58::encode(address_owner).into_string();
-            
+
             // Persist player
             if need_write {
                 let address_owner_obj = json!({ "address": address_owner, "name": player_name });
@@ -179,16 +179,21 @@ pub async fn handle_request_action(
                 "Finding score by table_id {} and game_id {} ...",
                 table_id, game_id
             );
-            let scoreboard = manager
-                .get_scoreboard(table_id, game_id)
-                .ok_or("Scoreboard not found searching by table_id")?;
-
-            let response = generate_message(scoreboard.to_json());
-
+            let scoreboard = manager.get_scoreboard(table_id, game_id);
+            let scoreboard = match scoreboard {
+                Some(scoreboard) => {
+                    scoreboard.to_json()
+                }
+                None => {
+                    let json = manager.get_json_table_by_id(table_id).unwrap();
+                    let table_json = serde_json::from_str::<TableJson>(&json).unwrap();
+                    let scoreboard = table_json.get_scoreboard().await;
+                    scoreboard.to_json()
+                }
+            };
+            println!("Response: {:}", scoreboard);
+            let response = generate_message(scoreboard);
             let response = generate_message(json!(response));
-
-            println!("Response: {:}", response);
-
             return Ok(Some(response));
         }
 

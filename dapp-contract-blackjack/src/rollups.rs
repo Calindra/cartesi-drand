@@ -119,6 +119,24 @@ pub mod rollup {
                 println!("Report: {:}", report);
                 let _ = send_report(report.clone()).await;
             }
+            Some("show_table") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+
+                // Parsing JSON
+                let table_id = input
+                    .get("table_id")
+                    .ok_or("Invalid field table_id")?
+                    .as_str()
+                    .ok_or("Invalid table_id")?;
+                let mut manager = manager.lock().await;
+
+                let table = manager.get_json_table_by_id(table_id)?;
+                let json_as_hex = hex::encode(table);
+                let report = json!({ "payload": format!("0x{}", json_as_hex) });
+
+                println!("Report: {:}", report);
+                let _ = send_report(report.clone()).await;
+            }
             Some("show_hands") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
 

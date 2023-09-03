@@ -2,18 +2,14 @@ use serde_json::Value;
 
 pub mod player {
     use std::{
-        error::Error,
         fmt::{self, Display},
         sync::Arc,
     };
 
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use tokio::sync::Mutex;
 
-    use crate::models::{
-        card::card::{Card, Deck, Rank},
-        game::game::Table,
-    };
+    use crate::models::card::card::{Card, Deck, Rank};
 
     use crate::util::random::{call_seed, generate_random_number};
 
@@ -28,6 +24,7 @@ pub mod player {
         }
     }
 
+    #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct Hand(pub Vec<Card>);
 
     impl Display for Hand {
@@ -43,9 +40,9 @@ pub mod player {
     /**
      * Player registration.
      */
-    #[derive(Debug)]
+    #[derive(Debug, Serialize, Deserialize)]
     pub struct Player {
-        id: String,
+        pub(crate) id: String,
         pub(crate) name: String,
     }
 
@@ -72,17 +69,27 @@ pub mod player {
         }
     }
 
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct PlayerHandJson {
+        pub(crate) player: Player,
+        pub(crate) hand: Hand,
+        pub(crate) points: u8,
+        pub(crate) is_standing: bool,
+        pub(crate) round: u8,
+        pub(crate) last_timestamp: u64,
+    }
     /**
      * Player's hand for specific round while playing.
      */
+    #[derive(Clone)]
     pub struct PlayerHand {
-        player: Arc<Player>,
-        hand: Hand,
-        pub points: u8,
-        pub is_standing: bool,
-        deck: Arc<Mutex<Deck>>,
-        round: u8,
-        pub last_timestamp: u64,
+        pub(crate) player: Arc<Player>,
+        pub(crate) hand: Hand,
+        pub(crate) points: u8,
+        pub(crate) is_standing: bool,
+        pub(crate) deck: Arc<Mutex<Deck>>,
+        pub(crate) round: u8,
+        pub(crate) last_timestamp: u64,
     }
 
     impl Display for PlayerHand {
@@ -121,6 +128,7 @@ pub mod player {
                 "name": self.player.name,
                 "points": self.points,
                 "hand": hand,
+                "is_standing": self.is_standing,
             })
         }
 
