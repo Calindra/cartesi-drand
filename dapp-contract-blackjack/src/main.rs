@@ -116,8 +116,18 @@ pub async fn handle_request_action(
             let game = manager.drop_game(game_id)?;
             // Generate table from game
             let table = game.round_start(2, metadata.timestamp)?;
+            let players_with_hand = table.players_with_hand.to_vec();
             // Add table to manager
             manager.add_table(table);
+            let timestamp = metadata.timestamp;
+            for _ in 0..2 {
+                for ph in players_with_hand.iter() {
+                    let table = manager.get_table(game_id).unwrap();
+                    table.hit_player(&ph.get_player_id(), timestamp).await?;
+                    table.any_player_can_hit();
+                }
+            }
+
             println!("Game started: game_id {}", game_id);
         }
 
@@ -181,9 +191,7 @@ pub async fn handle_request_action(
             );
             let scoreboard = manager.get_scoreboard(table_id, game_id);
             let scoreboard = match scoreboard {
-                Some(scoreboard) => {
-                    scoreboard.to_json()
-                }
+                Some(scoreboard) => scoreboard.to_json(),
                 None => {
                     let json = manager.get_json_table_by_id(table_id).unwrap();
                     let table_json = serde_json::from_str::<TableJson>(&json).unwrap();
