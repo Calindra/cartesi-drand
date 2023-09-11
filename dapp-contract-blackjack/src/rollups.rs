@@ -3,7 +3,7 @@ pub mod rollup {
         body::to_bytes, client::HttpConnector, header, Body, Client, Method, Request, Response,
         StatusCode,
     };
-    use hyper_tls::HttpsConnector;
+    // use hyper_tls::HttpsConnector;
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
@@ -25,9 +25,9 @@ pub mod rollup {
     ) -> Result<(), Box<dyn Error>> {
         println!("Starting loop...");
 
-        // let client = Client::new();
-        let https = HttpsConnector::new();
-        let client = Client::builder().build::<_, hyper::Body>(https);
+        let client = Client::new();
+        // let https = HttpsConnector::new();
+        // let client = Client::builder().build::<_, hyper::Body>(https);
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
 
         let mut status = "accept";
@@ -378,9 +378,9 @@ pub mod rollup {
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
-        // let client = hyper::Client::new();
-        let https = HttpsConnector::new();
-        let client = Client::builder().build::<_, hyper::Body>(https);
+        let client = hyper::Client::new();
+        // let https = HttpsConnector::new();
+        // let client = Client::builder().build::<_, hyper::Body>(https);
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
