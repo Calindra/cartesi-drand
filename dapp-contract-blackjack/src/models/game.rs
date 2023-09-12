@@ -2,9 +2,9 @@ pub mod game {
     use crate::{
         models::{
             card::card::Deck,
-            player::player::{Player, PlayerHand, PlayerHandJson, Hand},
+            player::player::{Hand, Player, PlayerHand, PlayerHandJson},
         },
-        util::{json::write_json, random::generate_id},
+        util::random::generate_id,
     };
     use serde::{Deserialize, Serialize};
     use serde_json::{from_str, json, Value};
@@ -210,12 +210,14 @@ pub mod game {
     /**
      * The scoreboard is where the game is finished.
      */
+    #[derive(Clone)]
     pub struct Scoreboard {
         id: String,
         game_id: String,
         players: Vec<Arc<Player>>,
         winner: Option<Arc<Player>>,
     }
+
     impl Scoreboard {
         fn new(
             id: &str,
@@ -323,7 +325,10 @@ pub mod game {
             let mut players_with_hand = vec![];
             let mut players = vec![];
             for player_hand in &self.players_with_hand {
-                let player = Arc::new(Player::new(player_hand.player.get_id(), player_hand.player.name.to_owned()));
+                let player = Arc::new(Player::new(
+                    player_hand.player.get_id(),
+                    player_hand.player.name.to_owned(),
+                ));
                 players.push(player.clone());
                 let ph = PlayerHand {
                     player: player.clone(),
@@ -339,12 +344,15 @@ pub mod game {
             let table = Table {
                 deck,
                 players_with_hand,
-                game: Game { id: "".to_owned(), players: vec![] },
+                game: Game {
+                    id: "".to_owned(),
+                    players: vec![],
+                },
                 round: self.round,
                 id: self.id.to_string(),
             };
             let winner = table.get_winner().await;
-            
+
             Scoreboard::new(&self.id, table.game.get_id(), players, winner)
         }
     }

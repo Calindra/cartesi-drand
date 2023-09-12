@@ -55,7 +55,7 @@ pub mod random {
 
                 code => {
                     println!("Unknown status code {:}", code);
-                    return Err("Unexpected status code for random number".into())
+                    return Err("Unexpected status code for random number".into());
                 }
             }
         }
@@ -67,8 +67,13 @@ pub mod random {
 }
 
 pub mod json {
+    use std::path::Path;
+
     use serde_json::{json, Value};
-    use tokio::{fs::File, io::{AsyncWriteExt, self}};
+    use tokio::{
+        fs::File,
+        io::{self, AsyncReadExt, AsyncWriteExt},
+    };
 
     use super::Metadata;
 
@@ -94,9 +99,49 @@ pub mod json {
         })
     }
 
+    pub fn panic_is_exists_file(path: &str) -> Result<(), io::Error> {
+        let path = Path::new(path);
+        if path.exists() {
+            Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "File already exists",
+            ))?;
+        }
+        Ok(())
+    }
+
+    pub fn panic_is_not_exists_file(path: &str) -> Result<(), io::Error> {
+        let path = Path::new(path);
+        if !path.exists() {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "File not found",
+            ))?;
+        }
+        Ok(())
+    }
+
     pub async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
+        panic_is_exists_file(path)?;
         let mut file = File::create(path).await?;
         let value = obj.to_string();
+        file.write_all(value.as_bytes()).await?;
+        Ok(())
+    }
+
+    pub async fn read_json(path: &str) -> Result<Value, io::Error> {
+        panic_is_not_exists_file(path)?;
+        let mut file = File::open(path).await?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
+        let value = serde_json::from_str::<Value>(contents.as_str())?;
+        Ok(value)
+    }
+
+    pub async fn update_json(path: &str, value: Value) -> Result<(), io::Error> {
+        panic_is_not_exists_file(path)?;
+        let mut file = File::open(path).await?;
+        let value = value.to_string();
         file.write_all(value.as_bytes()).await?;
         Ok(())
     }
@@ -105,11 +150,11 @@ pub mod json {
         let root = root.as_object()?;
         let root = root.get("data")?.as_object()?;
         let metadata = root.get("metadata")?.as_object()?;
-    
+
         let address = metadata.get("msg_sender")?.as_str()?;
         let timestamp = metadata.get("timestamp")?.as_u64()?;
         // let input_index = metadata.get("input_index")?.as_u64()?;
-    
+
         Some(Metadata {
             address: address.to_owned(),
             timestamp,
