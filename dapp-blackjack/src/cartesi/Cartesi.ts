@@ -1,6 +1,6 @@
 import { IInputBox__factory } from "@cartesi/rollups";
 // We'll use ethers to interact with the Ethereum network and our contract
-import { ethers, Provider, Signer } from "ethers";
+import { ContractTransactionResponse, ethers, Provider, Signer } from "ethers";
 import InputBox from "../deployments/InputBox.json";
 import DApp from "../deployments/dapp.json"
 
@@ -33,7 +33,7 @@ export class Cartesi {
 
         // send transaction
         const dappAddress = DApp.address;// '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
-        const tx: any = await inputContract.addInput(dappAddress, inputBytes);
+        const tx = <ContractTransactionResponse> await inputContract.addInput(dappAddress, inputBytes);
         // const tx: any = await inputContract.addInput(dappAddress, inputBytes);
         console.log(`transaction: ${tx.hash}`);
         console.log("waiting for confirmation...");
