@@ -1,13 +1,16 @@
 import { IInputBox__factory } from "@cartesi/rollups";
 // We'll use ethers to interact with the Ethereum network and our contract
-import { ethers, Signer } from "ethers";
+import { ethers, Provider, Signer } from "ethers";
 import InputBox from "../deployments/InputBox.json";
 import DApp from "../deployments/dapp.json"
 
 // const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
-const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
+// const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
+const CARTESI_INSPECT_ENDPOINT = new URL(process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect");
+
+console.log("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
 export class Cartesi {
-    static async sendInput(payload: any, signer: any, provider: any) {
+    static async sendInput(payload: Record<string, unknown>, signer: Signer, provider: Provider) {
 
         const network = await provider.getNetwork();
         console.log(`connected to chain ${network.chainId}`);
@@ -52,7 +55,7 @@ export class Cartesi {
         return str;
     }
 
-    static async inspectWithJson(json: any) {
+    static async inspectWithJson(json: Record<string, unknown>) {
         const jsonString = JSON.stringify({ input: json });
         const jsonEncoded = encodeURIComponent(jsonString)
         const response = await fetch(`${CARTESI_INSPECT_ENDPOINT}/${jsonEncoded}`);

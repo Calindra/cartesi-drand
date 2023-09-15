@@ -1,6 +1,11 @@
-import React from "react";
+import { ReactNode } from "react";
 
-export function NetworkErrorMessage({ message, dismiss }) {
+interface NetworkErrorMessageProps {
+  message: string;
+  dismiss?: () => void;
+}
+
+export function NetworkErrorMessage({ message, dismiss }: NetworkErrorMessageProps): ReactNode {
   return (
     <div className="alert alert-danger" role="alert">
       {message}

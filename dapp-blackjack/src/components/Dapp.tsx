@@ -1,7 +1,7 @@
 import React from "react";
 
 // We'll use ethers to interact with the Ethereum network and our contract
-import { BrowserProvider, ethers } from "ethers";
+import { BrowserProvider, Signer, ethers } from "ethers";
 
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
@@ -26,6 +26,33 @@ const HARDHAT_NETWORK_ID = '31337';
 // This is an error code that indicates that the user canceled a transaction
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 
+// This is for specific domain
+interface GameData {
+    games?: unknown[],
+    player?: {
+        name: string,
+    },
+    hands?: {
+        players: {
+            name: string,
+            points: number,
+            hand: SuitType[],
+        }[],
+    },
+}
+
+interface DappState extends GameData {
+    // The info of the token (i.e. It's Name and symbol)
+    tokenData?: unknown,
+    // The user's address and balance
+    selectedAddress?: string,
+    balance?: unknown,
+    // The ID about transactions being sent, and any possible error with them
+    txBeingSent?: unknown,
+    transactionError?: unknown,
+    networkError?: string,
+}
+
 // This component is in charge of doing these things:
 //   1. It connects to the user's wallet
 //   2. Initializes ethers and the Token contract
@@ -36,8 +63,7 @@ const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 // Note that (3) and (4) are specific of this sample application, but they show
 // you how to keep your Dapp and contract's state in sync,  and how to send a
 // transaction.
-export class Dapp extends React.Component {
-    state: any
+export class Dapp extends React.Component<{}, DappState>  {
     initialState: {
         // The info of the token (i.e. It's Name and symbol)
         tokenData: undefined;
@@ -46,10 +72,10 @@ export class Dapp extends React.Component {
         // The ID about transactions being sent, and any possible error with them
         txBeingSent: undefined; transactionError: undefined; networkError: undefined;
     };
-    private _provider: any;
+    private _provider?: BrowserProvider;
     private _token: ethers.Contract | any;
     private _pollDataInterval: any;
-    private _signer: any;
+    private _signer?: Signer;
     constructor(props) {
         super(props);
 
@@ -67,7 +93,11 @@ export class Dapp extends React.Component {
             networkError: undefined,
         };
 
-        this.state = this.initialState;
+        this.state = {
+            ...this.initialState,
+            games: undefined,
+            hands: undefined,
+        };
     }
 
     render() {
@@ -158,15 +188,33 @@ export class Dapp extends React.Component {
             </div>
         );
     }
+
+    private checkSigner(signer: typeof this._signer): asserts signer is Signer {
+        if(!signer) {
+            throw new Error('Signer not initialized')
+        }
+    }
+
+    private checkProvider(provider: typeof this._provider): asserts provider is BrowserProvider {
+        if (!provider) {
+            throw new Error('Provider not initialized')
+        }
+    }
     private async _chooseStand(game_id: string) {
+        this.checkSigner(this._signer);
+        this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "stand", game_id }, this._signer, this._provider)
     }
 
     private async _chooseHit(game_id: string) {
+        this.checkSigner(this._signer);
+        this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "hit", game_id }, this._signer, this._provider)
     }
 
     private async _startGame(game_id: string) {
+        this.checkSigner(this._signer);
+        this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
     }
 
@@ -182,7 +230,17 @@ export class Dapp extends React.Component {
 
         // To connect to the user's wallet, we have to run this method.
         // It returns a promise that will resolve to the user's address.
-        const [selectedAddress] = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+        const eth = window.ethereum;
+        if (!eth) {
+            console.error('No ethereum provider')
+            return;
+        }
+        const ethRequest = eth.request;
+        if (!ethRequest) {
+            console.error('No ethereum request')
+            return
+        };
+        const [selectedAddress] = await ethRequest({ method: 'eth_requestAccounts' });
 
         // Once we have the address, we can initialize the application.
 
@@ -191,19 +249,21 @@ export class Dapp extends React.Component {
 
         this._initialize(selectedAddress);
 
-        // We reinitialize it whenever the user changes their account.
-        (window as any).ethereum.on("accountsChanged", ([newAddress]) => {
-            this._stopPollingData();
-            // `accountsChanged` event can be triggered with an undefined newAddress.
-            // This happens when the user removes the Dapp from the "Connected
-            // list of sites allowed access to your addresses" (Metamask > Settings > Connections)
-            // To avoid errors, we reset the dapp state 
-            if (newAddress === undefined) {
-                return this._resetState();
-            }
+        eth.on("accountsChanged", (a) => { });
 
-            this._initialize(newAddress);
-        });
+        // We reinitialize it whenever the user changes their account.
+        // eth.on("accountsChanged", ([newAddress]) => {
+        //     this._stopPollingData();
+        //     // `accountsChanged` event can be triggered with an undefined newAddress.
+        //     // This happens when the user removes the Dapp from the "Connected
+        //     // list of sites allowed access to your addresses" (Metamask > Settings > Connections)
+        //     // To avoid errors, we reset the dapp state
+        //     if (newAddress === undefined) {
+        //         return this._resetState();
+        //     }
+
+        //     this._initialize(newAddress);
+        // });
     }
 
     _initialize(userAddress) {
@@ -228,6 +288,7 @@ export class Dapp extends React.Component {
     private async _loadUserData(userAddress: any) {
         console.log('read player...')
         const player = await Cartesi.inspectWithJson({ "action": "show_player", "address": userAddress })
+        console.log({ player })
         this.setState({ player })
     }
 
@@ -253,14 +314,23 @@ export class Dapp extends React.Component {
     }
 
     async _newPlayer() {
+        this.checkSigner(this._signer);
+        this.checkProvider(this._provider);
         console.log('new player')
+        const player = globalThis.prompt('Player name');
+        if (!player) {
+            return;
+        }
         await Cartesi.sendInput({
             action: 'new_player',
-            name: 'Oshiro'
+            name: player,
         }, this._signer, this._provider)
+        await this._loadUserData(this.state.selectedAddress);
     }
 
     async _joinGame(game_id: string) {
+        this.checkSigner(this._signer);
+        this.checkProvider(this._provider);
         await Cartesi.sendInput({
             action: 'join_game',
             game_id
@@ -340,7 +410,7 @@ export class Dapp extends React.Component {
     }
 
     // This method checks if the selected network is Localhost:8545
-    _checkNetwork() {
+    private _checkNetwork() {
         if ((window as any).ethereum.networkVersion !== HARDHAT_NETWORK_ID) {
             this._switchChain();
         }
