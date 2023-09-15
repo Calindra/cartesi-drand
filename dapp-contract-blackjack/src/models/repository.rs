@@ -1,12 +1,12 @@
 pub mod repository {
-    use std::{collections::BTreeMap, error::Error, path::PathBuf};
+    use std::{collections::BTreeMap, error::Error, path::PathBuf, fs::remove_file};
 
     use async_trait::async_trait;
 
     use crate::util::json::{read_json, write_json};
 
     #[async_trait]
-    pub trait RepositoryCrud<T, I>
+    pub trait RepositoryBehaviour<T, I>
     where
         T: Clone,
     {
@@ -37,7 +37,7 @@ pub mod repository {
     }
 
     #[async_trait]
-    impl RepositoryCrud<JSON, String> for RepositoryStrategyMemory {
+    impl RepositoryBehaviour<JSON, String> for RepositoryStrategyMemory {
         async fn create(&mut self, id: String, data: JSON) -> Result<String, Box<dyn Error>> {
             self.data.insert(id.clone(), data);
             Ok(id)
@@ -97,7 +97,7 @@ pub mod repository {
     }
 
     #[async_trait]
-    impl RepositoryCrud<serde_json::Value, String> for RepositoryStrategyJSONFile {
+    impl RepositoryBehaviour<serde_json::Value, String> for RepositoryStrategyJSONFile {
         async fn create(
             &mut self,
             id: String,
@@ -136,7 +136,9 @@ pub mod repository {
         }
 
         async fn delete(&mut self, id: String) -> Result<(), Box<dyn Error>> {
-            todo!()
+            let path = self.get_path(&id);
+            remove_file(path)?;
+            Ok(())
         }
     }
 
