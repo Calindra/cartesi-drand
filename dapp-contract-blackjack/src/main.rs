@@ -15,8 +15,8 @@ use util::json::generate_message;
 
 use crate::{
     models::{
-        game::game::{Manager, Scoreboard, Table, TableJson},
-        player::{check_fields_create_player, player::Player},
+        game::game::{Manager, TableJson},
+        player::check_fields_create_player,
     },
     util::json::{get_address_metadata_from_root, write_json},
 };
