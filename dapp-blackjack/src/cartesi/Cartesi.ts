@@ -8,7 +8,7 @@ import DApp from "../deployments/dapp.json"
 // const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
 const CARTESI_INSPECT_ENDPOINT = new URL(process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect");
 
-console.log("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
+console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
 export class Cartesi {
     static async sendInput(payload: Record<string, unknown>, signer: Signer, provider: Provider) {
 

@@ -22,6 +22,7 @@ import { Card } from "./cards/Card";
 import { SuitType } from "./cards/Suit";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
+const HARDHAT_NETWORK_HEX = `0x${(+HARDHAT_NETWORK_ID).toString(16)}`;
 
 // This is an error code that indicates that the user canceled a transaction
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
@@ -64,6 +65,8 @@ interface DappState extends GameData {
 // you how to keep your Dapp and contract's state in sync,  and how to send a
 // transaction.
 export class Dapp extends React.Component<{}, DappState>  {
+    private ONCE = true;
+
     initialState: {
         // The info of the token (i.e. It's Name and symbol)
         tokenData: undefined;
@@ -103,7 +106,7 @@ export class Dapp extends React.Component<{}, DappState>  {
     render() {
         // Ethereum wallets inject the window.ethereum object. If it hasn't been
         // injected, we instruct the user to install a wallet.
-        if ((window as any).ethereum === undefined) {
+        if (window.ethereum === undefined) {
             return <NoWalletDetected />;
         }
 
@@ -147,6 +150,9 @@ export class Dapp extends React.Component<{}, DappState>  {
                             this._newPlayer()
                         }}>New Player</button>
                         <button onClick={() => {
+                            this._showGames();
+                        }}>Show games</button>
+                        <button onClick={() => {
                             this._joinGame("1")
                         }}>Join Game</button>
                         <button onClick={() => {
@@ -188,6 +194,10 @@ export class Dapp extends React.Component<{}, DappState>  {
             </div>
         );
     }
+    private _showGames() {
+        console.log('show games...')
+        this._readGames();
+    }
 
     private checkSigner(signer: typeof this._signer): asserts signer is Signer {
         if(!signer) {
@@ -218,10 +228,34 @@ export class Dapp extends React.Component<{}, DappState>  {
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
     }
 
+    componentDidMount(): void {
+        if (this.ONCE) {
+            this.ONCE = false;
+            this._attachNetworkChanges();
+        }
+    }
+
     componentWillUnmount() {
         // We poll the user's balance, so we have to stop doing that when Dapp
         // gets unmounted
         this._stopPollingData();
+    }
+
+    // This method checks if the selected network is Localhost:8545
+    private async _handleChainChanged(chainId: string) {
+        console.log("Change chain triggered", { chainId })
+
+        /**
+         * Convert chainId from hex to decimal and then to string.
+         * @see {https://docs.metamask.io/wallet/how-to/connect/detect-network/#chain-ids}
+         */
+        if (chainId !== HARDHAT_NETWORK_HEX) {
+            this._switchChain();
+        }
+    }
+
+    async _attachNetworkChanges() {
+        window.ethereum?.on("chainChanged", (chainId) => this._handleChainChanged(chainId))
     }
 
     async _connectWallet() {
@@ -235,17 +269,16 @@ export class Dapp extends React.Component<{}, DappState>  {
             console.error('No ethereum provider')
             return;
         }
-        const ethRequest = eth.request;
-        if (!ethRequest) {
-            console.error('No ethereum request')
-            return
-        };
-        const [selectedAddress] = await ethRequest({ method: 'eth_requestAccounts' });
+        const [selectedAddress] = await eth.request({ method: 'eth_requestAccounts' });
 
         // Once we have the address, we can initialize the application.
 
-        // First we check the network
-        this._checkNetwork();
+        /**
+         * First we check the network
+         * We will check network when event is triggered like this:
+         * @see https://docs.metamask.io/wallet/reference/provider-api/#chainchanged
+         */
+        // this._checkNetwork();
 
         this._initialize(selectedAddress);
 
@@ -260,7 +293,7 @@ export class Dapp extends React.Component<{}, DappState>  {
              * @see https://docs.metamask.io/wallet/reference/provider-api/#accountschanged
              */
 
-            if (newAddress === undefined) {
+            if (typeof newAddress !== "string") {
                 return this._resetState();
             }
 
@@ -268,7 +301,7 @@ export class Dapp extends React.Component<{}, DappState>  {
         });
     }
 
-    _initialize(userAddress) {
+    _initialize(userAddress: string) {
         // This method initializes the dapp
 
         // We first store the user's address in the component's state
@@ -297,7 +330,11 @@ export class Dapp extends React.Component<{}, DappState>  {
     async _initializeEthers() {
         // We first initialize ethers by creating a provider using window.ethereum
         // (window as any)._ethers = ethers;
-        this._provider = new BrowserProvider((window as any).ethereum);
+        const eth = window.ethereum;
+        if (!eth) {
+            throw new Error('No ethereum provider')
+        }
+        this._provider = new BrowserProvider(eth);
 
         // this._provider = new ethers.BrowserProvider()
 
@@ -403,15 +440,24 @@ export class Dapp extends React.Component<{}, DappState>  {
     }
 
     async _switchChain() {
-        const chainIdHex = `0x${(+HARDHAT_NETWORK_ID).toString(16)}`
-        await (window as any).ethereum.request({
+        const chainIdHex = HARDHAT_NETWORK_HEX;
+        await window.ethereum?.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: chainIdHex }],
         });
-        await this._initialize(this.state.selectedAddress);
+        const selectedAddress = this.state.selectedAddress;
+        if (!selectedAddress) {
+            console.error('No selected address')
+            return;
+        }
+        this._initialize(selectedAddress);
     }
 
-    // This method checks if the selected network is Localhost:8545
+    /**
+     * @deprecated
+     * This method checks if the selected network is Localhost:8545
+     * @see https://docs.metamask.io/wallet/how-to/connect/detect-network/#chain-ids
+     **/
     private _checkNetwork() {
         if ((window as any).ethereum.networkVersion !== HARDHAT_NETWORK_ID) {
             this._switchChain();
