@@ -249,21 +249,23 @@ export class Dapp extends React.Component<{}, DappState>  {
 
         this._initialize(selectedAddress);
 
-        eth.on("accountsChanged", (a) => { });
-
         // We reinitialize it whenever the user changes their account.
-        // eth.on("accountsChanged", ([newAddress]) => {
-        //     this._stopPollingData();
-        //     // `accountsChanged` event can be triggered with an undefined newAddress.
-        //     // This happens when the user removes the Dapp from the "Connected
-        //     // list of sites allowed access to your addresses" (Metamask > Settings > Connections)
-        //     // To avoid errors, we reset the dapp state
-        //     if (newAddress === undefined) {
-        //         return this._resetState();
-        //     }
+        eth.on("accountsChanged", ([newAddress]) => {
+            this._stopPollingData();
+            /**
+             * `accountsChanged` event can be triggered with an undefined newAddress.
+             * This happens when the user removes the Dapp from the "Connected
+             * list of sites allowed access to your addresses" (Metamask > Settings > Connections)
+             * To avoid errors, we reset the dapp state
+             * @see https://docs.metamask.io/wallet/reference/provider-api/#accountschanged
+             */
 
-        //     this._initialize(newAddress);
-        // });
+            if (newAddress === undefined) {
+                return this._resetState();
+            }
+
+            this._initialize(newAddress);
+        });
     }
 
     _initialize(userAddress) {
