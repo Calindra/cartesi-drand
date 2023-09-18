@@ -19,6 +19,9 @@ export class DrandProvider {
         inspectEndpoint: "http://localhost:5005/inspect"
     }
 
+    /**
+     * @todo change to dotenv
+     */
     drandConfig: DrandConfig = {
         chainHash: "dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493",
         publicKey: 'a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e', // (hex encoded)
@@ -51,7 +54,7 @@ export class DrandProvider {
 
             if (Array.isArray(res.data.reports) && res.data.reports.length > 0) {
                 const firstReport = res.data.reports.at(0);
-                if (firstReport?.payload && firstReport?.payload !== '0x00') {
+                if (firstReport?.payload && firstReport.payload !== '0x00') {
                     return { inputTime: Number(firstReport.payload) }
                 }
             }
@@ -88,8 +91,8 @@ export class DrandProvider {
         this.desiredState = 'RUNNING'
         this.configureInputSender()
         while (this.desiredState === 'RUNNING') {
-            let pending = await this.pendingDrandBeacon()
-            if (pending && this.lastPendingTime !== pending.inputTime && pending.inputTime < (Date.now() / 1000 - this.secondsToWait)) {
+            const pending = await this.pendingDrandBeacon()
+            if (this.canSendBeacon(pending)) {
                 const beacon = await fetchBeacon(this.drandClient)
                 console.log('sending beacon', beacon.round)
                 this.inputSender.sendInput({ payload: JSON.stringify({ beacon }) })
@@ -97,6 +100,17 @@ export class DrandProvider {
             }
             await this.someTime()
         }
+    }
+
+    private canSendBeacon(
+        pending: Awaited<ReturnType<typeof this.pendingDrandBeacon>>
+    ): pending is NonNullable<typeof pending> {
+        return (
+            (pending &&
+                this.lastPendingTime !== pending.inputTime &&
+                pending.inputTime < Date.now() / 1000 - this.secondsToWait) ??
+            false
+        );
     }
 
     async someTime() {
