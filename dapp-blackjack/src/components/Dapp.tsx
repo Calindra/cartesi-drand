@@ -28,12 +28,14 @@ const HARDHAT_NETWORK_HEX = `0x${(+HARDHAT_NETWORK_ID).toString(16)}`;
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 
 // This is for specific domain
+interface Game {}
 interface GameData {
-    games?: unknown[],
+    gameIdSelected: string | null,
+    games?: Game[],
     player?: {
         name: string,
     },
-    hands?: {
+    hands: {
         players: {
             name: string,
             points: number,
@@ -41,6 +43,8 @@ interface GameData {
         }[],
     },
 }
+
+type ErrorRpc = { data: { message: string } } | { message: string };
 
 interface DappState extends GameData {
     // The info of the token (i.e. It's Name and symbol)
@@ -64,7 +68,7 @@ interface DappState extends GameData {
 // Note that (3) and (4) are specific of this sample application, but they show
 // you how to keep your Dapp and contract's state in sync,  and how to send a
 // transaction.
-export class Dapp extends React.Component<{}, DappState>  {
+export class Dapp extends React.Component<{}, DappState> {
     private ONCE = true;
 
     initialState: {
@@ -76,8 +80,8 @@ export class Dapp extends React.Component<{}, DappState>  {
         txBeingSent: undefined; transactionError: undefined; networkError: undefined;
     };
     private _provider?: BrowserProvider;
-    private _token: ethers.Contract | any;
-    private _pollDataInterval: any;
+    private _token?: ethers.Contract;
+    private _pollDataInterval?: NodeJS.Timeout;
     private _signer?: Signer;
     constructor(props) {
         super(props);
@@ -99,7 +103,10 @@ export class Dapp extends React.Component<{}, DappState>  {
         this.state = {
             ...this.initialState,
             games: undefined,
-            hands: undefined,
+            hands: {
+                players: [],
+            },
+            gameIdSelected: null,
         };
     }
 
@@ -132,8 +139,47 @@ export class Dapp extends React.Component<{}, DappState>  {
         // If the token data or the user's balance hasn't loaded yet, we show
         // a loading component.
         if (!this.state.games) {
-            // return <Loading />;
+            // return <progress />;
         }
+
+        const noGameSelected = this.state.gameIdSelected === null;
+
+        const actions = [
+            {
+                id: 'show_games',
+                label: 'Show Games',
+                action: this._showGames.bind(this),
+            },{
+                id: 'new_player',
+                label: 'New Player',
+                action: this._newPlayer.bind(this),
+            },{
+                id: 'join_game',
+                label: 'Join Game',
+                action: this._joinGame.bind(this),
+                disabled: noGameSelected,
+            }, {
+                id: 'start_game',
+                label: 'Start Game',
+                action: this._startGame.bind(this),
+                disabled: noGameSelected,
+            }, {
+                id: 'choose_hit',
+                label: 'Hit',
+                action: this._chooseHit.bind(this),
+                disabled: noGameSelected,
+            }, {
+                id: 'choose_stand',
+                label: 'Stand',
+                action: this._chooseStand.bind(this),
+                disabled: noGameSelected,
+            }, {
+                id: 'show_hands',
+                label: 'Show Hands',
+                action: this._showHands.bind(this),
+                disabled: noGameSelected,
+            },
+        ]
 
         // If everything is loaded, we render the application.
         return (
@@ -146,31 +192,27 @@ export class Dapp extends React.Component<{}, DappState>  {
                         <p>
                             Welcome <b>{this.state.player?.name ?? this.state.selectedAddress}</b>.
                         </p>
-                        <button onClick={() => {
-                            this._newPlayer()
-                        }}>New Player</button>
-                        <button onClick={() => {
-                            this._showGames();
-                        }}>Show games</button>
-                        <button onClick={() => {
-                            this._joinGame("1")
-                        }}>Join Game</button>
-                        <button onClick={() => {
-                            this._startGame("1")
-                        }}>Start Game</button>
-                        <button onClick={() => {
-                            this._chooseHit("1")
-                        }}>Hit</button>
-                        <button onClick={() => {
-                            this._chooseStand("1")
-                        }}>Stand</button>
-                        <button onClick={() => {
-                            this._showHands("1")
-                        }}>Show hands</button>
+                        <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
+                            actions.map(({ id, label, action, disabled }) => {
+                                return (
+                                    <span key={id} className="flex-initial">
+                                        <button
+                                            className="p-2 rounded cursor-pointer bg-red-600 hover:bg-red-800 transition disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
+                                            onClick={() => { action() }}
+                                            disabled={disabled}
+                                            type="button"
+                                        >
+                                            {label}
+                                        </button>
+                                    </span>
+                                )
+                            })
+                        }
+                        </nav>
                     </div>
                 </div>
 
-                <hr />
+                {/* <hr /> */}
 
                 <div className="row">
                     <div className="col-12">
@@ -199,8 +241,13 @@ export class Dapp extends React.Component<{}, DappState>  {
         this._readGames();
     }
 
+    private checkGameIdSelected(gameIdSelected: typeof this.state.gameIdSelected): asserts gameIdSelected is string {
+        if (typeof gameIdSelected !== "string") {
+            throw new Error('No game is selected')
+        }
+    }
     private checkSigner(signer: typeof this._signer): asserts signer is Signer {
-        if(!signer) {
+        if (!signer) {
             throw new Error('Signer not initialized')
         }
     }
@@ -210,19 +257,25 @@ export class Dapp extends React.Component<{}, DappState>  {
             throw new Error('Provider not initialized')
         }
     }
-    private async _chooseStand(game_id: string) {
+    private async _chooseStand() {
+        const game_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(game_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "stand", game_id }, this._signer, this._provider)
     }
 
-    private async _chooseHit(game_id: string) {
+    private async _chooseHit() {
+        const game_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(game_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "hit", game_id }, this._signer, this._provider)
     }
 
-    private async _startGame(game_id: string) {
+    private async _startGame() {
+        const game_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(game_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
@@ -241,13 +294,15 @@ export class Dapp extends React.Component<{}, DappState>  {
         this._stopPollingData();
     }
 
-    // This method checks if the selected network is Localhost:8545
+    /**
+     * This method checks if the selected network is Localhost:8545
+     */
     private async _handleChainChanged(chainId: string) {
         console.log("Change chain triggered", { chainId })
 
         /**
          * Convert chainId from hex to decimal and then to string.
-         * @see {https://docs.metamask.io/wallet/how-to/connect/detect-network/#chain-ids}
+         * @see https://docs.metamask.io/wallet/how-to/connect/detect-network/#chain-ids
          */
         if (chainId !== HARDHAT_NETWORK_HEX) {
             this._switchChain();
@@ -315,12 +370,12 @@ export class Dapp extends React.Component<{}, DappState>  {
         // Fetching the token data and the user's balance are specific to this
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
-        this._readGames();
+        // this._readGames();
         this._loadUserData(userAddress);
-        this._showHands("1");
+        // this._showHands();
         // this._startPollingData();
     }
-    private async _loadUserData(userAddress: any) {
+    private async _loadUserData(userAddress: string) {
         console.log('read player...')
         const player = await Cartesi.inspectWithJson({ "action": "show_player", "address": userAddress })
         console.log({ player })
@@ -364,10 +419,15 @@ export class Dapp extends React.Component<{}, DappState>  {
             action: 'new_player',
             name: player,
         }, this._signer, this._provider)
+        if (!this.state.selectedAddress) {
+            throw new Error('No selected address')
+        }
         await this._loadUserData(this.state.selectedAddress);
     }
 
-    async _joinGame(game_id: string) {
+    async _joinGame() {
+        const game_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(game_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({
@@ -386,7 +446,7 @@ export class Dapp extends React.Component<{}, DappState>  {
     async _startPollingData() {
         try {
             // We run it once immediately so we don't have to wait for it
-            await this._showHands("1");
+            await this._showHands();
         } catch (e) {
             console.error(e);
         }
@@ -405,7 +465,9 @@ export class Dapp extends React.Component<{}, DappState>  {
         this.setState({ games })
     }
 
-    async _showHands(game_id: string) {
+    async _showHands() {
+        const game_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(game_id);
         console.log('show hands...')
         const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
         // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
@@ -426,15 +488,15 @@ export class Dapp extends React.Component<{}, DappState>  {
 
     // This is an utility method that turns an RPC error into a human readable
     // message.
-    _getRpcErrorMessage(error) {
-        if (error.data) {
+    _getRpcErrorMessage(error: ErrorRpc) {
+        if ("data" in error) {
             return error.data.message;
         }
 
         return error.message;
     }
 
-    // This method resets the state
+    // // This method resets the state
     _resetState() {
         this.setState(this.initialState);
     }
@@ -464,5 +526,3 @@ export class Dapp extends React.Component<{}, DappState>  {
         }
     }
 }
-
-

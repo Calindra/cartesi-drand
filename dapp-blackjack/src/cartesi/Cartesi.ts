@@ -8,6 +8,13 @@ import DApp from "../deployments/dapp.json"
 // const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
 const CARTESI_INSPECT_ENDPOINT = new URL(process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect");
 
+
+interface ResultJSON {
+    reports?: Array<{
+        payload: string
+    }>
+}
+
 console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
 export class Cartesi {
     static async sendInput(payload: Record<string, unknown>, signer: Signer, provider: Provider) {
@@ -55,13 +62,17 @@ export class Cartesi {
         return str;
     }
 
+
     static async inspectWithJson(json: Record<string, unknown>) {
         const jsonString = JSON.stringify({ input: json });
         const jsonEncoded = encodeURIComponent(jsonString)
-        const response = await fetch(`${CARTESI_INSPECT_ENDPOINT}/${jsonEncoded}`);
-        const data = await response.json();
+        const url = new URL(CARTESI_INSPECT_ENDPOINT);
+        url.pathname += `/${jsonEncoded}`;
+        console.log(url.href);
+        const response = await fetch(url);
+        const data: ResultJSON = await response.json();
         console.log(data)
-        if (!data.reports?.length) {
+        if (!data?.reports?.length) {
             return null
         }
         const payload = Cartesi.hex2a(data.reports[0].payload.replace(/^0x/, ""))

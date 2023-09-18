@@ -29,6 +29,8 @@ pub async fn handle_request_action(
     let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
     let action = get_from_payload_action(&payload);
 
+    println!("Action: {:}", action.as_deref().unwrap_or("None"));
+
     match action.as_deref() {
         Some("new_player") => {
             let input = payload.get("input").ok_or("Invalid field input")?;

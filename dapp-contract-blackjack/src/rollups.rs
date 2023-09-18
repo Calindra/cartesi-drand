@@ -5,9 +5,9 @@ pub mod rollup {
     };
     // use hyper_tls::HttpsConnector;
     use serde_json::{from_str, json, Value};
+    use std::fs;
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
-    use std::fs;
 
     use crate::{
         models::{
@@ -87,6 +87,9 @@ pub mod rollup {
 
         let payload = get_payload_from_root(&body).ok_or("Invalid payload")?;
         let action = get_from_payload_action(&payload);
+
+        println!("Action: {:}", action.as_deref().unwrap_or("None"));
+
         match action.as_deref() {
             Some("show_player") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
@@ -101,7 +104,8 @@ pub mod rollup {
                 let address_encoded = bs58::encode(address_owner).into_string();
 
                 let address_path = format!("./data/address/{}.json", address_encoded);
-                let content = fs::read_to_string(address_path).expect("Open player file error");
+                println!("Trying read {:}", &address_path);
+                let content = fs::read_to_string(address_path)?;
                 let json_as_hex = hex::encode(content.to_string());
                 let report = json!({ "payload": format!("0x{}", json_as_hex) });
                 println!("Report: {:}", report);
