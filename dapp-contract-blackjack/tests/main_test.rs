@@ -5,14 +5,16 @@ mod main;
 mod models;
 #[path = "../src/util.rs"]
 mod util;
+#[path = "../src/rollups.rs"]
+mod rollups;
 
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
         common::common::setup_hit_random,
-        main::handle_request_action,
         models::{game::game::Manager, player::player::Player},
         util::{env::check_if_dotenv_is_loaded, json::decode_payload},
+        rollups::rollup::handle_request_action,
     };
 
     use serde_json::json;

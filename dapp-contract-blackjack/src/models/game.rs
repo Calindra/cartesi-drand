@@ -11,7 +11,6 @@ pub mod game {
     use tokio::sync::Mutex;
 
     pub struct Manager {
-        pub scoreboard_id_seq: u64,
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
         pub tables: Vec<Table>, // games running
@@ -21,7 +20,6 @@ pub mod game {
     impl Default for Manager {
         fn default() -> Self {
             Manager {
-                scoreboard_id_seq: 0,
                 games: Vec::new(),
                 tables: Vec::new(),
                 players: HashMap::new(),
@@ -45,7 +43,6 @@ pub mod game {
                 tables: Vec::with_capacity(game_size),
                 players: HashMap::new(),
                 scoreboards: Vec::new(),
-                scoreboard_id_seq: 0,
             }
         }
 
@@ -111,8 +108,7 @@ pub mod game {
             let players = table.game.players.iter().cloned().collect();
 
             let winner = table.get_winner().await;
-            self.scoreboard_id_seq += 1;
-            let scoreboard_id = self.scoreboard_id_seq.to_string();
+            let scoreboard_id = table.id.clone();
             let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
             self.scoreboards.push(scoreboard);
 
@@ -209,11 +205,15 @@ pub mod game {
                 .as_ref()
                 .map_or("DRAW".to_string(), |player| player.name.clone());
 
-            json!({
+            let value = json!({
                 "id": self.id,
                 "game_id": self.game_id,
                 "players": self.players.iter().map(|player| player.name.clone()).collect::<Vec<String>>(),
                 "winner": winner,
+            });
+
+            json!({
+                "scoreboard": value,
             })
         }
     }
