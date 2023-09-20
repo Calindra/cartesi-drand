@@ -31,7 +31,7 @@ const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 interface Game {}
 interface GameData {
     gameIdSelected: string | null,
-    games?: Game[],
+    games?: string[],
     player?: {
         name: string,
     },
@@ -42,6 +42,7 @@ interface GameData {
             hand: SuitType[],
         }[],
     },
+    isLoading: boolean,
 }
 
 type ErrorRpc = { data: { message: string } } | { message: string };
@@ -107,6 +108,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 players: [],
             },
             gameIdSelected: null,
+            isLoading: false,
         };
     }
 
@@ -138,7 +140,8 @@ export class Dapp extends React.Component<{}, DappState> {
 
         // If the token data or the user's balance hasn't loaded yet, we show
         // a loading component.
-        if (!this.state.games) {
+        if (this.state.isLoading) {
+            return <h1>Loading...</h1>
             // return <progress />;
         }
 
@@ -192,6 +195,9 @@ export class Dapp extends React.Component<{}, DappState> {
                         <p>
                             Welcome <b>{this.state.player?.name ?? this.state.selectedAddress}</b>.
                         </p>
+                        {this.state.gameIdSelected !== null && <p>
+                            Game: <b>{this.state.gameIdSelected}</b>.
+                        </p>}
                         <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
                             actions.map(({ id, label, action, disabled }) => {
                                 return (
@@ -209,6 +215,16 @@ export class Dapp extends React.Component<{}, DappState> {
                             })
                         }
                         </nav>
+                        {this.state.games && this.state.gameIdSelected === null && <section className="games">
+                            <h2>Select one game</h2>
+                            <div className="mt-2 flex flex-row justify-between items-center flex-wrap">
+                                {this.state.games.map(game => (
+                                    <button className="p-2 rounded cursor-pointer bg-indigo-600 hover:bg-indigo-800 transition" onClick={() => {
+                                        this._selectGame(game)
+                                    }} key={game}>Game: {game}</button>
+                                ))}
+                            </div>
+                        </section>}
                     </div>
                 </div>
 
@@ -236,6 +252,12 @@ export class Dapp extends React.Component<{}, DappState> {
             </div>
         );
     }
+
+    private _selectGame(gameIdSelected: string) {
+        this.setState({ gameIdSelected })
+    }
+
+
     private _showGames() {
         console.log('show games...')
         this._readGames();
@@ -370,7 +392,7 @@ export class Dapp extends React.Component<{}, DappState> {
         // Fetching the token data and the user's balance are specific to this
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
-        // this._readGames();
+        this._readGames();
         this._loadUserData(userAddress);
         // this._showHands();
         // this._startPollingData();
@@ -459,10 +481,17 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     async _readGames() {
+        this.setState({
+            isLoading: true,
+        })
         console.log('read game...')
-        const games = await Cartesi.inspectWithJson({ action: 'show_games' })
-        console.log(games)
-        this.setState({ games })
+        const response = await Cartesi.inspectWithJson({ action: 'show_games' })
+
+        if (typeof response === 'object' && 'games' in response && Array.isArray(response.games)) {
+            this.setState({ games: response.games })
+        }
+
+        this.setState({ isLoading: false })
     }
 
     async _showHands() {
@@ -496,7 +525,7 @@ export class Dapp extends React.Component<{}, DappState> {
         return error.message;
     }
 
-    // // This method resets the state
+    // This method resets the state
     _resetState() {
         this.setState(this.initialState);
     }

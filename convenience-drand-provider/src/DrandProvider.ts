@@ -113,7 +113,7 @@ export class DrandProvider {
         );
     }
 
-    async someTime() {
+    someTime() {
         return setTimeout(Math.round(this.secondsToWait * 1000))
         // return new Promise(resolve => globalThis.setTimeout(resolve, Math.round(this.secondsToWait * 1000)))
     }
