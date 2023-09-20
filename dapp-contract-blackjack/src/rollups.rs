@@ -2,16 +2,17 @@ pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
-    use tokio::sync::{mpsc::Sender, Mutex};
+    use tokio::{
+        fs::read_to_string,
+        sync::{mpsc::Sender, Mutex},
+    };
 
     use crate::{
         models::{
             game::game::Manager,
             player::{check_fields_create_player, player::Player},
         },
-        util::json::{
-            decode_payload, generate_report, get_address_metadata_from_root, write_json,
-        },
+        util::json::{decode_payload, generate_report, get_address_metadata_from_root, write_json},
     };
 
     pub async fn rollup(
@@ -185,15 +186,15 @@ pub mod rollup {
                         .or(Err("Could not write player"))?;
                 }
 
-                let response = generate_report(json!({
+                let report = generate_report(json!({
                     "address": address_encoded,
                     "encoded_name": encoded_name,
                     "name": player_name,
                 }));
 
-                println!("Response: {:}", response);
+                println!("Report: {:}", report);
 
-                return Ok(Some(response));
+                return Ok(Some(report));
             }
             Some("join_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
@@ -216,17 +217,39 @@ pub mod rollup {
                 manager.player_join(game_id, player.clone())?;
                 println!("Player joined: name {} game_id {}", player.name, game_id);
             }
+            Some("show_player") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+
+                // Parsing JSON
+                let address = input
+                    .get("address")
+                    .ok_or("Invalid field address")?
+                    .as_str()
+                    .ok_or("Invalid address")?;
+                let address_owner = address.trim_start_matches("0x");
+                let address_encoded = bs58::encode(address_owner).into_string();
+
+                let address_path = format!("./data/address/{}.json", address_encoded);
+                println!("Trying read {:}", &address_path);
+                let content = read_to_string(address_path)
+                    .await
+                    .or(Err("Could not read player"))?;
+                let content = from_str::<Value>(&content).or(Err("Could not parse player"))?;
+                let report = generate_report(content);
+
+                return Ok(Some(report));
+            }
             Some("show_games") => {
                 let manager = manager.lock().await;
                 let games = manager.show_games_id_available();
 
-                let response = generate_report(json!({
+                let report = generate_report(json!({
                     "games": games,
                 }));
 
-                println!("Response: {:}", response);
+                println!("Report: {:}", report);
 
-                return Ok(Some(response));
+                return Ok(Some(report));
             }
             Some("start_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;

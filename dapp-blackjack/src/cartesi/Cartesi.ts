@@ -63,7 +63,7 @@ export class Cartesi {
     }
 
 
-    static async inspectWithJson(json: Record<string, unknown>) {
+    static async inspectWithJson<T extends Record<string, unknown>>(json: Record<string, unknown>): Promise<T | null> {
         const jsonString = JSON.stringify({ input: json });
         const jsonEncoded = encodeURIComponent(jsonString)
         const url = new URL(CARTESI_INSPECT_ENDPOINT);

@@ -32,9 +32,10 @@ interface Game {}
 interface GameData {
     gameIdSelected: string | null,
     games?: string[],
-    player?: {
+    player: {
         name: string,
-    },
+        address: string,
+    } | null,
     hands: {
         players: {
             name: string,
@@ -108,6 +109,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 players: [],
             },
             gameIdSelected: null,
+            player: null,
             isLoading: false,
         };
     }
@@ -146,6 +148,7 @@ export class Dapp extends React.Component<{}, DappState> {
         }
 
         const noGameSelected = this.state.gameIdSelected === null;
+        const noPlayerSelected = !!this.state.player;
 
         const actions = [
             {
@@ -160,29 +163,38 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'join_game',
                 label: 'Join Game',
                 action: this._joinGame.bind(this),
-                disabled: noGameSelected,
+                disabled: noGameSelected || noPlayerSelected,
             }, {
                 id: 'start_game',
                 label: 'Start Game',
                 action: this._startGame.bind(this),
-                disabled: noGameSelected,
+                disabled: noGameSelected || noPlayerSelected,
             }, {
                 id: 'choose_hit',
                 label: 'Hit',
                 action: this._chooseHit.bind(this),
-                disabled: noGameSelected,
+                disabled: noGameSelected || noPlayerSelected,
             }, {
                 id: 'choose_stand',
                 label: 'Stand',
                 action: this._chooseStand.bind(this),
-                disabled: noGameSelected,
+                disabled: noGameSelected || noPlayerSelected,
             }, {
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
-                disabled: noGameSelected,
+                disabled: noGameSelected || noPlayerSelected,
             },
         ]
+
+
+        let name: string | undefined;
+        if (this.state.player) {
+            name = `${this.state.player.name} (${this.state.player.address})`;
+        } else {
+            name = this.state.selectedAddress;
+        }
+
 
         // If everything is loaded, we render the application.
         return (
@@ -193,7 +205,7 @@ export class Dapp extends React.Component<{}, DappState> {
                             Black Jack
                         </h1>
                         <p>
-                            Welcome <b>{this.state.player?.name ?? this.state.selectedAddress}</b>.
+                            Welcome <b>{name}</b>.
                         </p>
                         {this.state.gameIdSelected !== null && <p>
                             Game: <b>{this.state.gameIdSelected}</b>.
@@ -217,7 +229,7 @@ export class Dapp extends React.Component<{}, DappState> {
                         </nav>
                         {this.state.games && this.state.gameIdSelected === null && <section className="games">
                             <h2>Select one game</h2>
-                            <div className="mt-2 flex flex-row justify-between items-center flex-wrap">
+                            <div className="mt-2 flex flex-row gap-2 flex-wrap">
                                 {this.state.games.map(game => (
                                     <button className="p-2 rounded cursor-pointer bg-indigo-600 hover:bg-indigo-800 transition" onClick={() => {
                                         this._selectGame(game)
@@ -399,9 +411,12 @@ export class Dapp extends React.Component<{}, DappState> {
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
-        const player = await Cartesi.inspectWithJson({ "action": "show_player", "address": userAddress })
-        console.log({ player })
-        this.setState({ player })
+        const player = await Cartesi.inspectWithJson<NonNullable<DappState['player']>>({ "action": "show_player", "address": userAddress })
+        console.log({ result: player })
+
+        if (player) {
+            this.setState({ player })
+        }
     }
 
     async _initializeEthers() {
@@ -487,7 +502,7 @@ export class Dapp extends React.Component<{}, DappState> {
         console.log('read game...')
         const response = await Cartesi.inspectWithJson({ action: 'show_games' })
 
-        if (typeof response === 'object' && 'games' in response && Array.isArray(response.games)) {
+        if (response && "games" in response && Array.isArray(response.games)) {
             this.setState({ games: response.games })
         }
 
@@ -500,9 +515,10 @@ export class Dapp extends React.Component<{}, DappState> {
         console.log('show hands...')
         const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
         // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
-        if (hands) {
-            this.setState({ hands })
-        }
+        // if (hands) {
+        //     this.setState({ hands })
+        // }
+        console.log({ hands })
     }
 
     // This method just clears part of the state.
