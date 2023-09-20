@@ -160,11 +160,6 @@ export class Dapp extends React.Component<{}, DappState> {
                 label: 'New Player',
                 action: this._newPlayer.bind(this),
             },{
-                id: 'change_player_name',
-                label: 'Change Player Name',
-                action: this._changePlayerName.bind(this),
-                disabled: noPlayerSelected,
-            },{
                 id: 'join_game',
                 label: 'Join Game',
                 action: this._joinGame.bind(this),
@@ -457,24 +452,6 @@ export class Dapp extends React.Component<{}, DappState> {
         }
         await Cartesi.sendInput({
             action: 'new_player',
-            name: player,
-        }, this._signer, this._provider)
-        if (!this.state.selectedAddress) {
-            throw new Error('No selected address')
-        }
-        await this._loadUserData(this.state.selectedAddress);
-    }
-
-    async _changePlayerName() {
-        this.checkSigner(this._signer);
-        this.checkProvider(this._provider);
-        console.log('change player name')
-        const player = globalThis.prompt('Player name', this.state.player?.name);
-        if (!player) {
-            return;
-        }
-        await Cartesi.sendInput({
-            action: 'change_player_name',
             name: player,
         }, this._signer, this._provider)
         if (!this.state.selectedAddress) {
