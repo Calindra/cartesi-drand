@@ -3,18 +3,18 @@ mod common;
 mod main;
 #[path = "../src/models/mod.rs"]
 mod models;
-#[path = "../src/util.rs"]
-mod util;
 #[path = "../src/rollups.rs"]
 mod rollups;
+#[path = "../src/util.rs"]
+mod util;
 
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
         common::common::setup_hit_random,
         models::{game::game::Manager, player::player::Player},
-        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
         rollups::rollup::handle_request_action,
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
     };
 
     use serde_json::json;
@@ -144,6 +144,56 @@ mod contract_blackjack_tests {
         let response = fn_response();
 
         assert_eq!(response.len(), 9);
+    }
+
+    #[tokio::test]
+    async fn can_show_player_data() {
+        let mut manager = Manager::new_with_games(1);
+
+        for name in ["Alice", "Bob"] {
+            let name = name.to_string();
+            let player = Player::new_without_id(name);
+            let player = Arc::new(player);
+            manager.add_player(player.clone()).unwrap();
+        }
+
+        let manager = Arc::new(Mutex::new(manager));
+
+        // Mock request from middleware
+        let payload = json!({
+            "input": {
+                "action": "show_player",
+                "address": "Alice",
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        let response = handle_request_action(&data, manager.clone(), false)
+            .await
+            .unwrap();
+
+        assert!(response.is_some());
+
+        let response = response.unwrap();
+        let payload = response
+            .get("payload")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .strip_prefix("0x")
+            .map(|v| hex::decode(v).unwrap())
+            .map(|v| String::from_utf8(v).unwrap())
+            .map(|v| serde_json::from_str::<serde_json::Value>(v.as_str()).unwrap())
+            .unwrap();
+
+        println!("Payload: {:?}", payload);
+
+        let name = payload.get("name").unwrap().as_str().unwrap();
+        assert_eq!("Alice", name);
+        let address = payload.get("address").unwrap().as_str().unwrap();
+        assert_eq!("Alice", address);
     }
 
     #[tokio::test]

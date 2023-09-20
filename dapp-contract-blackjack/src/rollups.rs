@@ -229,6 +229,41 @@ pub mod rollup {
                 let address_owner = address.trim_start_matches("0x");
                 let address_encoded = bs58::encode(address_owner).into_string();
 
+                if need_write {
+                    let address_path = format!("./data/address/{}.json", address_encoded);
+                    println!("Trying read {:}", &address_path);
+                    let content = read_to_string(address_path)
+                        .await
+                        .or(Err("Could not read player"))?;
+                    let content = from_str::<Value>(&content).or(Err("Could not parse player"))?;
+                    let report = generate_report(content);
+
+                    return Ok(Some(report));
+                } else {
+                    let manager = manager.lock().await;
+                    let player_borrow = manager.get_player_by_id(&address_encoded)?;
+                    let player = json!({
+                        "name": player_borrow.name.clone(),
+                        "address": address_owner
+                    });
+                    let report = generate_report(player);
+
+                    return Ok(Some(report));
+                }
+            }
+            Some("change_player_name") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+                let player_name = check_fields_create_player(&input)?;
+
+                // Parsing JSON
+                let address = input
+                    .get("address")
+                    .ok_or("Invalid field address")?
+                    .as_str()
+                    .ok_or("Invalid address")?;
+                let address_owner = address.trim_start_matches("0x");
+                let address_encoded = bs58::encode(address_owner).into_string();
+
                 let address_path = format!("./data/address/{}.json", address_encoded);
                 println!("Trying read {:}", &address_path);
                 let content = read_to_string(address_path)

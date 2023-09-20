@@ -66,6 +66,10 @@ pub mod game {
             Ok(player)
         }
 
+        pub fn get_player_by_id(&self, id: &str) -> Result<&Arc<Player>, &'static str> {
+            self.players.get(id).ok_or("Player not found.")
+        }
+
         pub fn first_game_available(&mut self) -> Result<&mut Game, &'static str> {
             self.games.first_mut().ok_or("No games available.")
         }
