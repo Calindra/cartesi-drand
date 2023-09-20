@@ -11,6 +11,7 @@ pub mod random {
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
+    use tokio::time;
     use uuid::Uuid;
 
     pub fn generate_random_number(seed: String, range: Range<usize>) -> usize {
@@ -44,7 +45,7 @@ pub mod random {
             match status_response {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    time::sleep(Duration::from_secs(1)).await;
                 }
 
                 StatusCode::OK => {
@@ -55,7 +56,7 @@ pub mod random {
 
                 code => {
                     println!("Unknown status code {:}", code);
-                    return Err("Unexpected status code for random number".into())
+                    return Err("Unexpected status code for random number".into());
                 }
             }
         }
@@ -68,7 +69,10 @@ pub mod random {
 
 pub mod json {
     use serde_json::{json, Value};
-    use tokio::{fs::File, io::{AsyncWriteExt, self}};
+    use tokio::{
+        fs::File,
+        io::{self, AsyncWriteExt},
+    };
 
     use super::Metadata;
 
@@ -81,6 +85,15 @@ pub mod json {
         let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
 
         Some(payload)
+    }
+
+    pub fn generate_report(payload: Value) -> Value {
+        let payload = hex::encode(payload.to_string());
+        let payload = format!("0x{}", payload);
+
+        json!({
+            "payload": payload,
+        })
     }
 
     pub fn generate_message(payload: Value) -> Value {
@@ -105,11 +118,11 @@ pub mod json {
         let root = root.as_object()?;
         let root = root.get("data")?.as_object()?;
         let metadata = root.get("metadata")?.as_object()?;
-    
+
         let address = metadata.get("msg_sender")?.as_str()?;
         let timestamp = metadata.get("timestamp")?.as_u64()?;
         // let input_index = metadata.get("input_index")?.as_u64()?;
-    
+
         Some(Metadata {
             address: address.to_owned(),
             timestamp,

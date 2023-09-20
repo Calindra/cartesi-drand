@@ -135,7 +135,7 @@ mod contract_blackjack_tests {
             let response = response.unwrap().unwrap();
             println!("{:}", &response);
 
-            let response = response["data"]["payload"].as_str().unwrap();
+            let response = response["payload"].as_str().unwrap();
             let response = decode_payload(response).unwrap();
             let response = response["games"].as_array().unwrap();
             response.to_owned()

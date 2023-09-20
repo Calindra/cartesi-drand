@@ -10,7 +10,7 @@ pub mod rollup {
             player::{check_fields_create_player, player::Player},
         },
         util::json::{
-            decode_payload, generate_message, get_address_metadata_from_root, write_json,
+            decode_payload, generate_report, get_address_metadata_from_root, write_json,
         },
     };
 
@@ -185,7 +185,7 @@ pub mod rollup {
                         .or(Err("Could not write player"))?;
                 }
 
-                let response = generate_message(json!({
+                let response = generate_report(json!({
                     "address": address_encoded,
                     "encoded_name": encoded_name,
                     "name": player_name,
@@ -220,7 +220,7 @@ pub mod rollup {
                 let manager = manager.lock().await;
                 let games = manager.show_games_id_available();
 
-                let response = generate_message(json!({
+                let response = generate_report(json!({
                     "games": games,
                 }));
 
@@ -276,7 +276,7 @@ pub mod rollup {
 
                 let table = manager.get_table(game_id)?;
                 let hands = table.generate_hands();
-                let report = generate_message(hands);
+                let report = generate_report(hands);
 
                 println!("Report: {:}", report);
 
@@ -308,7 +308,7 @@ pub mod rollup {
                     .get_scoreboard(table_id, game_id)
                     .ok_or("Scoreboard not found searching by table_id")?;
 
-                let report = generate_message(scoreboard.to_json());
+                let report = generate_report(scoreboard.to_json());
 
                 println!("Report: {:}", report);
 
