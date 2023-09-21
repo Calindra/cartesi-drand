@@ -115,6 +115,8 @@ pub mod json {
     }
 
     pub async fn load_json(path: &str) -> Result<Value, io::Error> {
+        println!("Trying read {:}", &path);
+
         let contents = read_to_string(path).await?;
         let value = serde_json::from_str::<Value>(&contents)?;
         Ok(value)

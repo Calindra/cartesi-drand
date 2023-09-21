@@ -208,18 +208,13 @@ pub mod rollup {
                 let address_owner = metadata.address.trim_start_matches("0x");
                 let address_encoded = bs58::encode(address_owner).into_string();
 
-                let mut manager = manager.lock().await;
 
-                // load to memmory if not exists
+                // load to memory if not exists
                 if write_hd_mode {
-                    let has_player_in_memory = manager.has_player(&address_encoded);
-                    if !has_player_in_memory {
-                        load_json(&address_encoded)
-                            .await
-                            .map_err(|_| "Could not load player")?;
-                    }
+                    load_player_to_mem(&manager, &address_encoded).await?;
                 }
 
+                let mut manager = manager.lock().await;
                 let player = manager.get_player_ref(&address_encoded)?;
 
                 // Parsing JSON
@@ -244,27 +239,20 @@ pub mod rollup {
                 let address_owner = address.trim_start_matches("0x");
                 let address_encoded = bs58::encode(address_owner).into_string();
 
+                // load to memory if not exists
                 if write_hd_mode {
-                    let address_path = format!("./data/address/{}.json", address_encoded);
-                    println!("Trying read {:}", &address_path);
-                    let content = read_to_string(address_path)
-                        .await
-                        .or(Err("Could not read player"))?;
-                    let content = from_str::<Value>(&content).or(Err("Could not parse player"))?;
-                    let report = generate_report(content);
-
-                    return Ok(Some(report));
-                } else {
-                    let manager = manager.lock().await;
-                    let player_borrow = manager.get_player_by_id(&address_encoded)?;
-                    let player = json!({
-                        "name": player_borrow.name.clone(),
-                        "address": address_owner,
-                    });
-                    let report = generate_report(player);
-
-                    return Ok(Some(report));
+                    load_player_to_mem(&manager, &address_encoded).await?;
                 }
+
+                let manager = manager.lock().await;
+                let player_borrow = manager.get_player_by_id(&address_encoded)?;
+                let player = json!({
+                    "name": player_borrow.name.clone(),
+                    "address": address_owner,
+                });
+                let report = generate_report(player);
+
+                return Ok(Some(report));
             }
             Some("show_games") => {
                 let manager = manager.lock().await;
@@ -418,5 +406,27 @@ pub mod rollup {
         }
 
         Ok(None)
+    }
+
+    async fn load_player_to_mem(
+        manager: &Arc<Mutex<Manager>>,
+        address_encoded: &String,
+    ) -> Result<(), &'static str> {
+        let mut manager = manager.lock().await;
+        let has_player_in_memory = manager.has_player(address_encoded);
+        if !has_player_in_memory {
+            let player = load_json(address_encoded)
+                .await
+                .map_err(|_| "Could not load player")?;
+
+            let player = player.as_object().ok_or("Invalid player")?;
+            let player_name = player.get("name").ok_or("Invalid field name")?;
+            let player_name = player_name.as_str().ok_or("Invalid name")?;
+
+            let player = Player::new(address_encoded.clone(), player_name.to_string());
+            let player = Arc::new(player);
+            manager.add_player(player)?;
+        }
+        Ok(())
     }
 }
