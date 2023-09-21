@@ -12,7 +12,10 @@ pub mod rollup {
             game::game::Manager,
             player::{check_fields_create_player, player::Player},
         },
-        util::json::{decode_payload, generate_report, get_address_metadata_from_root, write_json},
+        util::json::{
+            decode_payload, generate_report, get_address_metadata_from_root, get_path_player,
+            get_path_player_name, load_json, write_json,
+        },
     };
 
     pub async fn rollup(
@@ -95,6 +98,7 @@ pub mod rollup {
     ) -> Result<&'static str, Box<dyn Error>> {
         println!("Handling advance");
 
+        // body {"data":{"metadata":{"block_number":321,"epoch_index":0,"input_index":0,"msg_sender":"0x70997970c51812dc3a010c7d01b50e0d17dc79c8","timestamp":1694789355},"payload":"0x7b22696e707574223a7b22616374696f6e223a226e65775f706c61796572222c226e616d65223a22416c696365227d7d"},"request_type":"advance_state"}
         println!("body {:}", &body);
         let run_async = std::env::var("RUN_GAME_ASYNC").unwrap_or("true".to_string());
 
@@ -145,7 +149,7 @@ pub mod rollup {
     pub async fn handle_request_action(
         root: &Value,
         manager: Arc<Mutex<Manager>>,
-        need_write: bool,
+        write_hd_mode: bool,
     ) -> Result<Option<Value>, &'static str> {
         let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
         let action = get_from_payload_action(&payload);
@@ -170,16 +174,16 @@ pub mod rollup {
                 manager.add_player(player)?;
 
                 // Persist player
-                if need_write {
+                if write_hd_mode {
                     let address_owner_obj =
                         json!({ "address": address_owner, "name": player_name });
-                    let address_path = format!("./data/address/{}.json", address_encoded);
+                    let address_path = get_path_player(&address_encoded);
 
                     write_json(&address_path, &address_owner_obj)
                         .await
                         .or(Err("Could not write address"))?;
 
-                    let player_path = format!("./data/names/{}.json", encoded_name);
+                    let player_path = get_path_player_name(&encoded_name);
                     let player = json!({ "name": encoded_name, "address": metadata.address });
                     write_json(&player_path, &player)
                         .await
@@ -205,6 +209,17 @@ pub mod rollup {
                 let address_encoded = bs58::encode(address_owner).into_string();
 
                 let mut manager = manager.lock().await;
+
+                // load to memmory if not exists
+                if write_hd_mode {
+                    let has_player_in_memory = manager.has_player(&address_encoded);
+                    if !has_player_in_memory {
+                        load_json(&address_encoded)
+                            .await
+                            .map_err(|_| "Could not load player")?;
+                    }
+                }
+
                 let player = manager.get_player_ref(&address_encoded)?;
 
                 // Parsing JSON
@@ -229,7 +244,7 @@ pub mod rollup {
                 let address_owner = address.trim_start_matches("0x");
                 let address_encoded = bs58::encode(address_owner).into_string();
 
-                if need_write {
+                if write_hd_mode {
                     let address_path = format!("./data/address/{}.json", address_encoded);
                     println!("Trying read {:}", &address_path);
                     let content = read_to_string(address_path)

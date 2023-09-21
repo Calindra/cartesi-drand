@@ -55,6 +55,10 @@ pub mod game {
             Ok(())
         }
 
+        pub fn has_player(&self, id: &str) -> bool {
+            self.players.contains_key(id)
+        }
+
         pub fn remove_player_by_id(&mut self, id: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.players.remove(id).ok_or("Player not found.")?;
             Ok(player)

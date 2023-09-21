@@ -16,7 +16,7 @@ export class DrandProvider {
     inspectAxiosInstance: AxiosInstance;
 
     cartesiConfig: CartesiConfig = {
-        inspectEndpoint: "http://localhost:5005/inspect"
+        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:5005").href,
     }
 
     /**
@@ -31,7 +31,7 @@ export class DrandProvider {
     inputSenderConfig: InputSenderConfig = {
         dappAddress: '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2',
         mnemonic: 'test test test test test test test test test test test junk',
-        rpc: 'http://localhost:8545',
+        rpc: new URL(process.env.RPC_ENDPOINT ?? 'http://localhost:8545').href,
         accountIndex: 0,
     }
 
@@ -44,6 +44,8 @@ export class DrandProvider {
         this.inspectAxiosInstance = Axios.create({ baseURL: this.cartesiConfig.inspectEndpoint })
         this.drandClient = this.createDrandClient()
         this.inputSender = new InputSender(this.inputSenderConfig)
+
+        console.log(this.cartesiConfig.inspectEndpoint, this.inputSenderConfig.rpc);
     }
 
     async pendingDrandBeacon() {

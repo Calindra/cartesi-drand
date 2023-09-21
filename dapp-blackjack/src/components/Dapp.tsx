@@ -44,6 +44,7 @@ interface GameData {
         }[],
     },
     isLoading: boolean,
+    gameJoined: boolean,
 }
 
 type ErrorRpc = { data: { message: string } } | { message: string };
@@ -111,6 +112,7 @@ export class Dapp extends React.Component<{}, DappState> {
             gameIdSelected: null,
             player: null,
             isLoading: false,
+            gameJoined: false,
         };
     }
 
@@ -148,7 +150,7 @@ export class Dapp extends React.Component<{}, DappState> {
         }
 
         const noGameSelected = this.state.gameIdSelected === null;
-        const noPlayerSelected = !!this.state.player;
+        const noPlayerSelected = !this.state.player;
 
         const actions = [
             {
@@ -159,6 +161,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'new_player',
                 label: 'New Player',
                 action: this._newPlayer.bind(this),
+                disabled: !noPlayerSelected
             },{
                 id: 'join_game',
                 label: 'Join Game',

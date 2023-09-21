@@ -2,18 +2,13 @@ use serde_json::Value;
 
 pub mod player {
     use std::{
-        error::Error,
         fmt::{self, Display},
         sync::Arc,
     };
 
-    use serde::Serialize;
     use tokio::sync::Mutex;
 
-    use crate::models::{
-        card::card::{Card, Deck, Rank},
-        game::game::Table,
-    };
+    use crate::models::card::card::{Card, Deck, Rank};
 
     use crate::util::random::{call_seed, generate_random_number};
 

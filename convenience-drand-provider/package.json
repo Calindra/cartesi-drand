@@ -17,6 +17,7 @@
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "axios": "^1.4.0",
+    "dotenv": "^16.3.1",
     "drand-client": "^1.2.0",
     "ethers": "^5.7.2"
   },

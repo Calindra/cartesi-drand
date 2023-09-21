@@ -1,13 +1,11 @@
 pub struct Metadata {
     pub address: String,
     pub timestamp: u64,
-    // input_index: u64,
 }
 pub mod random {
     use std::{env, error::Error, ops::Range, time::Duration};
 
     use hyper::{body, Body, Client, Request, StatusCode};
-    // use hyper_tls::HttpsConnector;
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
@@ -68,9 +66,11 @@ pub mod random {
 }
 
 pub mod json {
+    use std::path::PathBuf;
+
     use serde_json::{json, Value};
     use tokio::{
-        fs::File,
+        fs::{read_to_string, File},
         io::{self, AsyncWriteExt},
     };
 
@@ -107,11 +107,27 @@ pub mod json {
         })
     }
 
-    pub async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
+    pub async fn write_json(path: &PathBuf, obj: &Value) -> Result<(), io::Error> {
         let mut file = File::create(path).await?;
         let value = obj.to_string();
         file.write_all(value.as_bytes()).await?;
         Ok(())
+    }
+
+    pub async fn load_json(path: &str) -> Result<Value, io::Error> {
+        let contents = read_to_string(path).await?;
+        let value = serde_json::from_str::<Value>(&contents)?;
+        Ok(value)
+    }
+
+    pub fn get_path_player(address_encoded: &str) -> PathBuf {
+        let path = format!("./data/address/{}.json", address_encoded);
+        PathBuf::from(&path)
+    }
+
+    pub fn get_path_player_name(name_encoded: &str) -> PathBuf {
+        let path = format!("./data/names/{}.json", name_encoded);
+        PathBuf::from(&path)
     }
 
     pub fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {

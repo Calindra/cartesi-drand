@@ -26,7 +26,6 @@ fn start_handle_action(
             if let Some(value) = receive {
                 println!("Received value: {}", value);
 
-                // @todo need return responses
                 let value = handle_request_action(&value, manager.clone(), true)
                     .await
                     .map_err(|err| {
