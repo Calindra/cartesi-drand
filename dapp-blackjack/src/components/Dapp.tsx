@@ -31,10 +31,15 @@ const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 interface Game {}
 interface GameData {
     gameIdSelected: string | null,
-    games?: string[],
+    games?: {
+        id: string,
+        players: number,
+    }[],
     player: {
         name: string,
         address: string,
+        joined: string[],
+        playing: string[],
     } | null,
     hands: {
         players: {
@@ -45,6 +50,7 @@ interface GameData {
     },
     isLoading: boolean,
     gameJoined: boolean,
+    gamePlaying: boolean,
 }
 
 type ErrorRpc = { data: { message: string } } | { message: string };
@@ -113,6 +119,7 @@ export class Dapp extends React.Component<{}, DappState> {
             player: null,
             isLoading: false,
             gameJoined: false,
+            gamePlaying: false,
         };
     }
 
@@ -145,11 +152,12 @@ export class Dapp extends React.Component<{}, DappState> {
         // If the token data or the user's balance hasn't loaded yet, we show
         // a loading component.
         if (this.state.isLoading) {
-            return <h1>Loading...</h1>
+            return <h1 className="text-lg">Loading...</h1>
             // return <progress />;
         }
 
         const noGameSelected = this.state.gameIdSelected === null;
+        const gamePlaying = this.state.gamePlaying;
         const noPlayerSelected = !this.state.player;
 
         const actions = [
@@ -157,6 +165,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'show_games',
                 label: 'Show Games',
                 action: this._showGames.bind(this),
+                disabled: gamePlaying,
             },{
                 id: 'new_player',
                 label: 'New Player',
@@ -166,27 +175,27 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'join_game',
                 label: 'Join Game',
                 action: this._joinGame.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || gamePlaying,
             }, {
                 id: 'start_game',
                 label: 'Start Game',
                 action: this._startGame.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || gamePlaying,
             }, {
                 id: 'choose_hit',
                 label: 'Hit',
                 action: this._chooseHit.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
             }, {
                 id: 'choose_stand',
                 label: 'Stand',
                 action: this._chooseStand.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
             }, {
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
             },
         ]
 
@@ -199,6 +208,9 @@ export class Dapp extends React.Component<{}, DappState> {
         }
 
 
+
+        const gameIdSelected = this.state.gameIdSelected;
+
         // If everything is loaded, we render the application.
         return (
             <div className="container p-4">
@@ -210,9 +222,12 @@ export class Dapp extends React.Component<{}, DappState> {
                         <p>
                             Welcome <b>{name}</b>.
                         </p>
-                        {this.state.gameIdSelected !== null && <p>
-                            Game: <b>{this.state.gameIdSelected}</b>.
-                        </p>}
+                        {gameIdSelected !== null && <><p>
+                            Game: <b>{gameIdSelected}</b>.
+                        </p>
+                        <p>
+                            Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
+                        </p></>}
                         <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
                             actions.map(({ id, label, action, disabled }) => {
                                 return (
@@ -233,10 +248,11 @@ export class Dapp extends React.Component<{}, DappState> {
                         {this.state.games && this.state.gameIdSelected === null && <section className="games">
                             <h2>Select one game</h2>
                             <div className="mt-2 flex flex-row gap-2 flex-wrap">
-                                {this.state.games.map(game => (
-                                    <button className="p-2 rounded cursor-pointer bg-indigo-600 hover:bg-indigo-800 transition" onClick={() => {
-                                        this._selectGame(game)
-                                    }} key={game}>Game: {game}</button>
+                                {this.state.games.map(({ id, players }) => (
+                                    <button className={`p-2 rounded cursor-pointer transition ${players === 0 ? "bg-indigo-600 hover:bg-indigo-800" : "bg-orange-600 hover:bg-orange-800"
+                                        }`} onClick={() => {
+                                            this._selectGame(id)
+                                        }} key={id}>Game: {id}<hr />{players} Players</button>
                                 ))}
                             </div>
                         </section>}
@@ -417,6 +433,17 @@ export class Dapp extends React.Component<{}, DappState> {
 
         if (player) {
             this.setState({ player })
+
+            if (!this.state.gameJoined) {
+                const gameIdSelected = player.playing.at(0) || player.joined.at(0);
+
+                if (gameIdSelected) {
+                    this.setState({
+                        gameIdSelected,
+                        gameJoined: true,
+                    })
+                }
+            }
         }
     }
 
@@ -472,6 +499,7 @@ export class Dapp extends React.Component<{}, DappState> {
             action: 'join_game',
             game_id
         }, this._signer, this._provider)
+        this.setState({ gameJoined: true });
     }
 
     // The next two methods are needed to start and stop polling data. While

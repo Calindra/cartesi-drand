@@ -2,10 +2,7 @@ pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
-    use tokio::{
-        fs::read_to_string,
-        sync::{mpsc::Sender, Mutex},
-    };
+    use tokio::sync::{mpsc::Sender, Mutex};
 
     use crate::{
         models::{
@@ -208,7 +205,6 @@ pub mod rollup {
                 let address_owner = metadata.address.trim_start_matches("0x");
                 let address_encoded = bs58::encode(address_owner).into_string();
 
-
                 // load to memory if not exists
                 if write_hd_mode {
                     load_player_to_mem(&manager, &address_encoded).await?;
@@ -245,10 +241,28 @@ pub mod rollup {
                 }
 
                 let manager = manager.lock().await;
+
+                let playing = manager
+                    .tables
+                    .iter()
+                    .filter(|table| table.has_player(&address_encoded))
+                    .map(|table| table.get_id())
+                    .collect::<Vec<_>>();
+
                 let player_borrow = manager.get_player_by_id(&address_encoded)?;
+
+                let joined = manager
+                    .games
+                    .iter()
+                    .filter(|game| game.has_player(&address_encoded))
+                    .map(|game| game.get_id())
+                    .collect::<Vec<_>>();
+
                 let player = json!({
                     "name": player_borrow.name.clone(),
                     "address": address_owner,
+                    "joined": joined,
+                    "playing": playing,
                 });
                 let report = generate_report(player);
 
@@ -256,7 +270,16 @@ pub mod rollup {
             }
             Some("show_games") => {
                 let manager = manager.lock().await;
-                let games = manager.show_games_id_available();
+                let games = manager
+                    .games
+                    .iter()
+                    .map(|game| {
+                        json!({
+                            "id": game.get_id(),
+                            "players": game.players.len(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
 
                 let report = generate_report(json!({
                     "games": games,
@@ -269,6 +292,8 @@ pub mod rollup {
             Some("start_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
                 let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+                let timestamp = metadata.timestamp;
+
                 // Parsing JSON
                 let game_id = input
                     .get("game_id")
@@ -280,8 +305,18 @@ pub mod rollup {
 
                 // Get game and make owner
                 let game = manager.drop_game(game_id)?;
+
+                let players: Vec<String> = game.players.iter().map(|p| p.get_id()).collect();
+
                 // Generate table from game
-                let table = game.round_start(2, metadata.timestamp)?;
+                let mut table = game.round_start(2, metadata.timestamp)?;
+
+                for _ in 0..2 {
+                    for player_id in &players {
+                        table.hit_player(player_id, timestamp).await?;
+                    }
+                }
+
                 // Add table to manager
                 manager.add_table(table);
                 println!("Game started: game_id {}", game_id);

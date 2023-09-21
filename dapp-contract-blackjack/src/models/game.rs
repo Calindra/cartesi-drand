@@ -89,10 +89,6 @@ pub mod game {
             self.games.pop().ok_or("No games available.")
         }
 
-        pub fn show_games_id_available(&self) -> Vec<String> {
-            self.games.iter().map(|game| game.id.clone()).collect()
-        }
-
         pub fn get_scoreboard(&self, table_id: &str, game_id: &str) -> Option<&Scoreboard> {
             self.scoreboards
                 .iter()
@@ -259,6 +255,10 @@ pub mod game {
             }
 
             Table::new(self, nth_decks, last_timestamp)
+        }
+
+        pub fn has_player(&self, id: &str) -> bool {
+            self.players.iter().any(|player| player.get_id() == id)
         }
     }
 
@@ -453,6 +453,12 @@ pub mod game {
             }
 
             winner
+        }
+
+        pub fn has_player(&self, player_id: &str) -> bool {
+            self.players_with_hand
+                .iter()
+                .any(|player| player.get_player_id() == player_id)
         }
     }
 }
