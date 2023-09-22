@@ -1,0 +1,15 @@
+{
+  "name": "cartesi-drand",
+  "version": "0.0.1",
+  "scripts": {
+    "drand": "npm run -w convenience-drand-provider watch",
+    "dapp": "npm run -w dapp-blackjack start",
+    "test": "npm run -ws test"
+  },
+  "author": "Calindra",
+  "license": "MIT",
+  "workspaces": [
+    "convenience-drand-provider",
+    "dapp-blackjack"
+  ]
+}

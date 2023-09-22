@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "yarn jest -i --colors --detectOpenHandles --logHeapUsage",
+    "test": "jest -i --colors --detectOpenHandles --logHeapUsage",
     "dev": "ts-node ./src/app.ts",
     "watch": "node --watch --loader ts-node/esm --inspect ./src/app.ts",
     "test:dev": "nodemon --ext ts --exec \"yarn test\""
