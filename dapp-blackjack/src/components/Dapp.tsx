@@ -158,7 +158,8 @@ export class Dapp extends React.Component<{}, DappState> {
 
         const noGameSelected = this.state.gameIdSelected === null;
         const gamePlaying = this.state.gamePlaying;
-        const noPlayerSelected = !this.state.player;
+        const noPlayerSelected = this.state.player === null;
+        const noPlayerJoined = !this.state.gameJoined;
 
         const actions = [
             {
@@ -195,7 +196,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
-                disabled: noGameSelected || noPlayerSelected,
+                disabled: noGameSelected || noPlayerSelected || noPlayerJoined,
             },
         ]
 

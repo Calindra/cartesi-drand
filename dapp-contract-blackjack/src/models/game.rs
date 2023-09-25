@@ -96,23 +96,18 @@ pub mod game {
         }
 
         pub fn drop_game(&mut self, id: &str) -> Result<Game, &'static str> {
-            let index = self
+            let (index, game) = self
                 .games
                 .iter()
-                .position(|game| game.id == id)
+                .enumerate()
+                .find(|val| val.1.get_id() == id)
                 .ok_or("Game not found.")?;
-            let game = self.games.swap_remove(index);
-            Ok(game)
-        }
-
-        pub fn drop_game_minimun_players(&mut self, id: &str) -> Result<Game, &'static str> {
-            let game = self.get_game_by_id(id)?;
 
             if game.players.len() < 2 {
                 Err("Minimum number of players not reached.")?;
             }
 
-            let game = self.drop_game(id)?;
+            let game = self.games.swap_remove(index);
             Ok(game)
         }
 

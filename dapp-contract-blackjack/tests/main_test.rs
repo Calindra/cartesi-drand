@@ -198,6 +198,9 @@ mod contract_blackjack_tests {
 
     #[tokio::test]
     async fn start_game() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
         let mut manager = Manager::new_with_games(10);
         let game = manager.first_game_available().unwrap();
         let game_id = game.get_id().to_owned();

@@ -1,7 +1,7 @@
 pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use serde_json::{from_str, json, Value};
-    use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
+    use std::{borrow::BorrowMut, env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
 
     use crate::{
@@ -150,10 +150,10 @@ pub mod rollup {
             let mut table = table.lock().await;
             let result = table.hit_player(&player_id, timestamp).await;
 
-            if result.is_ok() {
-                pick_cards -= 1;
+            if let Err(err) = result {
+                eprintln!("Pick error: {:}", err);
             } else {
-                eprintln!("Pick error: {:}", result.unwrap_err());
+                pick_cards -= 1;
             }
         }
     }
@@ -317,29 +317,42 @@ pub mod rollup {
                     .as_str()
                     .ok_or("Invalid game_id")?;
 
+                // let deck_nth = input
+                //     .get("deck_nth")
+                //     .map(|v| v.as_u64().ok_or("Invalid deck_nth"))
+                //     .unwrap_or(Ok(2))?;
+
                 let mut manager = manager.lock().await;
 
                 // Get game and make owner
-                let game = manager.drop_game_minimun_players(game_id)?;
+                let game = manager.drop_game(game_id)?;
 
-                // let players: Vec<String> = game.players.iter().map(|p| p.get_id()).collect();
+                let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
 
                 // Generate table from game
                 let table = game.round_start(2, metadata.timestamp)?;
 
-                // let mut wait_players = Vec::with_capacity(players.len());
-                // let table = Arc::new(Mutex::from(table));
+                let mut wait_players = Vec::with_capacity(players.len());
 
-                // for player_id in players {
-                //     let table = table.clone();
-                //     let timestamp = timestamp.clone();
-                //     let player_id = player_id.clone();
+                let table = Arc::new(Mutex::from(table));
 
-                //     wait_players.push(tokio::spawn(async_pick(table, player_id, timestamp)));
-                // }
+                for player_id in players {
+                    let table = table.clone();
 
-                // let table = Arc::into_inner(table).ok_or("Could not get table")?;
-                // let table = Mutex::into_inner(table);
+                    wait_players.push(tokio::spawn(async move {
+                        let timestamp = timestamp.clone();
+                        let player_id = player_id.clone();
+
+                        async_pick(table.clone(), player_id, timestamp).await;
+                    }));
+                }
+
+                for p in wait_players {
+                    p.await.ok().ok_or("Could not await")?;
+                }
+
+                let table = Arc::into_inner(table).ok_or("Could not get table")?;
+                let table = Mutex::into_inner(table);
 
                 // Add table to manager
                 manager.add_table(table);
