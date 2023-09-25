@@ -7,7 +7,7 @@ pub mod game {
         util::random::generate_id,
     };
     use serde_json::json;
-    use std::{collections::HashMap, sync::Arc, ops::Deref};
+    use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -105,16 +105,40 @@ pub mod game {
             Ok(game)
         }
 
-        /**
-         * Players are cleared from the game.
-         */
-        pub async fn reallocate_table_to_game(&mut self, table: Table) {
+        pub fn drop_game_minimun_players(&mut self, id: &str) -> Result<Game, &'static str> {
+            let game = self.get_game_by_id(id)?;
+
+            if game.players.len() < 2 {
+                Err("Minimum number of players not reached.")?;
+            }
+
+            let game = self.drop_game(id)?;
+            Ok(game)
+        }
+
+        pub fn generate_scoreboard_sync(&mut self, table: &Table) {
+            let players = table.game.players.iter().cloned().collect();
+
+            let winner = table.get_winner_sync();
+            let scoreboard_id = table.id.clone();
+            let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
+            self.scoreboards.push(scoreboard);
+        }
+
+        pub async fn generate_scoreboard(&mut self, table: &Table) {
             let players = table.game.players.iter().cloned().collect();
 
             let winner = table.get_winner().await;
             let scoreboard_id = table.id.clone();
             let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
             self.scoreboards.push(scoreboard);
+        }
+
+        /**
+         * Players are cleared from the game.
+         */
+        pub async fn reallocate_table_to_game(&mut self, table: Table) {
+            self.generate_scoreboard(&table).await;
 
             let mut game = table.game;
             game.players.clear();
@@ -228,6 +252,7 @@ pub mod game {
     pub struct Game {
         id: String,
         pub players: Vec<Arc<Player>>,
+        manager: Option<Arc<Mutex<Manager>>>,
     }
 
     impl Default for Game {
@@ -235,6 +260,7 @@ pub mod game {
             Game {
                 id: generate_id(),
                 players: Vec::new(),
+                manager: None,
             }
         }
     }
@@ -242,6 +268,12 @@ pub mod game {
     impl Game {
         pub fn get_id(&self) -> &str {
             &self.id
+        }
+
+        pub fn new_with_manager_ref(manager: Arc<Mutex<Manager>>) -> Self {
+            let mut game = Game::default();
+            game.manager = Some(manager);
+            game
         }
 
         // Transforms the game into a table.
@@ -272,6 +304,29 @@ pub mod game {
         round: u8,
         id: String,
     }
+
+    // TODO
+    // impl Drop for Table {
+    //     fn drop(&mut self) {
+    //         let manager = self.game.manager.clone();
+
+    //         if let Some(manager) = manager {
+    //             let locker = manager.try_lock().map(|mut manager| {
+    //                 manager.generate_scoreboard(self);
+
+    //                 let mut game = Game::default();
+    //                 game.manager = self.game.manager.clone();
+    //                 manager.games.push(game);
+    //             });
+
+    //             if let Err(err) = locker {
+    //                 eprintln!("{}", err)
+    //             }
+    //         } else {
+    //             println!("Table dont have reference")
+    //         }
+    //     }
+    // }
 
     impl Table {
         fn new(game: Game, nth_decks: usize, last_timestamp: u64) -> Result<Self, &'static str> {
@@ -455,12 +510,35 @@ pub mod game {
             winner
         }
 
-        pub fn has_player(&self, player_id: &str) -> bool {
+        pub fn get_winner_sync(&self) -> Option<Arc<Player>> {
+            let mut winner: Option<Arc<Player>> = None;
+            let mut winner_points = 0;
 
-            let players = self.players_with_hand.iter().map(|player| {
-                let id = player.get_player_id();
-                id
-            }).collect::<Vec<_>>();
+            // Safe for check hands, anyone cant pick a card.
+            let _deck = self.deck.try_lock().ok()?;
+
+            for hand in self.players_with_hand.iter() {
+                if (winner.is_none() || hand.points > winner_points) && hand.points <= 21 {
+                    winner = Some(hand.get_player_ref());
+                    winner_points = hand.points;
+                } else if hand.points == winner_points {
+                    winner = None;
+                    break;
+                }
+            }
+
+            winner
+        }
+
+        pub fn has_player(&self, player_id: &str) -> bool {
+            let players = self
+                .players_with_hand
+                .iter()
+                .map(|player| {
+                    let id = player.get_player_id();
+                    id
+                })
+                .collect::<Vec<_>>();
 
             let players = players.as_slice();
 
