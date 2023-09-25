@@ -242,6 +242,7 @@ pub mod rollup {
 
                 let manager = manager.lock().await;
 
+                println!("lookin in table");
                 let playing = manager
                     .tables
                     .iter()
@@ -450,7 +451,8 @@ pub mod rollup {
         let mut manager = manager.lock().await;
         let has_player_in_memory = manager.has_player(address_encoded);
         if !has_player_in_memory {
-            let player = load_json(address_encoded)
+            let path = get_path_player(address_encoded);
+            let player = load_json(&path)
                 .await
                 .map_err(|_| "Could not load player")?;
 

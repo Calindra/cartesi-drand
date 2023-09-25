@@ -7,7 +7,7 @@ pub mod game {
         util::random::generate_id,
     };
     use serde_json::json;
-    use std::{collections::HashMap, sync::Arc};
+    use std::{collections::HashMap, sync::Arc, ops::Deref};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -456,6 +456,16 @@ pub mod game {
         }
 
         pub fn has_player(&self, player_id: &str) -> bool {
+
+            let players = self.players_with_hand.iter().map(|player| {
+                let id = player.get_player_id();
+                id
+            }).collect::<Vec<_>>();
+
+            let players = players.as_slice();
+
+            println!("Searching for player {} in {:?}", player_id, players);
+
             self.players_with_hand
                 .iter()
                 .any(|player| player.get_player_id() == player_id)

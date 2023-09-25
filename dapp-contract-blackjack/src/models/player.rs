@@ -155,7 +155,10 @@ pub mod player {
                 Err("Player is standing.")?;
             }
 
-            let seed = call_seed(timestamp).await.or(Err("No cant call seed"))?;
+            let seed = call_seed(timestamp).await.map_err(|error| {
+                eprintln!("Error: {:}", error);
+                "No cant call seed"
+            })?;
 
             let card = {
                 let mut deck = self.deck.lock().await;
