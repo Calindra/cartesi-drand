@@ -195,7 +195,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
-                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
+                disabled: noGameSelected || noPlayerSelected,
             },
         ]
 
@@ -428,23 +428,31 @@ export class Dapp extends React.Component<{}, DappState> {
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
-        const player = await Cartesi.inspectWithJson<NonNullable<DappState['player']>>({ "action": "show_player", "address": userAddress })
-        console.log({ result: player })
 
-        if (player) {
-            this.setState({ player })
+        try {
+            this.setState({ isLoading: true })
+            const player = await Cartesi.inspectWithJson<NonNullable<DappState['player']>>({ "action": "show_player", "address": userAddress })
+            console.log({ result: player })
 
-            if (!this.state.gameJoined) {
-                const gameIdSelected = player.playing.at(0) || player.joined.at(0);
+            if (player) {
+                this.setState({ player })
 
-                if (gameIdSelected) {
-                    this.setState({
-                        gameIdSelected,
-                        gameJoined: true,
-                    })
+                if (!this.state.gameJoined) {
+                    const gameIdSelected = player.playing.at(0) || player.joined.at(0);
+
+                    if (gameIdSelected) {
+                        this.setState({
+                            gameIdSelected,
+                            gameJoined: true,
+                        })
+                    }
                 }
             }
+        } catch (e) {
+            console.log(e);
         }
+
+        this.setState({ isLoading: false })
     }
 
     async _initializeEthers() {
@@ -525,20 +533,24 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     async _readGames() {
-        this.setState({
-            isLoading: true,
-        })
         console.log('read game...')
-        const response = await Cartesi.inspectWithJson({ action: 'show_games' })
 
-        if (response && "games" in response && Array.isArray(response.games)) {
-            this.setState({ games: response.games })
+        try {
+            this.setState({ isLoading: true })
+            const response = await Cartesi.inspectWithJson({ action: 'show_games' })
+
+            if (response && "games" in response && Array.isArray(response.games)) {
+                this.setState({ games: response.games })
+            }
+        } catch (e) {
+            console.error(e);
         }
 
         this.setState({ isLoading: false })
     }
 
     async _showHands() {
+        this.setState({ isLoading: true })
         const game_id = this.state.gameIdSelected;
         this.checkGameIdSelected(game_id);
         console.log('show hands...')
@@ -547,6 +559,7 @@ export class Dapp extends React.Component<{}, DappState> {
         // if (hands) {
         //     this.setState({ hands })
         // }
+        this.setState({ isLoading: false })
         console.log({ hands })
     }
 

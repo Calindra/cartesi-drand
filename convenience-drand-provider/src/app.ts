@@ -1,5 +1,4 @@
 import { DrandProvider } from "./DrandProvider";
-import * as dotenv from "dotenv";
+import "dotenv/config";
 
-dotenv.config({ debug: true });
-new DrandProvider().run()
+new DrandProvider().run();

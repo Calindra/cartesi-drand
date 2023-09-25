@@ -44,8 +44,6 @@ export class DrandProvider {
         this.inspectAxiosInstance = Axios.create({ baseURL: this.cartesiConfig.inspectEndpoint })
         this.drandClient = this.createDrandClient()
         this.inputSender = new InputSender(this.inputSenderConfig)
-
-        console.log(this.cartesiConfig.inspectEndpoint, this.inputSenderConfig.rpc);
     }
 
     async pendingDrandBeacon() {

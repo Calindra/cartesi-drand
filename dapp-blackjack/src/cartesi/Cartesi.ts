@@ -18,39 +18,42 @@ interface ResultJSON {
 console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
 export class Cartesi {
     static async sendInput(payload: Record<string, unknown>, signer: Signer, provider: Provider) {
+        try {
+            const network = await provider.getNetwork();
+            console.log(`connected to chain ${network.chainId}`);
 
-        const network = await provider.getNetwork();
-        console.log(`connected to chain ${network.chainId}`);
+            // connect to rollups,
+            const inputContract = IInputBox__factory.connect(
+                InputBox.address,
+                signer
+            );
+            const signerAddress = await signer.getAddress();
+            console.log(`using account "${signerAddress}"`);
 
-        // connect to rollups,
-        const inputContract = IInputBox__factory.connect(
-            InputBox.address,
-            signer
-        );
-        const signerAddress = await signer.getAddress();
-        console.log(`using account "${signerAddress}"`);
+            // use message from command line option, or from user prompt
+            console.log(`sending "${JSON.stringify(payload)}"`);
 
-        // use message from command line option, or from user prompt
-        console.log(`sending "${JSON.stringify(payload)}"`);
+            // convert string to input bytes (if it's not already bytes-like)
+            const inputBytes = ethers.toUtf8Bytes(JSON.stringify({
+                input: payload
+            }));
 
-        // convert string to input bytes (if it's not already bytes-like)
-        const inputBytes = ethers.toUtf8Bytes(JSON.stringify({
-            input: payload
-        }));
-
-        // send transaction
-        const dappAddress = DApp.address;// '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
-        const tx = <ContractTransactionResponse> await inputContract.addInput(dappAddress, inputBytes);
-        // const tx: any = await inputContract.addInput(dappAddress, inputBytes);
-        console.log(`transaction: ${tx.hash}`);
-        console.log("waiting for confirmation...");
-        const receipt = await tx.wait(1);
-        console.log(JSON.stringify(receipt))
-        // find reference to notice from transaction receipt
-        // const inputKeys = getInputKeys(receipt);
-        // console.log(
-        //     `input ${inputKeys.input_index} added`
-        // );
+            // send transaction
+            const dappAddress = DApp.address;// '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
+            const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
+            // const tx: any = await inputContract.addInput(dappAddress, inputBytes);
+            console.log(`transaction: ${tx.hash}`);
+            console.log("waiting for confirmation...");
+            const receipt = await tx.wait(1);
+            console.log(JSON.stringify(receipt))
+            // find reference to notice from transaction receipt
+            // const inputKeys = getInputKeys(receipt);
+            // console.log(
+            //     `input ${inputKeys.input_index} added`
+            // );
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     static hex2a(hex: string) {
