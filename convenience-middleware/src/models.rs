@@ -172,11 +172,15 @@ pub mod models {
             manager.is_inspecting = value;
         }
         pub(crate) fn is_inspecting(&self) -> bool {
-            let manager = match self.input_buffer_manager.try_lock() {
-                Ok(manager) => manager,
-                Err(_) => return false,
-            };
-            manager.is_inspecting
+            #[cfg(target_arch = "riscv64")]
+            {
+                let manager = match self.input_buffer_manager.try_lock() {
+                    Ok(manager) => manager,
+                    Err(_) => return false,
+                };
+                manager.is_inspecting
+            }
+            false
         }
     }
 
