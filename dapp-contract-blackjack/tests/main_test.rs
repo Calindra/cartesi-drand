@@ -14,7 +14,7 @@ mod contract_blackjack_tests {
         common::common::setup_hit_random,
         models::{game::game::Manager, player::player::Player},
         rollups::rollup::handle_request_action,
-        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload, random::retrieve_seed},
     };
 
     use serde_json::json;
@@ -334,8 +334,11 @@ mod contract_blackjack_tests {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
-                    let seed = Table::retrieve_seed(timestamp);
-                    table.hit_player(&player_id, timestamp, seed).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
@@ -415,7 +418,11 @@ mod contract_blackjack_tests {
             for player_id in players.iter() {
                 let points = table.get_points(player_id).unwrap();
                 if points <= 11 {
-                    table.hit_player(player_id, timestamp).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(player_id, timestamp).unwrap();
                 }
@@ -479,7 +486,8 @@ mod contract_blackjack_tests {
                 let player_id = player.get_id();
                 let points = table.get_points(&player_id).unwrap();
                 if points <= 11 {
-                    let result = table.hit_player(&player_id, timestamp).await;
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    let result = table.hit_player(&player_id, timestamp, &seed).await;
                     println!("{:}", &player);
 
                     assert!(result.is_ok(), "{:}", result.unwrap_err());
@@ -530,7 +538,11 @@ mod contract_blackjack_tests {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
-                    table.hit_player(&player_id, timestamp).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
