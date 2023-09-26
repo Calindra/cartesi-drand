@@ -176,7 +176,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'join_game',
                 label: 'Join Game',
                 action: this._joinGame.bind(this),
-                disabled: noGameSelected || noPlayerSelected || gamePlaying,
+                disabled: noGameSelected || noPlayerSelected || gamePlaying || !noPlayerJoined,
             }, {
                 id: 'start_game',
                 label: 'Start Game',
@@ -207,8 +207,6 @@ export class Dapp extends React.Component<{}, DappState> {
         } else {
             name = this.state.selectedAddress;
         }
-
-
 
         const gameIdSelected = this.state.gameIdSelected;
 
@@ -246,12 +244,12 @@ export class Dapp extends React.Component<{}, DappState> {
                             })
                         }
                         </nav>
-                        {this.state.games && this.state.gameIdSelected === null && <section className="games">
-                            <h2>Select one game</h2>
+                        {this.state.games && <section className="games">
+                            {this.state.gameIdSelected === null && <h2>Select one game</h2>}
                             <div className="mt-2 flex flex-row gap-2 flex-wrap">
                                 {this.state.games.map(({ id, players }) => (
-                                    <button className={`p-2 rounded cursor-pointer transition ${players === 0 ? "bg-indigo-600 hover:bg-indigo-800" : "bg-orange-600 hover:bg-orange-800"
-                                        }`} onClick={() => {
+                                    <button className={`p-2 rounded cursor-pointer transition disabled:cursor-not-allowed disabled:bg-slate-400 ${players === 0 ? "bg-indigo-600 hover:bg-indigo-800" : "bg-orange-600 hover:bg-orange-800"
+                                        }`} disabled={id === this.state.gameIdSelected} onClick={() => {
                                             this._selectGame(id)
                                         }} key={id}>Game: {id}<hr />{players} Players</button>
                                 ))}
@@ -284,13 +282,24 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     private _selectGame(gameIdSelected: string) {
+        if (this.state.gameIdSelected !== null) {
+            let response = globalThis.confirm('You are already in a game. Leave it?')
+
+            if (!response) {
+                return;
+            }
+        }
+
         this.setState({ gameIdSelected })
     }
 
 
     private _showGames() {
         console.log('show games...')
-        this._readGames();
+        this.setState({ isLoading: true })
+        this._readGames().finally(() => {
+            this.setState({ isLoading: false })
+        });
     }
 
     private checkGameIdSelected(gameIdSelected: typeof this.state.gameIdSelected): asserts gameIdSelected is string {
@@ -408,12 +417,13 @@ export class Dapp extends React.Component<{}, DappState> {
         });
     }
 
-    _initialize(userAddress: string) {
+    async _initialize(userAddress: string) {
         // This method initializes the dapp
 
         // We first store the user's address in the component's state
         this.setState({
             selectedAddress: userAddress,
+            isLoading: true,
         });
 
         // Then, we initialize ethers, fetch the token's data, and start polling
@@ -422,16 +432,21 @@ export class Dapp extends React.Component<{}, DappState> {
         // Fetching the token data and the user's balance are specific to this
         // sample project, but you can reuse the same initialization pattern.
         this._initializeEthers();
-        this._readGames();
-        this._loadUserData(userAddress);
+
+        await Promise.all([
+            this._readGames(),
+            this._loadUserData(userAddress),
+        ]);
+
         // this._showHands();
         // this._startPollingData();
+
+        this.setState({ isLoading: false })
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
 
         try {
-            this.setState({ isLoading: true })
             const player = await Cartesi.inspectWithJson<NonNullable<DappState['player']>>({ "action": "show_player", "address": userAddress })
             console.log({ result: player })
 
@@ -452,8 +467,6 @@ export class Dapp extends React.Component<{}, DappState> {
         } catch (e) {
             console.log(e);
         }
-
-        this.setState({ isLoading: false })
     }
 
     async _initializeEthers() {
@@ -489,14 +502,17 @@ export class Dapp extends React.Component<{}, DappState> {
         if (!player) {
             return;
         }
+        this.setState({ isLoading: true })
         await Cartesi.sendInput({
             action: 'new_player',
             name: player,
         }, this._signer, this._provider)
         if (!this.state.selectedAddress) {
-            throw new Error('No selected address')
+            console.error('No selected address')
+            return;
         }
         await this._loadUserData(this.state.selectedAddress);
+        this.setState({ isLoading: false })
     }
 
     async _joinGame() {
@@ -537,7 +553,6 @@ export class Dapp extends React.Component<{}, DappState> {
         console.log('read game...')
 
         try {
-            this.setState({ isLoading: true })
             const response = await Cartesi.inspectWithJson({ action: 'show_games' })
 
             if (response && "games" in response && Array.isArray(response.games)) {
@@ -546,8 +561,6 @@ export class Dapp extends React.Component<{}, DappState> {
         } catch (e) {
             console.error(e);
         }
-
-        this.setState({ isLoading: false })
     }
 
     async _showHands() {
