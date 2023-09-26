@@ -543,5 +543,9 @@ pub mod game {
                 .iter()
                 .any(|player| player.get_player_id() == player_id)
         }
+
+        pub fn get_players_len(&self) -> usize {
+            self.players_with_hand.len()
+        }
     }
 }

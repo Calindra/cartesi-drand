@@ -297,8 +297,20 @@ pub mod rollup {
                     })
                     .collect::<Vec<_>>();
 
+                let tables = manager
+                    .tables
+                    .iter()
+                    .map(|table| {
+                        json!({
+                            "id": table.get_id(),
+                            "players": table.get_players_len(),
+                        })
+                    })
+                    .collect::<Vec<_>>();
+
                 let report = generate_report(json!({
                     "games": games,
+                    "tables": tables,
                 }));
 
                 println!("Report: {:}", report);
@@ -330,29 +342,31 @@ pub mod rollup {
                 let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
 
                 // Generate table from game
-                let table = game.round_start(2, metadata.timestamp)?;
+                let mut table = game.round_start(2, metadata.timestamp)?;
 
-                let mut wait_players = Vec::with_capacity(players.len());
+                // let mut wait_players = Vec::with_capacity(players.len());
 
-                let table = Arc::new(Mutex::from(table));
+                // let table = Arc::new(Mutex::from(table));
 
-                for player_id in players {
-                    let table = table.clone();
+                for (span, player_id) in players.iter().enumerate() {
+                    println!("Player: {}", player_id);
+                    // let table = table.clone();
+                    // let timestamp = timestamp.clone();
+                    // let player_id = player_id.clone();
 
-                    wait_players.push(tokio::spawn(async move {
-                        let timestamp = timestamp.clone();
-                        let player_id = player_id.clone();
-
-                        async_pick(table.clone(), player_id, timestamp).await;
-                    }));
+                    let delta = timestamp + span as u64;
+                    table.hit_player(player_id, delta).await?;
+                    // async_pick(table.clone(), player_id, timestamp).await;
+                    // wait_players.push(tokio::spawn(async move {
+                    // }));
                 }
 
-                for p in wait_players {
-                    p.await.ok().ok_or("Could not await")?;
-                }
+                // for p in wait_players {
+                //     p.await.ok().ok_or("Could not await")?;
+                // }
 
-                let table = Arc::into_inner(table).ok_or("Could not get table")?;
-                let table = Mutex::into_inner(table);
+                // let table = Arc::into_inner(table).ok_or("Could not get table")?;
+                // let table = Mutex::into_inner(table);
 
                 // Add table to manager
                 manager.add_table(table);
