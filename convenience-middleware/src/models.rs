@@ -178,7 +178,7 @@ pub mod models {
                     Ok(manager) => manager,
                     Err(_) => return false,
                 };
-                manager.is_inspecting
+                return manager.is_inspecting;
             }
             false
         }
