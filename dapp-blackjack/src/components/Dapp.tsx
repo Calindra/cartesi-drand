@@ -439,7 +439,7 @@ export class Dapp extends React.Component<{}, DappState> {
 
         this.setState({ isLoading: false })
 
-        this._startPollingData();
+        // this._startPollingData();
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
