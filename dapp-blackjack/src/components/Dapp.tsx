@@ -185,12 +185,12 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'choose_hit',
                 label: 'Hit',
                 action: this._chooseHit.bind(this),
-                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
+                disabled: noGameSelected || noPlayerSelected || noPlayerJoined,
             }, {
                 id: 'choose_stand',
                 label: 'Stand',
                 action: this._chooseStand.bind(this),
-                disabled: noGameSelected || noPlayerSelected || !gamePlaying,
+                disabled: noGameSelected || noPlayerSelected || noPlayerJoined,
             }, {
                 id: 'show_hands',
                 label: 'Show Hands',
@@ -291,7 +291,6 @@ export class Dapp extends React.Component<{}, DappState> {
 
         this.setState({ gameIdSelected })
     }
-
 
     private _showGames() {
         console.log('show games...')
@@ -436,11 +435,11 @@ export class Dapp extends React.Component<{}, DappState> {
             this._readGames(),
             this._loadUserData(userAddress),
         ]);
-
-        // this._showHands();
-        // this._startPollingData();
+        // this._showHands().catch(console.error);
 
         this.setState({ isLoading: false })
+
+        this._startPollingData();
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
@@ -453,12 +452,14 @@ export class Dapp extends React.Component<{}, DappState> {
                 this.setState({ player })
 
                 if (!this.state.gameJoined) {
+                    const playerIsPlaying = player.playing.length > 0;
                     const gameIdSelected = player.playing.at(0) || player.joined.at(0);
 
                     if (gameIdSelected) {
                         this.setState({
                             gameIdSelected,
                             gameJoined: true,
+                            gamePlaying: playerIsPlaying,
                         })
                     }
                 }
@@ -523,6 +524,7 @@ export class Dapp extends React.Component<{}, DappState> {
             action: 'join_game',
             game_id
         }, this._signer, this._provider)
+        await this._readGames();
         this.setState({ gameJoined: true });
     }
 
@@ -535,8 +537,10 @@ export class Dapp extends React.Component<{}, DappState> {
     // initialize the app, as we do with the token data.
     async _startPollingData() {
         try {
-            // We run it once immediately so we don't have to wait for it
-            await this._showHands();
+            if (this.state.gamePlaying) {
+                // We run it once immediately so we don't have to wait for it
+                await this._showHands();
+            }
         } catch (e) {
             console.error(e);
         }
@@ -563,16 +567,14 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     async _showHands() {
-        this.setState({ isLoading: true })
-        const game_id = this.state.gameIdSelected;
-        this.checkGameIdSelected(game_id);
+        const table_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(table_id);
         console.log('show hands...')
-        const hands = await Cartesi.inspectWithJson({ action: 'show_hands', game_id })
+        const hands = await Cartesi.inspectWithJson<GameData['hands']>({ action: 'show_hands', table_id })
         // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
-        // if (hands) {
-        //     this.setState({ hands })
-        // }
-        this.setState({ isLoading: false })
+        if (hands) {
+            this.setState({ hands })
+        }
         console.log({ hands })
     }
 

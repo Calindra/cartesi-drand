@@ -4,7 +4,10 @@ use actix_web::web::Data;
 use drand_verify::{G2Pubkey, Pubkey};
 use serde_json::json;
 
-use crate::{rollup::{RollupInput, self}, models::models::{AppState, DrandBeacon, PayloadWithBeacon}};
+use crate::{
+    models::models::{AppState, DrandBeacon, PayloadWithBeacon},
+    rollup::{self, RollupInput},
+};
 
 pub(crate) fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
     rollup_input.decoded_inspect() == "pendingdrandbeacon"
@@ -22,55 +25,24 @@ pub(crate) fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     let payload = || {
         let payload = payload.trim_start_matches("0x");
         let payload = hex::decode(payload).ok()?;
-        let payload = match std::str::from_utf8(&payload) {
-            Ok(payload) => payload.to_owned(),
-            Err(_) => return None,
-        };
-        Some(payload)
+        std::str::from_utf8(&payload).ok().map(|s| s.to_owned())
     };
 
-    let payload = match payload() {
-        Some(payload) => payload,
-        None => return None,
-    };
+    let payload = payload()?;
 
-    let result_deserialization = serde_json::from_str::<PayloadWithBeacon>(payload.as_str());
-    let payload = match result_deserialization {
-        Ok(payload) => payload,
-        Err(_) => return None,
-    };
+    let payload = serde_json::from_str::<PayloadWithBeacon>(&payload).ok()?;
 
     let key = key.as_str();
     let mut pk = [0u8; 96];
-    let is_decoded_err = hex::decode_to_slice(key, pk.borrow_mut()).is_err();
+    hex::decode_to_slice(key, pk.borrow_mut()).ok()?;
 
-    if is_decoded_err {
-        return None;
-    }
+    let pk = G2Pubkey::from_fixed(pk).ok()?;
 
-    let pk = match G2Pubkey::from_fixed(pk) {
-        Ok(pk) => pk,
-        Err(_) => return None,
-    };
-
-    let signature = || {
-        let signature = payload.beacon.signature.as_str();
-        let signature = hex::decode(signature).ok()?;
-        Some(signature)
-    };
-
-    let signature = match signature() {
-        Some(signature) => signature,
-        None => return None,
-    };
+    let signature = hex::decode(&payload.beacon.signature).ok()?;
 
     let round = payload.beacon.round;
 
-    let is_valid_key = pk.verify(round, b"", &signature).ok().is_some();
-
-    if is_valid_key {
-        Some(payload.beacon)
-    } else {
-        None
-    }
+    pk.verify(round, b"", &signature)
+        .ok()
+        .map(|_| payload.beacon)
 }

@@ -273,7 +273,6 @@ pub mod rollup {
 
                 let manager = manager.lock().await;
 
-                println!("lookin in table");
                 let playing = manager
                     .tables
                     .iter()
@@ -364,13 +363,12 @@ pub mod rollup {
 
                 let table = Arc::new(Mutex::from(table));
 
-                for (span, player_id) in players.iter().enumerate() {
+                for player_id in players.iter() {
                     let table = table.clone();
-                    let delta = timestamp + span as u64;
                     let player_id = player_id.to_owned();
 
                     wait_players.push(tokio::spawn(async move {
-                        async_pick(table.clone(), player_id, delta).await;
+                        async_pick(table.clone(), player_id, timestamp).await;
                     }));
                 }
 
@@ -380,10 +378,19 @@ pub mod rollup {
 
                 let table = Arc::into_inner(table).ok_or("Could not get table")?;
                 let table = Mutex::into_inner(table);
+                let table_id = table.get_id().to_owned();
 
                 // Add table to manager
                 manager.add_table(table);
-                println!("Game started: game_id {}", game_id);
+                println!("Game started: game_id {} table_id {}", game_id, table_id);
+
+                let report = generate_report(json!({
+                    "table_id": table_id,
+                }));
+
+                println!("Report: {:}", report);
+
+                return Ok(Some(report));
             }
             Some("stop_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
@@ -403,53 +410,31 @@ pub mod rollup {
                 let input = payload.get("input").ok_or("Invalid field input")?;
 
                 // Parsing JSON
-                let game_id = input
-                    .get("game_id")
-                    .ok_or("Invalid field game_id")?
-                    .as_str()
-                    .ok_or("Invalid game_id")?;
-
-                let mut manager = manager.lock().await;
-
-                let table = manager.get_table(game_id)?;
-                let hands = table.generate_hands();
-                let report = generate_report(hands);
-
-                println!("Report: {:}", report);
-
-                return Ok(Some(report));
-            }
-            Some("show_winner") => {
-                let input = payload.get("input").ok_or("Invalid field input")?;
-
-                // Parsing JSON
-                let game_id = input
-                    .get("game_id")
-                    .ok_or("Invalid field game_id")?
-                    .as_str()
-                    .ok_or("Invalid game_id")?;
-
                 let table_id = input
                     .get("table_id")
                     .ok_or("Invalid field table_id")?
                     .as_str()
-                    .ok_or("Invalid string table_id")?;
+                    .ok_or("Invalid table_id")?;
 
-                let manager = manager.lock().await;
+                let mut manager = manager.lock().await;
 
-                println!(
-                    "Finding score by table_id {} and game_id {} ...",
-                    table_id, game_id
-                );
-                let scoreboard = manager
-                    .get_scoreboard(table_id, game_id)
-                    .ok_or("Scoreboard not found searching by table_id")?;
+                if let Ok(table) = manager.get_table(table_id) {
+                    let hands = table.generate_hands();
+                    let report = generate_report(hands);
 
-                let report = generate_report(scoreboard.to_json());
+                    println!("Report: {:}", report);
 
-                println!("Report: {:}", report);
+                    return Ok(Some(report));
+                }
 
-                return Ok(Some(report));
+                println!("Finding score by table_id {} ...", table_id);
+                if let Ok(scoreboard) = manager.get_scoreboard(table_id) {
+                    let report = generate_report(scoreboard.to_json());
+
+                    println!("Report: {:}", report);
+
+                    return Ok(Some(report));
+                }
             }
             Some("hit") => {
                 // Address

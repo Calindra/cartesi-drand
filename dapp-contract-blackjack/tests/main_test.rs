@@ -559,8 +559,7 @@ mod contract_blackjack_tests {
         // Mock request from middleware
         let payload = json!({
             "input": {
-                "action": "show_winner",
-                "game_id": game_id,
+                "action": "show_hands",
                 "table_id": table_id,
             }
         });

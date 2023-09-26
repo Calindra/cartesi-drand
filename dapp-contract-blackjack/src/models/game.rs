@@ -6,7 +6,7 @@ pub mod game {
         },
         util::random::{call_seed, generate_id},
     };
-    use serde_json::json;
+    use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
@@ -89,10 +89,11 @@ pub mod game {
             self.games.pop().ok_or("No games available.")
         }
 
-        pub fn get_scoreboard(&self, table_id: &str, game_id: &str) -> Option<&Scoreboard> {
+        pub fn get_scoreboard(&self, table_id: &str) -> Result<&Scoreboard, &'static str> {
             self.scoreboards
                 .iter()
-                .find(|scoreboard| scoreboard.id == table_id && scoreboard.game_id == game_id)
+                .find(|scoreboard| scoreboard.id == table_id)
+                .ok_or("Scoreboard not found searching by table_id")
         }
 
         pub fn drop_game(&mut self, id: &str) -> Result<Game, &'static str> {
@@ -116,7 +117,9 @@ pub mod game {
 
             let winner = table.get_winner_sync();
             let scoreboard_id = table.id.clone();
-            let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
+            let hands = table.generate_hands();
+            let scoreboard =
+                Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner, hands);
             self.scoreboards.push(scoreboard);
         }
 
@@ -125,7 +128,9 @@ pub mod game {
 
             let winner = table.get_winner().await;
             let scoreboard_id = table.id.clone();
-            let scoreboard = Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner);
+            let hands = table.generate_hands();
+            let scoreboard =
+                Scoreboard::new(&scoreboard_id, table.game.get_id(), players, winner, hands);
             self.scoreboards.push(scoreboard);
         }
 
@@ -151,12 +156,12 @@ pub mod game {
 
             self.tables
                 .iter_mut()
-                .find(|table| table.game.get_id() == id)
+                .find(|table| table.get_id() == id)
                 .ok_or("Table not found or not started.")
         }
 
         pub async fn stop_game(&mut self, table_id: &str) -> Result<(), &'static str> {
-            println!("Stopping game {}", table_id);
+            println!("Stopping game table_id {}", table_id);
 
             let index = self
                 .tables
@@ -202,6 +207,7 @@ pub mod game {
         game_id: String,
         players: Vec<Arc<Player>>,
         winner: Option<Arc<Player>>,
+        hands: Value,
     }
     impl Scoreboard {
         fn new(
@@ -209,6 +215,7 @@ pub mod game {
             game_id: &str,
             players: Vec<Arc<Player>>,
             winner: Option<Arc<Player>>,
+            hands: Value,
         ) -> Self {
             println!(
                 "Scoreboard {}; game_id {}; winner {:?}",
@@ -219,6 +226,7 @@ pub mod game {
                 game_id: game_id.to_string(),
                 players,
                 winner,
+                hands,
             }
         }
 
@@ -237,6 +245,7 @@ pub mod game {
 
             json!({
                 "scoreboard": value,
+                "hands": self.hands,
             })
         }
     }

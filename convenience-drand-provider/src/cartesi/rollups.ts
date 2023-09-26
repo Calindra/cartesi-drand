@@ -148,7 +148,8 @@ export const rollups = async (
 
     // connect to contracts
     const inputContract = IInputBox__factory.connect(
-        InputBox.address,
+        // InputBox.address,
+        "0x59b22D57D4f067708AB0c00552767405926dc768",
         provider
     );
     const outputContract = ICartesiDApp__factory.connect(address, provider);

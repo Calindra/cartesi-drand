@@ -44,8 +44,6 @@ pub mod random {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
                     time::sleep(Duration::from_secs(1)).await;
-                    // println!("No pending random request... uri = {}", uri);
-                    // Err("No pending random request".into())
                 }
 
                 StatusCode::OK => {
@@ -55,6 +53,8 @@ pub mod random {
                 }
 
                 code => {
+                    // @todo doc this for production
+                    // this is to avoid loop with inspect mode
                     println!("Unknown status code {:}", code);
                     return Err("Unexpected status code for random number".into());
                 }
