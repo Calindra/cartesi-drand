@@ -4,7 +4,7 @@ pub mod game {
             card::card::Deck,
             player::player::{Player, PlayerHand},
         },
-        util::random::generate_id,
+        util::random::{call_seed, generate_id},
     };
     use serde_json::json;
     use std::{collections::HashMap, sync::Arc};
@@ -392,6 +392,7 @@ pub mod game {
             &mut self,
             player_id: &str,
             timestamp: u64,
+            seed: &str,
         ) -> Result<(), &'static str> {
             let table_round = self.round;
             let player = self.get_player_by_id_mut(player_id)?;
@@ -405,8 +406,7 @@ pub mod game {
                 Err("Round is not the same. Waiting for another players.")?;
             }
 
-            player.last_timestamp = timestamp;
-            player.hit(timestamp).await?;
+            player.hit(timestamp, seed).await?;
 
             self.next_round();
 

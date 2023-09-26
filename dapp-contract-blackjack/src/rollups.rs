@@ -9,9 +9,12 @@ pub mod rollup {
             game::game::{Manager, Table},
             player::{check_fields_create_player, player::Player},
         },
-        util::json::{
-            decode_payload, generate_report, get_address_metadata_from_root, get_path_player,
-            get_path_player_name, load_json, write_json,
+        util::{
+            json::{
+                decode_payload, generate_report, get_address_metadata_from_root, get_path_player,
+                get_path_player_name, load_json, write_json,
+            },
+            random::retrieve_seed,
         },
     };
 
@@ -144,11 +147,24 @@ pub mod rollup {
     }
 
     async fn async_pick(table: Arc<Mutex<Table>>, player_id: String, timestamp: u64) {
+        println!("Player calling: {}", player_id);
+
         let mut pick_cards = 2;
 
         while pick_cards > 0 {
-            let mut table = table.lock().await;
-            let result = table.hit_player(&player_id, timestamp).await;
+            let seed = retrieve_seed(timestamp).await;
+
+            if seed.is_err() {
+                continue;
+            }
+
+            let seed = seed.unwrap();
+
+            let result = table
+                .lock()
+                .await
+                .hit_player(&player_id, timestamp, &seed)
+                .await;
 
             if let Err(err) = result {
                 eprintln!("Pick error: {:}", err);
@@ -297,20 +313,20 @@ pub mod rollup {
                     })
                     .collect::<Vec<_>>();
 
-                let tables = manager
-                    .tables
-                    .iter()
-                    .map(|table| {
-                        json!({
-                            "id": table.get_id(),
-                            "players": table.get_players_len(),
-                        })
-                    })
-                    .collect::<Vec<_>>();
+                // let tables = manager
+                //     .tables
+                //     .iter()
+                //     .map(|table| {
+                //         json!({
+                //             "id": table.get_id(),
+                //             "players": table.get_players_len(),
+                //         })
+                //     })
+                //     .collect::<Vec<_>>();
 
                 let report = generate_report(json!({
                     "games": games,
-                    "tables": tables,
+                    // "tables": tables,
                 }));
 
                 println!("Report: {:}", report);
@@ -342,31 +358,28 @@ pub mod rollup {
                 let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
 
                 // Generate table from game
-                let mut table = game.round_start(2, metadata.timestamp)?;
+                let table = game.round_start(2, metadata.timestamp)?;
 
-                // let mut wait_players = Vec::with_capacity(players.len());
+                let mut wait_players = Vec::with_capacity(players.len());
 
-                // let table = Arc::new(Mutex::from(table));
+                let table = Arc::new(Mutex::from(table));
 
                 for (span, player_id) in players.iter().enumerate() {
-                    println!("Player: {}", player_id);
-                    // let table = table.clone();
-                    // let timestamp = timestamp.clone();
-                    // let player_id = player_id.clone();
-
+                    let table = table.clone();
                     let delta = timestamp + span as u64;
-                    table.hit_player(player_id, delta).await?;
-                    // async_pick(table.clone(), player_id, timestamp).await;
-                    // wait_players.push(tokio::spawn(async move {
-                    // }));
+                    let player_id = player_id.to_owned();
+
+                    wait_players.push(tokio::spawn(async move {
+                        async_pick(table.clone(), player_id, delta).await;
+                    }));
                 }
 
-                // for p in wait_players {
-                //     p.await.ok().ok_or("Could not await")?;
-                // }
+                for p in wait_players {
+                    p.await.ok().ok_or("Could not await")?;
+                }
 
-                // let table = Arc::into_inner(table).ok_or("Could not get table")?;
-                // let table = Mutex::into_inner(table);
+                let table = Arc::into_inner(table).ok_or("Could not get table")?;
+                let table = Mutex::into_inner(table);
 
                 // Add table to manager
                 manager.add_table(table);
@@ -456,7 +469,8 @@ pub mod rollup {
                 let mut manager = manager.lock().await;
                 let table = manager.get_table(game_id)?;
                 let table_id = table.get_id().to_owned();
-                table.hit_player(&address_encoded, timestamp).await?;
+                let seed = retrieve_seed(timestamp).await?;
+                table.hit_player(&address_encoded, timestamp, &seed).await?;
 
                 if !table.any_player_can_hit() {
                     manager.stop_game(&table_id).await?;

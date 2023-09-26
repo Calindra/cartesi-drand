@@ -10,7 +10,7 @@ pub mod player {
 
     use crate::models::card::card::{Card, Deck, Rank};
 
-    use crate::util::random::{call_seed, generate_random_number};
+    use crate::util::random::generate_random_number;
 
     pub struct Credit {
         pub amount: u32,
@@ -146,7 +146,7 @@ pub mod player {
         /**
          * Take a card from the deck and add it to the player's hand.
          */
-        pub async fn hit(&mut self, timestamp: u64) -> Result<(), &'static str> {
+        pub async fn hit(&mut self, timestamp: u64, seed: &str) -> Result<(), &'static str> {
             if self.is_busted() {
                 Err("Player is busted.")?;
             }
@@ -154,11 +154,6 @@ pub mod player {
             if self.is_standing {
                 Err("Player is standing.")?;
             }
-
-            let seed = call_seed(timestamp).await.map_err(|error| {
-                eprintln!("Error: {:}", error);
-                "No cant call seed"
-            })?;
 
             let card = {
                 let mut deck = self.deck.lock().await;
@@ -190,6 +185,7 @@ pub mod player {
             );
             self.hand.0.push(card);
             self.round += 1;
+            self.last_timestamp = timestamp;
             Ok(())
         }
 

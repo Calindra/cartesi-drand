@@ -12,7 +12,7 @@ pub mod random {
     use tokio::time;
     use uuid::Uuid;
 
-    pub fn generate_random_number(seed: String, range: Range<usize>) -> usize {
+    pub fn generate_random_number(seed: &str, range: Range<usize>) -> usize {
         let mut rng: Pcg64 = Seeder::from(seed).make_rng();
         rng.gen_range(range)
     }
@@ -44,6 +44,8 @@ pub mod random {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
                     time::sleep(Duration::from_secs(1)).await;
+                    // println!("No pending random request... uri = {}", uri);
+                    // Err("No pending random request".into())
                 }
 
                 StatusCode::OK => {
@@ -58,6 +60,13 @@ pub mod random {
                 }
             }
         }
+    }
+
+    pub async fn retrieve_seed(timestamp: u64) -> Result<String, &'static str> {
+        call_seed(timestamp).await.map_err(|error| {
+            eprintln!("Problem: {:}", error);
+            "Cant get seed now"
+        })
     }
 
     pub fn generate_id() -> String {

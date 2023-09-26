@@ -28,7 +28,6 @@ const HARDHAT_NETWORK_HEX = `0x${(+HARDHAT_NETWORK_ID).toString(16)}`;
 const ERROR_CODE_TX_REJECTED_BY_USER = 4001;
 
 // This is for specific domain
-interface Game {}
 interface GameData {
     gameIdSelected: string | null,
     games?: {
@@ -181,7 +180,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: 'start_game',
                 label: 'Start Game',
                 action: this._startGame.bind(this),
-                disabled: noGameSelected || noPlayerSelected || gamePlaying,
+                disabled: noGameSelected || noPlayerSelected || gamePlaying || noPlayerJoined,
             }, {
                 id: 'choose_hit',
                 label: 'Hit',

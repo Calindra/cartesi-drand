@@ -234,6 +234,7 @@ mod contract_blackjack_tests {
         }
 
         assert!(response.is_ok());
+        println!("Game response: {:?}", response.unwrap());
 
         let manager = manager.lock().await;
         assert_eq!(manager.games.len(), 9);
@@ -333,7 +334,8 @@ mod contract_blackjack_tests {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
-                    table.hit_player(&player_id, timestamp).await.unwrap();
+                    let seed = Table::retrieve_seed(timestamp);
+                    table.hit_player(&player_id, timestamp, seed).await.unwrap();
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
