@@ -383,14 +383,6 @@ pub mod rollup {
                 // Add table to manager
                 manager.add_table(table);
                 println!("Game started: game_id {} table_id {}", game_id, table_id);
-
-                let report = generate_report(json!({
-                    "table_id": table_id,
-                }));
-
-                println!("Report: {:}", report);
-
-                return Ok(Some(report));
             }
             Some("stop_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
