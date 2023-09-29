@@ -297,6 +297,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .service(routes::request_random)
             .service(routes::consume_buffer)
+            .service(routes::update_drand_config)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

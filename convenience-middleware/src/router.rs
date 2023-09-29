@@ -5,7 +5,7 @@ pub mod routes {
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
         models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
         rollup::{has_input_inside_input, server::send_finish_and_retrieve_input},
-        utils::util::{write_env_to_json, load_env_from_memory},
+        utils::util::{load_env_from_memory, write_env_to_json},
     };
 
     #[put("/update_drand_config")]
@@ -21,14 +21,17 @@ pub mod routes {
         let _ = ctx.input_buffer_manager.lock().await;
 
         let drand = body.into_inner();
-        let result = write_env_to_json(&drand).await;
 
+        load_env_from_memory(drand).await;
+
+        let result = write_env_to_json().await;
+
+        // maybe can generate a error on write json but
+        // already change the env in memory
         if let Err(e) = result {
             eprintln!("Error updating drand config: {}", e);
             return HttpResponse::BadRequest().finish();
         }
-
-        load_env_from_memory(drand).await;
 
         HttpResponse::NoContent().finish()
     }
@@ -141,21 +144,5 @@ pub mod routes {
             }
         };
         HttpResponse::NotFound().finish()
-    }
-
-    #[post("/hold")]
-    async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
-        let mut manager = match ctx.input_buffer_manager.try_lock() {
-            Ok(manager) => manager,
-            Err(_) => return HttpResponse::BadRequest().finish(),
-        };
-
-        if manager.flag_to_hold.is_holding {
-            return HttpResponse::Accepted().body("Holding already");
-        }
-
-        manager.await_beacon();
-
-        HttpResponse::Ok().body("Holding")
     }
 }

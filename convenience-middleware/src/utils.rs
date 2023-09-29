@@ -14,9 +14,24 @@ pub mod util {
         }
     }
 
-    pub async fn write_env_to_json(drand: &DrandEnv) -> Result<(), Box<dyn Error>> {
+    fn var_string_to_u64(str: &str) -> u64 {
+        let err_msg = format!("Var {} is not defined", str);
+        let value = std::env::var(str).expect(&err_msg);
+        let err_msg = format!("Var {} cannot parse", str);
+        value.parse::<u64>().expect(&err_msg)
+    }
+
+    pub async fn write_env_to_json() -> Result<(), Box<dyn Error>> {
         let path = Path::new("drand.config.json");
-        let content = serde_json::to_string_pretty(drand)?;
+
+        let drand_env = DrandEnv {
+            DRAND_PUBLIC_KEY: std::env::var("DRAND_PUBLIC_KEY").unwrap(),
+            DRAND_PERIOD: Some(var_string_to_u64("DRAND_PERIOD")),
+            DRAND_GENESIS_TIME: Some(var_string_to_u64("DRAND_GENESIS_TIME")),
+            DRAND_SAFE_SECONDS: Some(var_string_to_u64("DRAND_SAFE_SECONDS")),
+        };
+
+        let content = serde_json::to_string_pretty(&drand_env)?;
         tokio::fs::write(path, content).await?;
         Ok(())
     }

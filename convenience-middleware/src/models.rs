@@ -10,9 +10,9 @@ pub mod models {
     #[derive(serde::Deserialize, serde::Serialize)]
     pub struct DrandEnv {
         pub DRAND_PUBLIC_KEY: String,
-        pub DRAND_PERIOD: Option<u8>,
+        pub DRAND_PERIOD: Option<u64>,
         pub DRAND_GENESIS_TIME: Option<u64>,
-        pub DRAND_SAFE_SECONDS: Option<u8>,
+        pub DRAND_SAFE_SECONDS: Option<u64>,
     }
 
     #[derive(Serialize)]
