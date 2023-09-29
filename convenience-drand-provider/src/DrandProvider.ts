@@ -3,6 +3,7 @@ import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
+import { address as DAPP_ADDRESS } from "deployments/localhost/dapp.json";
 
 interface PendingDrandBeacon {
     reports?: Array<{
@@ -30,7 +31,7 @@ export class DrandProvider {
 
     inputSenderConfig: InputSenderConfig = {
         /** @todo change to dotenv */
-        dappAddress: "0x70ac08179605AF2D9e75782b8DEcDD3c22aA4D0C",
+        dappAddress: DAPP_ADDRESS,
         mnemonic: 'test test test test test test test test test test test junk',
         rpc: new URL(process.env.RPC_ENDPOINT ?? 'http://localhost:8545').href,
         accountIndex: 0,

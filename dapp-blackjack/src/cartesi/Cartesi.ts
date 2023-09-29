@@ -1,8 +1,9 @@
 import { IInputBox__factory } from "@cartesi/rollups";
 // We'll use ethers to interact with the Ethereum network and our contract
 import { ContractTransactionResponse, ethers, Provider, Signer } from "ethers";
-import InputBox from "../deployments/InputBox.json";
-import DApp from "../deployments/dapp.json"
+
+import InputBox from "deployments/localhost/InputBox.json";
+import DApp from "deployments/localhost/dapp.json"
 
 // const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
 // const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'

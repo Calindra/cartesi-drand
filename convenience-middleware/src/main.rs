@@ -209,8 +209,7 @@ fn is_drand_beacon(item: &Item) -> bool {
 
     let signature = || {
         let signature = json["signature"].as_str()?;
-        let signature = hex::decode(signature).ok()?;
-        Some(signature)
+        hex::decode(signature).ok()
     };
 
     let signature = match signature() {

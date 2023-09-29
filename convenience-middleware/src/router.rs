@@ -3,8 +3,8 @@ pub mod routes {
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
-        models::models::{AppState, RequestRollups, Timestamp},
-        rollup::{server::send_finish_and_retrieve_input, has_input_inside_input},
+        models::models::{AppState, RequestPubkey, RequestRollups, Timestamp},
+        rollup::{has_input_inside_input, server::send_finish_and_retrieve_input},
     };
 
     #[post("/finish")]
@@ -12,7 +12,10 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        println!("Received finish request from DApp {:?} version={}", body, ctx.version);
+        println!(
+            "Received finish request from DApp {:?} version={}",
+            body, ctx.version
+        );
 
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
@@ -57,12 +60,24 @@ pub mod routes {
         }
     }
 
+    #[post("/update_public_key")]
+    async fn update_public_key(
+        body: web::Json<RequestPubkey>,
+        ctx: web::Data<AppState>,
+    ) -> impl Responder {
+        println!("Received update_public_key request from DApp");
+        HttpResponse::Ok().finish()
+    }
+
     #[get("/random")]
     async fn request_random(
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
     ) -> impl Responder {
-        println!("Received random request from DApp timestamp={} version={}", query.timestamp, ctx.version);
+        println!(
+            "Received random request from DApp timestamp={} version={}",
+            query.timestamp, ctx.version
+        );
         let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp);
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process

@@ -107,8 +107,10 @@ const readDeployment = (chainId: number, args: Args): Deployment => {
 
         if (network.name === "localhost") {
 
-            const contracts: Record<string, Contract> =
-                readAllContractsFromDir("../deployments/localhost",
+            const contracts =
+                readAllContractsFromDir(
+                    "../deployments/localhost",
+                    "../../../deployments/localhost",
                     "../common-contracts/deployments/localhost");
 
             const deployment = { chainId: chainId.toString(), name: "localhost", contracts: contracts };

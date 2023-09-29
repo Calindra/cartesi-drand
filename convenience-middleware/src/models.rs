@@ -17,6 +17,11 @@ pub mod models {
         status: String,
     }
 
+    #[derive(Debug, Serialize, Deserialize)]
+    pub struct RequestPubkey {
+        pub pubkey: String,
+    }
+
     pub(crate) struct Flag {
         pub(crate) is_holding: bool,
     }

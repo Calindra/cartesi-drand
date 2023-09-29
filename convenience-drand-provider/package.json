@@ -19,7 +19,8 @@
     "axios": "^1.4.0",
     "dotenv": "^16.3.1",
     "drand-client": "^1.2.0",
-    "ethers": "^5.7.2"
+    "ethers": "^5.7.2",
+    "deployments": "../deployments"
   },
   "devDependencies": {
     "@types/jest": "^29.5.2",
