@@ -420,7 +420,7 @@ pub mod rollup {
                     let hands = table.generate_hands();
                     let report = generate_report(hands);
 
-                    println!("Report: {:}", report);
+                    println!("Report enviado do show_hands");
 
                     return Ok(Some(report));
                 }

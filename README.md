@@ -160,15 +160,15 @@ yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id
 Hit:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
 
 Stand:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
 
 Show hands:
