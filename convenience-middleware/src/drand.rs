@@ -21,7 +21,7 @@ pub(crate) async fn send_pending_beacon_report(app_state: &Data<AppState>) {
 }
 
 pub(crate) fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
-    let key = std::env::var("PK_UNCHAINED_TESTNET").unwrap();
+    let key = std::env::var("DRAND_PUBLIC_KEY").unwrap();
     let payload = || {
         let payload = payload.trim_start_matches("0x");
         let payload = hex::decode(payload).ok()?;

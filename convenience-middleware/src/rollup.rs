@@ -54,7 +54,8 @@ pub mod server {
     pub(crate) async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
+        let server_addr =
+            std::env::var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)

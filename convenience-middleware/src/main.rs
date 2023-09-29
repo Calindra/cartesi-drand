@@ -7,17 +7,16 @@ mod utils;
 
 use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
 use crate::router::routes;
+use crate::utils::util::load_env_from_json;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::{G2Pubkey, Pubkey};
 use serde_json::{json, Value};
+use std::error::Error;
 use std::{borrow::BorrowMut, env, sync::Arc};
-use std::{error::Error, mem::size_of};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::{spawn, sync::Mutex};
 use utils::util::deserialize_obj;
-
-const WITH_LOOP: bool = false;
 
 // Rollup Sender - only work on loop mode
 async fn rollup(
@@ -136,7 +135,7 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
  * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
  */
 fn is_drand_beacon(item: &Item) -> bool {
-    let key = env::var("PK_UNCHAINED_TESTNET").unwrap();
+    let key = env::var("DRAND_PUBLIC_KEY").unwrap();
 
     let request = item.request.as_str();
 
@@ -287,17 +286,9 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+    load_env_from_json().await.unwrap();
 
     let app_state = web::Data::new(AppState::new());
-
-    if WITH_LOOP {
-        let (tx, rx) = channel::<Item>(size_of::<Item>());
-
-        let manager = app_state.input_buffer_manager.clone();
-        start_senders(manager, tx);
-        let manager = app_state.input_buffer_manager.clone();
-        start_listener(manager, rx);
-    }
 
     println!("Starting server");
 

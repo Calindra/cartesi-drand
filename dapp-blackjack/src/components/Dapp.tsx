@@ -91,6 +91,8 @@ export class Dapp extends React.Component<{}, DappState> {
     private _token?: ethers.Contract;
     private _pollDataInterval?: NodeJS.Timeout;
     private _signer?: Signer;
+    private static readonly POLL_TIME_MS = 10_000;
+
     constructor(props) {
         super(props);
 
@@ -259,7 +261,11 @@ export class Dapp extends React.Component<{}, DappState> {
 
                 <div className="row">
                     <div className="col-12">
-                        {JSON.stringify(this.state.hands || {})}
+                        <code>
+                            {JSON.stringify(this.state.hands || {})}
+                            </code>
+                    </div>
+                    <div className="col-12">
                         {this.state.hands?.players?.map(playerHand => {
                             return (
                                 <div key={playerHand.name} style={{ position: 'relative', height: '200px' }}>
@@ -439,14 +445,15 @@ export class Dapp extends React.Component<{}, DappState> {
 
         this.setState({ isLoading: false })
 
-        // this._startPollingData();
+        this._stopPollingData();
+        this._startPollingData();
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
 
         try {
             const player = await Cartesi.inspectWithJson<NonNullable<DappState['player']>>({ "action": "show_player", "address": userAddress })
-            console.log({ result: player })
+            console.log({ player })
 
             if (player) {
                 this.setState({ player })
@@ -544,7 +551,7 @@ export class Dapp extends React.Component<{}, DappState> {
         } catch (e) {
             console.error(e);
         }
-        this._pollDataInterval = setTimeout(() => this._startPollingData(), 3000);
+        this._pollDataInterval = setTimeout(() => this._startPollingData(), Dapp.POLL_TIME_MS);
     }
 
     _stopPollingData() {
