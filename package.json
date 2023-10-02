@@ -9,6 +9,7 @@
   "author": "Calindra",
   "license": "MIT",
   "workspaces": [
-    "convenience-drand-provider"
+    "convenience-drand-provider",
+    "dapp-blackjack"
   ]
 }

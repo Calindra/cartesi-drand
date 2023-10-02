@@ -417,8 +417,10 @@ pub mod rollup {
                 let mut manager = manager.lock().await;
 
                 if let Ok(table) = manager.get_table(table_id) {
-                    let hands = table.generate_hands();
-                    let report = generate_report(hands);
+                    // let hands = table.generate_hands();
+                    // let report = generate_report(hands);
+
+                    let report = table.get_report_hand();
 
                     println!("Report enviado do show_hands");
 

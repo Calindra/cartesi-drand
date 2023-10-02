@@ -4,10 +4,13 @@ pub mod game {
             card::card::Deck,
             player::player::{Player, PlayerHand},
         },
-        util::random::{call_seed, generate_id},
+        util::{
+            json::generate_report,
+            random::{call_seed, generate_id},
+        },
     };
     use serde_json::{json, Value};
-    use std::{collections::HashMap, sync::Arc};
+    use std::{borrow::BorrowMut, collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
@@ -230,7 +233,7 @@ pub mod game {
             }
         }
 
-        pub fn to_json(&self) -> serde_json::Value {
+        pub fn to_json(&self) -> Value {
             let winner = self
                 .winner
                 .as_ref()
@@ -239,7 +242,7 @@ pub mod game {
             let value = json!({
                 "id": self.id,
                 "game_id": self.game_id,
-                "players": self.players.iter().map(|player| player.name.clone()).collect::<Vec<String>>(),
+                "players": self.players.iter().map(|player| player.name.clone()).collect::<Vec<_>>(),
                 "winner": winner,
             });
 
@@ -307,6 +310,8 @@ pub mod game {
         game: Game,
         round: u8,
         id: String,
+        // Cache for hand
+        report: Option<Value>,
     }
 
     // TODO
@@ -344,6 +349,7 @@ pub mod game {
                 game,
                 round: 1,
                 id: generate_id(),
+                report: None,
             };
 
             table.game.players.iter().for_each(|player| {
@@ -419,6 +425,8 @@ pub mod game {
 
             self.next_round();
 
+            self.regenerate_cache_hand();
+
             Ok(())
         }
 
@@ -486,11 +494,27 @@ pub mod game {
                 .ok_or("Player not found.")
         }
 
-        pub fn generate_hands(&self) -> serde_json::Value {
+        pub fn regenerate_cache_hand(&mut self) {
+            self.report = None;
+            self.get_report_hand();
+        }
+
+        pub fn get_report_hand(&mut self) -> Value {
+            if let Some(report) = &self.report {
+                return report.clone();
+            }
+
+            let hands = self.generate_hands();
+            let report = generate_report(hands);
+            self.report = Some(report.clone());
+            report
+        }
+
+        pub fn generate_hands(&self) -> Value {
             json!({
                 "game_id": self.game.get_id(),
                 "table_id": self.id,
-                "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<serde_json::Value>>()
+                "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<_>>()
             })
         }
 

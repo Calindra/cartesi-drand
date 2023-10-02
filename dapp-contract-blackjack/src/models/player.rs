@@ -6,6 +6,7 @@ pub mod player {
         sync::Arc,
     };
 
+    use serde_json::{json, Value};
     use tokio::sync::Mutex;
 
     use crate::models::card::card::{Card, Deck, Rank};
@@ -104,15 +105,15 @@ pub mod player {
             }
         }
 
-        pub fn generate_hand(&self) -> serde_json::Value {
+        pub fn generate_hand(&self) -> Value {
             let hand = self
                 .hand
                 .0
                 .iter()
                 .map(|card| card.serialize())
-                .collect::<Vec<String>>();
+                .collect::<Vec<_>>();
 
-            serde_json::json!({
+            json!({
                 "name": self.player.name,
                 "points": self.points,
                 "hand": hand,
