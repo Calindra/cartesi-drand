@@ -46,7 +46,7 @@ mod game_tests {
         manager.add_table(table);
 
         {
-            let table = manager.get_table(&game_id).unwrap();
+            let table = manager.get_table_mut(&game_id).unwrap();
             table.change_points(&bob_address_encoded, 20).unwrap();
             table.change_points(&alice_address_encoded, 21).unwrap();
 
@@ -54,28 +54,28 @@ mod game_tests {
             assert_eq!("Alice", winner.name);
         }
         {
-            let table = manager.get_table(&game_id).unwrap();
+            let table = manager.get_table_mut(&game_id).unwrap();
             table.change_points(&bob_address_encoded, 20).unwrap();
             table.change_points(&alice_address_encoded, 19).unwrap();
             let winner = table.get_winner().await.unwrap();
             assert_eq!("Bob", winner.name);
         }
         {
-            let table = manager.get_table(&game_id).unwrap();
+            let table = manager.get_table_mut(&game_id).unwrap();
             table.change_points(&bob_address_encoded, 20).unwrap();
             table.change_points(&alice_address_encoded, 20).unwrap();
             let winner = table.get_winner().await;
             assert!(winner.is_none());
         }
         {
-            let table = manager.get_table(&game_id).unwrap();
+            let table = manager.get_table_mut(&game_id).unwrap();
             table.change_points(&bob_address_encoded, 20).unwrap();
             table.change_points(&alice_address_encoded, 22).unwrap();
             let winner = table.get_winner().await.unwrap();
             assert_eq!("Bob", winner.name);
         }
         {
-            let table = manager.get_table(&game_id).unwrap();
+            let table = manager.get_table_mut(&game_id).unwrap();
             table.change_points(&bob_address_encoded, 22).unwrap();
             table.change_points(&alice_address_encoded, 22).unwrap();
             let winner = table.get_winner().await;

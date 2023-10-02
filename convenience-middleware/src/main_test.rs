@@ -5,7 +5,7 @@ mod middleware_tests {
     use crate::{
         is_drand_beacon,
         models::models::{AppState, Beacon, Item},
-        router::routes::{self},
+        router::routes::{self}, utils::util::load_env_from_json,
     };
     use actix_web::{
         http::{self},
@@ -27,6 +27,7 @@ mod middleware_tests {
         () => {{
             let is_env_loaded = dotenv().ok().is_some();
             assert!(is_env_loaded);
+            load_env_from_json().await.unwrap();
             is_env_loaded
         }};
     }

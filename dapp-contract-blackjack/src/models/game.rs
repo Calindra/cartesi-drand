@@ -152,7 +152,18 @@ pub mod game {
             self.tables.push(table);
         }
 
-        pub fn get_table(&mut self, id: &str) -> Result<&mut Table, &'static str> {
+        pub fn get_table(&self, id: &str) -> Result<&Table, &'static str> {
+            if self.tables.is_empty() {
+                return Err("No tables running.");
+            }
+
+            self.tables
+                .iter()
+                .find(|table| table.get_id() == id)
+                .ok_or("Table not found or not started.")
+        }
+
+        pub fn get_table_mut(&mut self, id: &str) -> Result<&mut Table, &'static str> {
             if self.tables.is_empty() {
                 return Err("No tables running.");
             }

@@ -414,13 +414,13 @@ pub mod rollup {
                     .as_str()
                     .ok_or("Invalid table_id")?;
 
-                let mut manager = manager.lock().await;
+                let manager = manager.lock().await;
 
                 if let Ok(table) = manager.get_table(table_id) {
-                    // let hands = table.generate_hands();
-                    // let report = generate_report(hands);
+                    let hands = table.generate_hands();
+                    let report = generate_report(hands);
 
-                    let report = table.get_report_hand();
+                    // let report = table.get_report_hand();
 
                     println!("Report enviado do show_hands");
 
@@ -452,7 +452,7 @@ pub mod rollup {
                     .ok_or("Invalid game_id")?;
 
                 let mut manager = manager.lock().await;
-                let table = manager.get_table(game_id)?;
+                let table = manager.get_table_mut(game_id)?;
                 let table_id = table.get_id().to_owned();
                 let seed = retrieve_seed(timestamp).await?;
                 table.hit_player(&address_encoded, timestamp, &seed).await?;
@@ -476,7 +476,7 @@ pub mod rollup {
                 let address_encoded = bs58::encode(address_owner).into_string();
 
                 let mut manager = manager.lock().await;
-                let table = manager.get_table(game_id)?;
+                let table = manager.get_table_mut(game_id)?;
 
                 let name = table.get_name_player(&address_encoded).unwrap();
                 let table_id = table.get_id().to_owned();
