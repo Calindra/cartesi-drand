@@ -293,10 +293,11 @@ mod contract_blackjack_tests {
 
         let game = manager.first_game_available_owned().unwrap();
         let table = game.round_start(1, 0).unwrap();
+        let table_id = table.get_id().to_owned();
 
         manager.add_table(table);
 
-        let table = manager.get_table(&game_id).unwrap();
+        let table = manager.get_table(&table_id).unwrap();
         let size = table.deck.lock().await.cards.len();
 
         assert_eq!(size, 52);
@@ -411,6 +412,7 @@ mod contract_blackjack_tests {
 
         let game = manager.first_game_available_owned().unwrap();
         let mut table = game.round_start(1, 0).unwrap();
+        let table_id = table.get_id().to_owned();
 
         let timestamp: u64 = 1691386341757;
 
@@ -439,7 +441,7 @@ mod contract_blackjack_tests {
         let payload = json!({
             "input": {
                 "action": "show_hands",
-                "game_id": game_id,
+                "table_id": table_id,
             }
         });
 
