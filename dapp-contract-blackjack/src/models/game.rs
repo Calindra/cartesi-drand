@@ -4,29 +4,29 @@ pub mod game {
             card::card::Deck,
             player::player::{Player, PlayerHand},
         },
-        util::{
-            json::generate_report,
-            random::{call_seed, generate_id},
-        },
+        util::{json::generate_report, random::generate_id},
     };
+    use serde::Serialize;
     use serde_json::{json, Value};
-    use std::{borrow::BorrowMut, collections::HashMap, sync::Arc};
+    use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
     pub struct Manager {
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
-        pub tables: Vec<Table>, // games running
+        pub tables: HashMap<String, Table>, // games running
         scoreboards: Vec<Scoreboard>,
+        pub games_report_cache: Option<Value>,
     }
 
     impl Default for Manager {
         fn default() -> Self {
             Manager {
                 games: Vec::new(),
-                tables: Vec::new(),
+                tables: HashMap::new(),
                 players: HashMap::new(),
                 scoreboards: Vec::new(),
+                games_report_cache: None,
             }
         }
     }
@@ -35,18 +35,52 @@ pub mod game {
         pub fn new_with_games(game_size: usize) -> Self {
             let mut games = Vec::with_capacity(game_size);
 
-            for i in 0..game_size {
-                let mut game = Game::default();
-                game.id = (i + 1).to_string();
+            for i in 1..=game_size {
+                let id = i.to_string();
+                let game = Game::with_id(id);
                 games.push(game);
             }
 
+            let report = Manager::generate_games_report(&games);
+
             Manager {
                 games,
-                tables: Vec::with_capacity(game_size),
+                tables: HashMap::with_capacity(game_size),
                 players: HashMap::new(),
                 scoreboards: Vec::new(),
+                games_report_cache: Some(report),
             }
+        }
+
+        fn generate_games_report(games: &Vec<Game>) -> Value {
+            let games = games
+                .iter()
+                .map(|game| {
+                    json!({
+                        "id": game.get_id(),
+                        "players": game.players.len(),
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            generate_report(json!({
+                "games": games,
+            }))
+        }
+
+        pub fn get_games_report(&mut self) -> Value {
+            if let Some(report) = &self.games_report_cache {
+                return report.clone();
+            }
+
+            let report = Manager::generate_games_report(&self.games);
+            self.games_report_cache = Some(report.clone());
+            report
+        }
+
+        pub fn regenerate_games_report(&mut self) {
+            self.games_report_cache = None;
+            self.get_games_report();
         }
 
         pub fn add_player(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
@@ -64,12 +98,14 @@ pub mod game {
 
         pub fn remove_player_by_id(&mut self, id: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.players.remove(id).ok_or("Player not found.")?;
+            self.regenerate_games_report();
             Ok(player)
         }
 
         pub fn get_player_ref(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.remove_player_by_id(address)?;
             self.players.insert(player.get_id(), player.clone());
+            self.regenerate_games_report();
             Ok(player)
         }
 
@@ -89,7 +125,13 @@ pub mod game {
         }
 
         pub fn first_game_available_owned(&mut self) -> Result<Game, &'static str> {
-            self.games.pop().ok_or("No games available.")
+            let first = self.games.pop().ok_or("No games available.")?;
+            self.regenerate_games_report();
+            Ok(first)
+        }
+
+        pub fn get_scoreboards(&self) -> &[Scoreboard] {
+            &self.scoreboards
         }
 
         pub fn get_scoreboard(&self, table_id: &str) -> Result<&Scoreboard, &'static str> {
@@ -112,6 +154,7 @@ pub mod game {
             }
 
             let game = self.games.swap_remove(index);
+            self.regenerate_games_report();
             Ok(game)
         }
 
@@ -145,22 +188,21 @@ pub mod game {
 
             let mut game = table.game;
             game.players.clear();
+            self.add_game(game);
+        }
+
+        pub fn add_game(&mut self, game: Game) {
             self.games.push(game);
+            self.regenerate_games_report();
         }
 
         pub fn add_table(&mut self, table: Table) {
-            self.tables.push(table);
+            self.tables.insert(table.get_id().to_owned(), table);
         }
 
-        pub fn get_table(&self, id: &str) -> Result<&Table, &'static str> {
-            if self.tables.is_empty() {
-                return Err("No tables running.");
-            }
-
-            self.tables
-                .iter()
-                .find(|table| table.get_id() == id)
-                .ok_or("Table not found or not started.")
+        pub fn get_table(&self, id: &str) -> Option<&Table> {
+            self.tables.get(id)
+            // .or_else(|| self.tables.values().find(|table| table.game.get_id() == id))
         }
 
         pub fn get_table_mut(&mut self, id: &str) -> Result<&mut Table, &'static str> {
@@ -169,20 +211,18 @@ pub mod game {
             }
 
             self.tables
-                .iter_mut()
-                .find(|table| table.get_id() == id)
+                .get_mut(id)
                 .ok_or("Table not found or not started.")
         }
 
         pub async fn stop_game(&mut self, table_id: &str) -> Result<(), &'static str> {
             println!("Stopping game table_id {}", table_id);
 
-            let index = self
+            let table = self
                 .tables
-                .iter_mut()
-                .position(|table| table.id == table_id)
+                .remove(table_id)
                 .ok_or("Table not found or not started.")?;
-            let table = self.tables.swap_remove(index);
+
             self.reallocate_table_to_game(table).await;
 
             Ok(())
@@ -284,6 +324,14 @@ pub mod game {
     }
 
     impl Game {
+        pub fn with_id(id: String) -> Self {
+            Game {
+                id,
+                players: Vec::new(),
+                manager: None,
+            }
+        }
+
         pub fn get_id(&self) -> &str {
             &self.id
         }

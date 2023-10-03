@@ -1,7 +1,7 @@
 pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use serde_json::{from_str, json, Value};
-    use std::{borrow::BorrowMut, env, error::Error, str::from_utf8, sync::Arc, time::Duration};
+    use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
 
     use crate::{
@@ -275,19 +275,17 @@ pub mod rollup {
 
                 let playing = manager
                     .tables
-                    .iter()
-                    .filter(|table| table.has_player(&address_encoded))
-                    .map(|table| table.get_id())
+                    .values()
+                    .filter_map(|table| table.has_player(&address_encoded).then(|| table.get_id()))
                     .collect::<Vec<_>>();
-
-                let player_borrow = manager.get_player_by_id(&address_encoded)?;
 
                 let joined = manager
                     .games
                     .iter()
-                    .filter(|game| game.has_player(&address_encoded))
-                    .map(|game| game.get_id())
+                    .filter_map(|game| game.has_player(&address_encoded).then(|| game.get_id()))
                     .collect::<Vec<_>>();
+
+                let player_borrow = manager.get_player_by_id(&address_encoded)?;
 
                 let player = json!({
                     "name": player_borrow.name.clone(),
@@ -300,33 +298,8 @@ pub mod rollup {
                 return Ok(Some(report));
             }
             Some("show_games") => {
-                let manager = manager.lock().await;
-                let games = manager
-                    .games
-                    .iter()
-                    .map(|game| {
-                        json!({
-                            "id": game.get_id(),
-                            "players": game.players.len(),
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                // let tables = manager
-                //     .tables
-                //     .iter()
-                //     .map(|table| {
-                //         json!({
-                //             "id": table.get_id(),
-                //             "players": table.get_players_len(),
-                //         })
-                //     })
-                //     .collect::<Vec<_>>();
-
-                let report = generate_report(json!({
-                    "games": games,
-                    // "tables": tables,
-                }));
+                let mut manager = manager.lock().await;
+                let report = manager.get_games_report();
 
                 println!("Report: {:}", report);
 
@@ -358,7 +331,7 @@ pub mod rollup {
 
                 // TODO Change here
                 if game.players.len() < 2 {
-                    manager.games.push(game);
+                    manager.add_game(game);
                     return Err("Minimum number of players not reached.");
                 }
 
@@ -416,7 +389,7 @@ pub mod rollup {
 
                 let manager = manager.lock().await;
 
-                if let Ok(table) = manager.get_table(table_id) {
+                if let Some(table) = manager.get_table(table_id) {
                     let hands = table.generate_hands();
                     let report = generate_report(hands);
 
@@ -443,16 +416,16 @@ pub mod rollup {
                 let address_encoded = bs58::encode(address_owner).into_string();
                 let timestamp = metadata.timestamp;
 
-                // Game ID
+                // Table ID
                 let input = payload.get("input").ok_or("Invalid field input")?;
-                let game_id = input
-                    .get("game_id")
-                    .ok_or("Invalid field game_id")?
+                let table_id = input
+                    .get("table_id")
+                    .ok_or("Invalid field table_id")?
                     .as_str()
-                    .ok_or("Invalid game_id")?;
+                    .ok_or("Invalid table_id")?;
 
                 let mut manager = manager.lock().await;
-                let table = manager.get_table_mut(game_id)?;
+                let table = manager.get_table_mut(table_id)?;
                 let table_id = table.get_id().to_owned();
                 let seed = retrieve_seed(timestamp).await?;
                 table.hit_player(&address_encoded, timestamp, &seed).await?;

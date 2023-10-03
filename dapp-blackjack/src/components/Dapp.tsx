@@ -227,7 +227,11 @@ export class Dapp extends React.Component<{}, DappState> {
                         </p>
                         <p>
                             Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
-                        </p></>}
+                        </p>
+                        <p>
+                            Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
+                        </p>
+                        </>}
                         <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
                             actions.map(({ id, label, action, disabled }) => {
                                 return (
@@ -331,11 +335,11 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     private async _chooseHit() {
-        const game_id = this.state.gameIdSelected;
-        this.checkGameIdSelected(game_id);
+        const table_id = this.state.gameIdSelected;
+        this.checkGameIdSelected(table_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
-        await Cartesi.sendInput({ action: "hit", game_id }, this._signer, this._provider)
+        await Cartesi.sendInput({ action: "hit", table_id }, this._signer, this._provider)
     }
 
     private async _startGame() {
@@ -458,17 +462,15 @@ export class Dapp extends React.Component<{}, DappState> {
             if (player) {
                 this.setState({ player })
 
-                if (!this.state.gameJoined) {
-                    const playerIsPlaying = player.playing.length > 0;
-                    const gameIdSelected = player.playing.at(0) || player.joined.at(0);
+                const playerIsPlaying = player.playing.length > 0;
+                const gameIdSelected = player.playing.at(0) || player.joined.at(0);
 
-                    if (gameIdSelected) {
-                        this.setState({
-                            gameIdSelected,
-                            gameJoined: true,
-                            gamePlaying: playerIsPlaying,
-                        })
-                    }
+                if (gameIdSelected) {
+                    this.setState({
+                        gameIdSelected,
+                        gameJoined: true,
+                        gamePlaying: playerIsPlaying,
+                    })
                 }
             }
         } catch (e) {
@@ -527,12 +529,22 @@ export class Dapp extends React.Component<{}, DappState> {
         this.checkGameIdSelected(game_id);
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
+        this.setState({ isLoading: true });
         await Cartesi.sendInput({
             action: 'join_game',
             game_id
         }, this._signer, this._provider)
-        await this._readGames();
-        this.setState({ gameJoined: true });
+
+        const address = this.state.selectedAddress;
+        if (!address) {
+            console.error('No selected address')
+            this.setState({ isLoading: false })
+            return;
+        }
+
+        await Promise.all([this._loadUserData(address),
+            , this._readGames()]);
+        this.setState({ gameJoined: true, isLoading: false });
     }
 
     // The next two methods are needed to start and stop polling data. While
