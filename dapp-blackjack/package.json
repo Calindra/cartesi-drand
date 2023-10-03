@@ -5,8 +5,7 @@
     "main": "main.js",
     "scripts": {
         "start": "parcel src/index.html --open",
-        "build": "parcel build src/index.html --public-url ./",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "build": "parcel build src/index.html --public-url ./"
     },
     "author": "Calindra",
     "license": "MIT",
