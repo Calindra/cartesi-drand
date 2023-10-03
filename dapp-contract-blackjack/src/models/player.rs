@@ -75,7 +75,7 @@ pub mod player {
         player: Arc<Player>,
         hand: Hand,
         pub points: u8,
-        pub is_standing: bool,
+        is_standing: bool,
         deck: Arc<Mutex<Deck>>,
         round: u8,
         pub last_timestamp: u64,
@@ -105,6 +105,10 @@ pub mod player {
             }
         }
 
+        pub fn get_status_stand(&self) -> bool {
+            self.is_standing
+        }
+
         pub fn generate_hand(&self) -> Value {
             let hand = self
                 .hand
@@ -117,6 +121,8 @@ pub mod player {
                 "name": self.player.name,
                 "points": self.points,
                 "hand": hand,
+                "is_standing": self.is_standing,
+                "is_busted": self.is_busted(),
             })
         }
 

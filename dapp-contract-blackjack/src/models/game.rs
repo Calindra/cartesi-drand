@@ -300,6 +300,7 @@ pub mod game {
             json!({
                 "scoreboard": value,
                 "hands": self.hands,
+                "is_finished": true
             })
         }
     }
@@ -511,7 +512,7 @@ pub mod game {
         pub fn any_player_can_hit(&self) -> bool {
             self.players_with_hand
                 .iter()
-                .any(|player| !player.is_standing)
+                .any(|player| !player.get_status_stand())
         }
 
         pub fn can_advance_round(&self) -> bool {
@@ -522,11 +523,11 @@ pub mod game {
                     player.get_name(),
                     player.get_round(),
                     self.round,
-                    player.is_standing,
+                    player.get_status_stand(),
                     player.points
                 );
 
-                player.is_standing || self.round != player.get_round()
+                player.get_status_stand() || self.round != player.get_round()
             });
             println!("Can advance {}\n", result);
             result
@@ -573,7 +574,9 @@ pub mod game {
             json!({
                 "game_id": self.game.get_id(),
                 "table_id": self.id,
-                "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<_>>()
+                "players": self.players_with_hand.iter().map(|player| player.generate_hand()).collect::<Vec<_>>(),
+                "is_finished": false,
+                "round":self.round,
             })
         }
 
