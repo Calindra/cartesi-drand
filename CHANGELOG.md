@@ -1,3 +1,7 @@
+## [0.2.8] - 2023-10-04
+### Changed
+- More improvements in game 
+
 ## [0.2.7] - 2023-08-23
 ### Changed
 - When is inspecting the middleware returns a bad request at /random endpoint
