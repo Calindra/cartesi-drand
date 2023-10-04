@@ -1,18 +1,50 @@
 pub mod routes {
-    use actix_web::{get, post, web, HttpResponse, Responder};
+    use actix_web::{get, post, put, web, HttpResponse, Responder};
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
-        models::models::{AppState, RequestRollups, Timestamp},
-        rollup::{server::send_finish_and_retrieve_input, has_input_inside_input},
+        models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
+        rollup::{has_input_inside_input, server::send_finish_and_retrieve_input},
+        utils::util::{load_env_from_memory, write_env_to_json},
     };
+
+    #[put("/update_drand_config")]
+    async fn update_drand_config(
+        ctx: web::Data<AppState>,
+        body: web::Json<DrandEnv>,
+    ) -> impl Responder {
+        println!(
+            "Received update_drand_config request from DApp version={}",
+            ctx.version
+        );
+
+        let _ = ctx.input_buffer_manager.lock().await;
+
+        let drand = body.into_inner();
+
+        load_env_from_memory(drand).await;
+
+        let result = write_env_to_json().await;
+
+        // maybe can generate a error on write json but
+        // already change the env in memory
+        if let Err(e) = result {
+            eprintln!("Error updating drand config: {}", e);
+            return HttpResponse::BadRequest().finish();
+        }
+
+        HttpResponse::NoContent().finish()
+    }
 
     #[post("/finish")]
     async fn consume_buffer(
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        println!("Received finish request from DApp {:?} version={}", body, ctx.version);
+        println!(
+            "Received finish request from DApp {:?} version={}",
+            body, ctx.version
+        );
 
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
@@ -62,7 +94,10 @@ pub mod routes {
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
     ) -> impl Responder {
-        println!("Received random request from DApp timestamp={} version={}", query.timestamp, ctx.version);
+        println!(
+            "Received random request from DApp timestamp={} version={}",
+            query.timestamp, ctx.version
+        );
         let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp);
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process
@@ -109,21 +144,5 @@ pub mod routes {
             }
         };
         HttpResponse::NotFound().finish()
-    }
-
-    #[post("/hold")]
-    async fn hold_buffer(ctx: web::Data<AppState>) -> impl Responder {
-        let mut manager = match ctx.input_buffer_manager.try_lock() {
-            Ok(manager) => manager,
-            Err(_) => return HttpResponse::BadRequest().finish(),
-        };
-
-        if manager.flag_to_hold.is_holding {
-            return HttpResponse::Accepted().body("Holding already");
-        }
-
-        manager.await_beacon();
-
-        HttpResponse::Ok().body("Holding")
     }
 }

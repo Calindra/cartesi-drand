@@ -14,8 +14,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      working-directory: ./convenience-drand-provider/
-      run: yarn install --frozen-lockfile
+      working-directory: ./
+      run: npm ci
     - name: Run tests
-      working-directory: ./convenience-drand-provider/
-      run: yarn test --forceExit
+      working-directory: ./
+      run: npm run test --forceExit

@@ -7,6 +7,14 @@ pub mod models {
 
     use crate::rollup::RollupInput;
 
+    #[derive(serde::Deserialize, serde::Serialize)]
+    pub struct DrandEnv {
+        pub DRAND_PUBLIC_KEY: String,
+        pub DRAND_PERIOD: Option<u64>,
+        pub DRAND_GENESIS_TIME: Option<u64>,
+        pub DRAND_SAFE_SECONDS: Option<u64>,
+    }
+
     #[derive(Serialize)]
     pub(crate) struct Item {
         pub(crate) request: String,
@@ -96,10 +104,7 @@ pub mod models {
                 version: version.unwrap_or("unknown").to_string(),
             }
         }
-        pub(crate) fn get_randomness_for_timestamp(
-            &self,
-            query_timestamp: u64,
-        ) -> Option<String> {
+        pub(crate) fn get_randomness_for_timestamp(&self, query_timestamp: u64) -> Option<String> {
             let mut manager = match self.input_buffer_manager.try_lock() {
                 Ok(manager) => manager,
                 Err(_) => return None,
@@ -172,11 +177,15 @@ pub mod models {
             manager.is_inspecting = value;
         }
         pub(crate) fn is_inspecting(&self) -> bool {
-            let manager = match self.input_buffer_manager.try_lock() {
-                Ok(manager) => manager,
-                Err(_) => return false,
-            };
-            manager.is_inspecting
+            #[cfg(target_arch = "riscv64")]
+            {
+                let manager = match self.input_buffer_manager.try_lock() {
+                    Ok(manager) => manager,
+                    Err(_) => return false,
+                };
+                return manager.is_inspecting;
+            }
+            false
         }
     }
 

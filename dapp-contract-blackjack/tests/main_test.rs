@@ -3,6 +3,8 @@ mod common;
 mod main;
 #[path = "../src/models/mod.rs"]
 mod models;
+#[path = "../src/rollups.rs"]
+mod rollups;
 #[path = "../src/util.rs"]
 mod util;
 
@@ -10,9 +12,9 @@ mod util;
 mod contract_blackjack_tests {
     use crate::{
         common::common::setup_hit_random,
-        main::handle_request_action,
         models::{game::game::Manager, player::player::Player},
-        util::{env::check_if_dotenv_is_loaded, json::decode_payload},
+        rollups::rollup::handle_request_action,
+        util::{env::check_if_dotenv_is_loaded, json::decode_payload, random::retrieve_seed},
     };
 
     use serde_json::json;
@@ -133,7 +135,7 @@ mod contract_blackjack_tests {
             let response = response.unwrap().unwrap();
             println!("{:}", &response);
 
-            let response = response["data"]["payload"].as_str().unwrap();
+            let response = response["payload"].as_str().unwrap();
             let response = decode_payload(response).unwrap();
             let response = response["games"].as_array().unwrap();
             response.to_owned()
@@ -145,7 +147,60 @@ mod contract_blackjack_tests {
     }
 
     #[tokio::test]
+    async fn can_show_player_data() {
+        let mut manager = Manager::new_with_games(1);
+
+        for name in ["Alice", "Bob"] {
+            let name = name.to_string();
+            let player = Player::new_without_id(name);
+            let player = Arc::new(player);
+            manager.add_player(player.clone()).unwrap();
+        }
+
+        let manager = Arc::new(Mutex::new(manager));
+
+        // Mock request from middleware
+        let payload = json!({
+            "input": {
+                "action": "show_player",
+                "address": "Alice",
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        let response = handle_request_action(&data, manager.clone(), false)
+            .await
+            .unwrap();
+
+        assert!(response.is_some());
+
+        let response = response.unwrap();
+        let payload = response
+            .get("payload")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .strip_prefix("0x")
+            .map(|v| hex::decode(v).unwrap())
+            .map(|v| String::from_utf8(v).unwrap())
+            .map(|v| serde_json::from_str::<serde_json::Value>(v.as_str()).unwrap())
+            .unwrap();
+
+        println!("Payload: {:?}", payload);
+
+        let name = payload.get("name").unwrap().as_str().unwrap();
+        assert_eq!("Alice", name);
+        let address = payload.get("address").unwrap().as_str().unwrap();
+        assert_eq!("Alice", address);
+    }
+
+    #[tokio::test]
     async fn start_game() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_hit_random().await;
+
         let mut manager = Manager::new_with_games(10);
         let game = manager.first_game_available().unwrap();
         let game_id = game.get_id().to_owned();
@@ -179,6 +234,7 @@ mod contract_blackjack_tests {
         }
 
         assert!(response.is_ok());
+        println!("Game response: {:?}", response.unwrap());
 
         let manager = manager.lock().await;
         assert_eq!(manager.games.len(), 9);
@@ -237,10 +293,11 @@ mod contract_blackjack_tests {
 
         let game = manager.first_game_available_owned().unwrap();
         let table = game.round_start(1, 0).unwrap();
+        let table_id = table.get_id().to_owned();
 
         manager.add_table(table);
 
-        let table = manager.get_table(&game_id).unwrap();
+        let table = manager.get_table(&table_id).unwrap();
         let size = table.deck.lock().await.cards.len();
 
         assert_eq!(size, 52);
@@ -278,7 +335,11 @@ mod contract_blackjack_tests {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
-                    table.hit_player(&player_id, timestamp).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
@@ -351,6 +412,7 @@ mod contract_blackjack_tests {
 
         let game = manager.first_game_available_owned().unwrap();
         let mut table = game.round_start(1, 0).unwrap();
+        let table_id = table.get_id().to_owned();
 
         let timestamp: u64 = 1691386341757;
 
@@ -358,7 +420,11 @@ mod contract_blackjack_tests {
             for player_id in players.iter() {
                 let points = table.get_points(player_id).unwrap();
                 if points <= 11 {
-                    table.hit_player(player_id, timestamp).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(player_id, timestamp).unwrap();
                 }
@@ -375,7 +441,7 @@ mod contract_blackjack_tests {
         let payload = json!({
             "input": {
                 "action": "show_hands",
-                "game_id": game_id,
+                "table_id": table_id,
             }
         });
 
@@ -422,7 +488,8 @@ mod contract_blackjack_tests {
                 let player_id = player.get_id();
                 let points = table.get_points(&player_id).unwrap();
                 if points <= 11 {
-                    let result = table.hit_player(&player_id, timestamp).await;
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    let result = table.hit_player(&player_id, timestamp, &seed).await;
                     println!("{:}", &player);
 
                     assert!(result.is_ok(), "{:}", result.unwrap_err());
@@ -473,7 +540,11 @@ mod contract_blackjack_tests {
                 let points = table.get_points(&player_id).unwrap();
 
                 if points <= 11 {
-                    table.hit_player(&player_id, timestamp).await.unwrap();
+                    let seed = retrieve_seed(timestamp).await.unwrap();
+                    table
+                        .hit_player(&player_id, timestamp, &seed)
+                        .await
+                        .unwrap();
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }
@@ -490,8 +561,7 @@ mod contract_blackjack_tests {
         // Mock request from middleware
         let payload = json!({
             "input": {
-                "action": "show_winner",
-                "game_id": game_id,
+                "action": "show_hands",
                 "table_id": table_id,
             }
         });

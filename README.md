@@ -88,11 +88,11 @@ The DApp’s owner can run an instance of the Convenience API to provide this ra
 
 The middleware provides 2 endpoints
 
-**/finish**  
+**/finish**
 Replace the Rollup's finish endpoint with this one. Example: http://localhost:8080/finish
 
-**/random?timestamp=[timestamp]**  
-Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529  
+**/random?timestamp=[timestamp]**
+Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529
 It will return 404 when the seed isn't available.
 
 ## How to run
@@ -111,7 +111,7 @@ cargo run
 Start the drand-provider:
 ```shell
 cd convenience-drand-provider/
-yarn && yarn dev
+npm ci && npm run dev
 ```
 
 Run this smoke test:
@@ -160,15 +160,15 @@ yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id
 Hit:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
 
 Stand:
 ```shell
 cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}"
+yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
 
 Show hands:

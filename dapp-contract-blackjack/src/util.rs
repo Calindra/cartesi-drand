@@ -1,19 +1,18 @@
 pub struct Metadata {
     pub address: String,
     pub timestamp: u64,
-    // input_index: u64,
 }
 pub mod random {
     use std::{env, error::Error, ops::Range, time::Duration};
 
     use hyper::{body, Body, Client, Request, StatusCode};
-    // use hyper_tls::HttpsConnector;
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
+    use tokio::time;
     use uuid::Uuid;
 
-    pub fn generate_random_number(seed: String, range: Range<usize>) -> usize {
+    pub fn generate_random_number(seed: &str, range: Range<usize>) -> usize {
         let mut rng: Pcg64 = Seeder::from(seed).make_rng();
         rng.gen_range(range)
     }
@@ -44,7 +43,7 @@ pub mod random {
             match status_response {
                 StatusCode::NOT_FOUND => {
                     println!("No pending random request, trying again... uri = {}", uri);
-                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    time::sleep(Duration::from_secs(1)).await;
                 }
 
                 StatusCode::OK => {
@@ -54,11 +53,20 @@ pub mod random {
                 }
 
                 code => {
+                    // @todo doc this for production
+                    // this is to avoid loop with inspect mode
                     println!("Unknown status code {:}", code);
-                    return Err("Unexpected status code for random number".into())
+                    return Err("Unexpected status code for random number".into());
                 }
             }
         }
+    }
+
+    pub async fn retrieve_seed(timestamp: u64) -> Result<String, &'static str> {
+        call_seed(timestamp).await.map_err(|error| {
+            eprintln!("Problem: {:}", error);
+            "Cant get seed now"
+        })
     }
 
     pub fn generate_id() -> String {
@@ -67,8 +75,13 @@ pub mod random {
 }
 
 pub mod json {
+    use std::path::PathBuf;
+
     use serde_json::{json, Value};
-    use tokio::{fs::File, io::{AsyncWriteExt, self}};
+    use tokio::{
+        fs::{read_to_string, File},
+        io::{self, AsyncWriteExt},
+    };
 
     use super::Metadata;
 
@@ -83,6 +96,15 @@ pub mod json {
         Some(payload)
     }
 
+    pub fn generate_report(payload: Value) -> Value {
+        let payload = hex::encode(payload.to_string());
+        let payload = format!("0x{}", payload);
+
+        json!({
+            "payload": payload,
+        })
+    }
+
     pub fn generate_message(payload: Value) -> Value {
         let payload = hex::encode(payload.to_string());
         let payload = format!("0x{}", payload);
@@ -94,22 +116,40 @@ pub mod json {
         })
     }
 
-    pub async fn write_json(path: &str, obj: &Value) -> Result<(), io::Error> {
+    pub async fn write_json(path: &PathBuf, obj: &Value) -> Result<(), io::Error> {
         let mut file = File::create(path).await?;
         let value = obj.to_string();
         file.write_all(value.as_bytes()).await?;
         Ok(())
     }
 
+    pub async fn load_json(path: &PathBuf) -> Result<Value, io::Error> {
+        println!("Trying read {:?}", path);
+
+        let contents = read_to_string(path).await?;
+        let value = serde_json::from_str::<Value>(&contents)?;
+        Ok(value)
+    }
+
+    pub fn get_path_player(address_encoded: &str) -> PathBuf {
+        let path = format!("./data/address/{}.json", address_encoded);
+        PathBuf::from(&path)
+    }
+
+    pub fn get_path_player_name(name_encoded: &str) -> PathBuf {
+        let path = format!("./data/names/{}.json", name_encoded);
+        PathBuf::from(&path)
+    }
+
     pub fn get_address_metadata_from_root(root: &Value) -> Option<Metadata> {
         let root = root.as_object()?;
         let root = root.get("data")?.as_object()?;
         let metadata = root.get("metadata")?.as_object()?;
-    
+
         let address = metadata.get("msg_sender")?.as_str()?;
         let timestamp = metadata.get("timestamp")?.as_u64()?;
         // let input_index = metadata.get("input_index")?.as_u64()?;
-    
+
         Some(Metadata {
             address: address.to_owned(),
             timestamp,

@@ -2,20 +2,16 @@ use serde_json::Value;
 
 pub mod player {
     use std::{
-        error::Error,
         fmt::{self, Display},
         sync::Arc,
     };
 
-    use serde::Serialize;
+    use serde_json::{json, Value};
     use tokio::sync::Mutex;
 
-    use crate::models::{
-        card::card::{Card, Deck, Rank},
-        game::game::Table,
-    };
+    use crate::models::card::card::{Card, Deck, Rank};
 
-    use crate::util::random::{call_seed, generate_random_number};
+    use crate::util::random::generate_random_number;
 
     pub struct Credit {
         pub amount: u32,
@@ -79,7 +75,7 @@ pub mod player {
         player: Arc<Player>,
         hand: Hand,
         pub points: u8,
-        pub is_standing: bool,
+        is_standing: bool,
         deck: Arc<Mutex<Deck>>,
         round: u8,
         pub last_timestamp: u64,
@@ -109,18 +105,24 @@ pub mod player {
             }
         }
 
-        pub fn generate_hand(&self) -> serde_json::Value {
+        pub fn get_status_stand(&self) -> bool {
+            self.is_standing
+        }
+
+        pub fn generate_hand(&self) -> Value {
             let hand = self
                 .hand
                 .0
                 .iter()
                 .map(|card| card.serialize())
-                .collect::<Vec<String>>();
+                .collect::<Vec<_>>();
 
-            serde_json::json!({
+            json!({
                 "name": self.player.name,
                 "points": self.points,
                 "hand": hand,
+                "is_standing": self.is_standing,
+                "is_busted": self.is_busted(),
             })
         }
 
@@ -151,7 +153,7 @@ pub mod player {
         /**
          * Take a card from the deck and add it to the player's hand.
          */
-        pub async fn hit(&mut self, timestamp: u64) -> Result<(), &'static str> {
+        pub async fn hit(&mut self, timestamp: u64, seed: &str) -> Result<(), &'static str> {
             if self.is_busted() {
                 Err("Player is busted.")?;
             }
@@ -159,8 +161,6 @@ pub mod player {
             if self.is_standing {
                 Err("Player is standing.")?;
             }
-
-            let seed = call_seed(timestamp).await.or(Err("No cant call seed"))?;
 
             let card = {
                 let mut deck = self.deck.lock().await;
@@ -192,6 +192,7 @@ pub mod player {
             );
             self.hand.0.push(card);
             self.round += 1;
+            self.last_timestamp = timestamp;
             Ok(())
         }
 
