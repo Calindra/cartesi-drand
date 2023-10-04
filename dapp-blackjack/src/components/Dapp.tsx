@@ -52,6 +52,15 @@ interface GameData {
     gamePlaying: boolean,
 }
 
+type ReponseHands = GameData['hands'] & ({
+    scoreboard: {
+        id: string,
+        game_id: string,
+        winner: string,
+        players: string[]
+    }, is_finished: true
+} | { is_finished: false });
+
 type ErrorRpc = { data: { message: string } } | { message: string };
 
 interface DappState extends GameData {
@@ -606,7 +615,7 @@ export class Dapp extends React.Component<{}, DappState> {
         const table_id = this.state.gameIdSelected;
         this.checkGameIdSelected(table_id);
         console.log('show hands...')
-        const hands = await Cartesi.inspectWithJson<GameData['hands']>({ action: 'show_hands', table_id })
+        const hands = await Cartesi.inspectWithJson<ReponseHands>({ action: 'show_hands', table_id })
         // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
         if (hands) {
             this.setState({ hands })
