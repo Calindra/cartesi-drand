@@ -204,12 +204,12 @@ pub mod rollup {
                 let input = payload.get("input").ok_or("Invalid field input")?;
 
                 let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
-                let address_owner = metadata.address.trim_start_matches("0x");
+                let address_owner = metadata.address.trim_start_matches("0x").to_lowercase();
 
                 let address_owner_game =
                     env::var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
 
-                let address_owner_game = address_owner_game.trim_start_matches("0x");
+                let address_owner_game = address_owner_game.trim_start_matches("0x").to_lowercase();
 
                 if address_owner != address_owner_game {
                     return Err("Invalid owner");
