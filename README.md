@@ -143,6 +143,7 @@ List games:
 curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
 ```
 
+
 Join game:
 ```shell
 cd frontend-console
@@ -150,6 +151,14 @@ export GAME_ID=1
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
 yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
+
+Change middleware drand public key: (see env for account)
+```shell
+cd frontend-console
+export MIDDLEWARE_PUBLIC_KEY="0x83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a"
+yarn start input send --payload "{\"input\":{\"action\":\"update_drand\",\"public_key\":\"${MIDDLEWARE_PUBLIC_KEY}\", \"genesis_time\": 1692803367}}" --accountIndex 19
+```
+
 
 Start game:
 ```shell
