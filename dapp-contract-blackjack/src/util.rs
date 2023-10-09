@@ -158,6 +158,66 @@ pub mod json {
     }
 }
 
+pub mod pubkey {
+    use std::{env, error::Error};
+
+    use hyper::{Body, Client, Method, Request};
+
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[allow(non_snake_case)]
+    pub struct DrandEnv {
+        pub DRAND_PUBLIC_KEY: String,
+        pub DRAND_PERIOD: Option<u64>,
+        pub DRAND_GENESIS_TIME: Option<u64>,
+        pub DRAND_SAFE_SECONDS: Option<u64>,
+    }
+
+    impl DrandEnv {
+        pub fn new(
+            pubkey: &str,
+            period: Option<u64>,
+            genesis_time: Option<u64>,
+            safe_seconds: Option<u64>,
+        ) -> Self {
+            Self {
+                DRAND_PUBLIC_KEY: pubkey.to_owned(),
+                DRAND_PERIOD: period,
+                DRAND_GENESIS_TIME: genesis_time,
+                DRAND_SAFE_SECONDS: safe_seconds,
+            }
+        }
+    }
+
+    pub async fn call_update_key(drand_env: &DrandEnv) -> Result<(), Box<dyn Error>> {
+        let body = serde_json::to_string(drand_env)?;
+
+        let client = Client::new();
+        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = server_addr.trim_end_matches("/");
+
+        let uri = format!("{}/update_drand_config", &server_addr);
+
+        println!("Calling update key at {:}", &uri);
+
+        let request = Request::builder()
+            .method(Method::PUT)
+            .uri(&uri)
+            .header("Content-Type", "application/json")
+            .body(Body::from(body))?;
+
+        let response = client.request(request).await?;
+
+        if response.status().is_success() {
+            println!("Update key success");
+            Ok(())
+        } else {
+            let msg = "Update key failed";
+            eprintln!("{}", msg);
+            Err(msg.into())
+        }
+    }
+}
+
 #[cfg(test)]
 pub mod env {
     macro_rules! check_if_dotenv_is_loaded {

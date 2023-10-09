@@ -11,7 +11,7 @@ mod util;
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
-        common::common::setup_hit_random,
+        common::common::{setup_change_key, setup_hit_random, setup_dont_change_key},
         models::{game::game::Manager, player::player::Player},
         rollups::rollup::handle_request_action,
         util::{env::check_if_dotenv_is_loaded, json::decode_payload, random::retrieve_seed},
@@ -575,5 +575,63 @@ mod contract_blackjack_tests {
             .unwrap();
 
         assert!(response.is_some(), "Missing return");
+    }
+
+    #[tokio::test]
+    async fn should_change_key() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_change_key().await;
+
+        let manager = Arc::new(Mutex::new(Manager::default()));
+
+        let payload = json!({
+            "input": {
+                "action": "update_drand",
+                "public_key": "0xdeadbeef"
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        let msg_sender = data["data"]["metadata"]["msg_sender"].as_str().unwrap();
+
+        std::env::set_var("ADDRESS_OWNER_GAME", msg_sender);
+
+        let response = handle_request_action(&data, manager, false).await;
+
+        assert!(
+            response.is_ok(),
+            "Response is not ok {}",
+            response.unwrap_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn shouldnt_change_key() {
+        check_if_dotenv_is_loaded!();
+        let _server = setup_dont_change_key().await;
+
+        let manager = Arc::new(Mutex::new(Manager::default()));
+
+        let payload = json!({
+            "input": {
+                "action": "update_drand",
+                "public_key": "0xdeadbeef"
+            }
+        });
+
+        // Generate complete message with payload
+        let data = factory_message(payload);
+
+        std::env::set_var("ADDRESS_OWNER_GAME", "0xbobdummy");
+
+        let response = handle_request_action(&data, manager, false).await;
+
+        assert!(
+            response.is_err(),
+            "Response is not ok {}",
+            response.unwrap_err()
+        );
     }
 }

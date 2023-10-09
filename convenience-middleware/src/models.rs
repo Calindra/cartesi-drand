@@ -8,6 +8,7 @@ pub mod models {
     use crate::rollup::RollupInput;
 
     #[derive(serde::Deserialize, serde::Serialize)]
+    #[allow(non_snake_case)]
     pub struct DrandEnv {
         pub DRAND_PUBLIC_KEY: String,
         pub DRAND_PERIOD: Option<u64>,
