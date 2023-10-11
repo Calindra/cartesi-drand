@@ -67,9 +67,15 @@ pub mod rollup {
                     }
                 }
             }
-            println!("waiting 5s...");
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            #[cfg(not(target_arch = "riscv64"))]
+            wait_func().await;
         }
+    }
+
+    #[cfg(not(target_arch = "riscv64"))]
+    async fn wait_func() {
+        println!("waiting 5s...");
+        tokio::time::sleep(Duration::from_secs(5)).await;
     }
 
     async fn handle_inspect(
