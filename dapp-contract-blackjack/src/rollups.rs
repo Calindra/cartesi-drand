@@ -14,6 +14,7 @@ pub mod rollup {
                 decode_payload, generate_report, get_address_metadata_from_root, get_path_player,
                 get_path_player_name, load_json, write_json,
             },
+            pubkey::{call_update_key, DrandEnv},
             random::retrieve_seed,
         },
     };
@@ -132,6 +133,20 @@ pub mod rollup {
         Ok("accept")
     }
 
+    pub async fn send_notice(notice: Value) -> Result<(), Box<dyn std::error::Error>> {
+        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
+        let client = hyper::Client::new();
+        let req = hyper::Request::builder()
+            .method(hyper::Method::POST)
+            .header(hyper::header::CONTENT_TYPE, "application/json")
+            .uri(format!("{}/notice", server_addr))
+            .body(hyper::Body::from(notice.to_string()))?;
+
+        let result = client.request(req).await?;
+        println!("Send notice: {:?}", result.body());
+        Ok(())
+    }
+
     pub fn get_payload_from_root(root: &Value) -> Option<Value> {
         let root = root.as_object()?;
         let root = root.get("data")?.as_object()?;
@@ -185,6 +200,48 @@ pub mod rollup {
         println!("Action: {:}", action.as_deref().unwrap_or("None"));
 
         match action.as_deref() {
+            Some("update_drand") => {
+                let input = payload.get("input").ok_or("Invalid field input")?;
+
+                let metadata = get_address_metadata_from_root(root).ok_or("Invalid address")?;
+                let address_owner = metadata.address.trim_start_matches("0x").to_lowercase();
+
+                let address_owner_game =
+                    env::var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
+
+                let address_owner_game = address_owner_game.trim_start_matches("0x").to_lowercase();
+
+                if address_owner != address_owner_game {
+                    return Err("Invalid owner");
+                }
+
+                // Parsing JSON
+                let public_key = input
+                    .get("public_key")
+                    .ok_or("Invalid field public_key")?
+                    .as_str()
+                    .ok_or("Invalid public_key")?;
+
+                let period = input.get("period").map(|v| v.as_u64()).unwrap_or(None);
+
+                let genesis_time = input
+                    .get("genesis_time")
+                    .map(|v| v.as_u64())
+                    .unwrap_or(None);
+
+                let safe_seconds = input
+                    .get("safe_seconds")
+                    .map(|v| v.as_u64())
+                    .unwrap_or(None);
+
+                let request_env = DrandEnv::new(public_key, period, genesis_time, safe_seconds);
+
+                let response = call_update_key(&request_env).await;
+
+                if response.is_err() {
+                    return Err("Could not update drand config");
+                }
+            }
             Some("new_player") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
                 let player_name = check_fields_create_player(&input)?;
@@ -362,6 +419,15 @@ pub mod rollup {
                 // Add table to manager
                 manager.add_table(table);
                 println!("Game started: game_id {} table_id {}", game_id, table_id);
+
+                // let notice = json!({
+                //     "game_id": game_id,
+                //     "table_id": table_id,
+                //     "players": players,
+                // });
+
+                // let notice = generate_report(notice);
+                // send_notice(notice).await.or(Err("Could not send notice"))?;
             }
             Some("stop_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
