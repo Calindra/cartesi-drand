@@ -31,8 +31,8 @@ jobs:
       - name: Install libc6
         # fix error: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.25' not found (required by /target/release/deps/libserde_derive-c22143170032a573.so)
         run: |
-          cargo install cross
           sudo apt update && sudo apt install libc6
+          cargo install cross
           cross build --release --target x86_64-unknown-linux-gnu
           cross build --release --target armv7-unknown-linux-gnueabihf
           cross build --release --target aarch64-unknown-linux-gnu
