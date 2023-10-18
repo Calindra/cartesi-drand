@@ -20,6 +20,7 @@ jobs:
         run: cargo test --verbose
       - name: Build Apple Silicon
         run: |
+          configure CFLAGS='-m32 -O2' CC=gcc-4.5
           cargo install cross
           rustup target add aarch64-apple-darwin
           cross build --target aarch64-apple-darwin
