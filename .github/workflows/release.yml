@@ -27,31 +27,28 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          working-directory: ./convenience-middleware/
           command: build
           args: --release --target riscv64gc-unknown-linux-gnu
+
+      # Fail: error: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.25' not found (required by /target/release/deps/libserde_derive-c22143170032a573.so)
+      # - uses: actions-rs/cargo@v1
+      #   with:
+      #     use-cross: true
+      #     command: build
+      #     args: --release --target x86_64-unknown-linux-gnu
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          working-directory: ./convenience-middleware/
-          command: build
-          args: --release --target x86_64-unknown-linux-gnu
-      - uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          working-directory: ./convenience-middleware/
           command: build
           args: --release --target armv7-unknown-linux-gnueabihf
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          working-directory: ./convenience-middleware/
           command: build
           args: --release --target aarch64-unknown-linux-gnu
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          working-directory: ./convenience-middleware/
           command: build
           args: --release --target i686-unknown-linux-gnu
       # - name: Release
