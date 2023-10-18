@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
+    branches: [ "feat/apple-silicon" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,6 +18,10 @@ jobs:
       - name: Run tests
         working-directory: ./convenience-middleware/
         run: cargo test --verbose
+      - name: Build Apple Silicon
+        run: |
+          rustup target add aarch64-apple-darwin
+          cross build --target aarch64-apple-darwin
       - name: Build Supported Targets
         # fix error: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.25' not found (required by /target/release/deps/libserde_derive-c22143170032a573.so)
         run: |
