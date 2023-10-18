@@ -20,6 +20,7 @@ jobs:
         run: cargo test --verbose
       - name: Build Apple Silicon
         run: |
+          cargo install cross
           rustup target add aarch64-apple-darwin
           cross build --target aarch64-apple-darwin
       - name: Build Supported Targets
