@@ -4,31 +4,20 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-    branches: [ "feat/pre-compiled" ]
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   riscv:
-    name: RiscV Build
+    name: Build and Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Run tests
         working-directory: ./convenience-middleware/
         run: cargo test --verbose
-      # - name: Build
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-      #     target: riscv64gc-unknown-linux-gnu
-      #     override: true
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: true
-      #     command: build
-      #     args: --release --target riscv64gc-unknown-linux-gnu
-      - name: Install libc6
+      - name: Build Supported Targets
         # fix error: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.25' not found (required by /target/release/deps/libserde_derive-c22143170032a573.so)
         run: |
           sudo apt update && sudo apt install libc6
@@ -38,21 +27,6 @@ jobs:
           cross build --release --target aarch64-unknown-linux-gnu
           cross build --release --target i686-unknown-linux-gnu
           cross build --release --target riscv64gc-unknown-linux-gnu
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: true
-      #     command: build
-      #     args: --release --target armv7-unknown-linux-gnueabihf
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: true
-      #     command: build
-      #     args: --release --target aarch64-unknown-linux-gnu
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     use-cross: true
-      #     command: build
-      #     args: --release --target i686-unknown-linux-gnu
       - name: Prepare binaries
         run: |
           cp target/riscv64gc-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-riscv64gc
@@ -60,9 +34,9 @@ jobs:
           cp target/armv7-unknown-linux-gnueabihf/release/cartesi-drand ./cartesi-drand-armv7
           cp target/aarch64-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-aarch64
           cp target/i686-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-i686
-      # - name: Release
-      #   uses: docker://antonyurchenko/git-release:v5
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     args: cartesi-drand-* target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack
+      - name: Release
+        uses: docker://antonyurchenko/git-release:v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: cartesi-drand-* target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack
