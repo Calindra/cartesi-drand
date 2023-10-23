@@ -1,0 +1,39 @@
+# syntax=docker.io/docker/dockerfile:1.4
+FROM ubuntu:22.04
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    g++-riscv64-linux-gnu=4:12.2.0-5 \
+    ca-certificates=20230311 \
+    build-essential=12.9 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add riscv64gc-unknown-linux-gnu
+
+ARG FOLDER=dapp-contract-blackjack
+
+WORKDIR /usr/src/${FOLDER}
+
+COPY . .
+
+RUN cargo build --release --target riscv64gc-unknown-linux-gnu
+
+RUN ls -l /usr/src/${FOLDER}/target/release
+
+FROM --platform=linux/riscv64 riscv64/ubuntu:22.04
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    ca-certificates=20230311ubuntu0.22.04.1 \
+    busybox-static=1:1.30.1-7ubuntu3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/local/bin
+
+ARG FOLDER=dapp-contract-blackjack
+
+COPY --from=builder /usr/src/${FOLDER}/target/riscv64gc-unknown-linux-gnu/release/ ./${FOLDER}
+
+EXPOSE 5004
+
+ENTRYPOINT ["/usr/local/bin/${FOLDER}"]
