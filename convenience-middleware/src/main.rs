@@ -34,17 +34,17 @@ async fn rollup(
     let mut status = "accept";
     loop {
         info!("Sending finish");
-        let response = json!({"status" : status.clone()});
+        let response = json!({ "status" : status });
         let request = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .uri(format!("{}/finish", &server_addr))
             .body(hyper::Body::from(response.to_string()))?;
         let response = client.request(request).await?;
-        println!("Received finish status {}", response.status());
+        info!("Received finish status {}", response.status());
 
         if response.status() == hyper::StatusCode::ACCEPTED {
-            println!("No pending rollup request, trying again");
+            info!("No pending rollup request, trying again");
         } else {
             let body = hyper::body::to_bytes(response).await?;
             let utf = std::str::from_utf8(&body)?;
@@ -75,14 +75,14 @@ async fn handle_inspect(
     sender: &Sender<Item>,
     manager: &Arc<Mutex<InputBufferManager>>,
 ) -> Result<&'static str, Box<dyn Error>> {
-    println!("req {:}", request);
+    info!("req {:}", request);
     let payload = request["data"]["payload"]
         .as_str()
         .ok_or("Missing payload")?;
     let payload = payload.trim_start_matches("0x");
     let bytes: Vec<u8> = hex::decode(&payload).unwrap();
     let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
-    println!("Handling inspect {}", inspect_decoded);
+    info!("Handling inspect {}", inspect_decoded);
     if inspect_decoded == "pendingdrandbeacon" {
         // todo: aqui tem que ser o timestamp mais recente do request de beacon em hex
         // manager.pending_beacon_timestamp 64bits => 8 bytes
@@ -111,9 +111,9 @@ async fn handle_advance(
     req: Value,
     sender: &Sender<Item>,
 ) -> Result<&'static str, Box<dyn Error>> {
-    println!("Handling advance");
+    info!("Handling advance");
 
-    println!("req {:}", req);
+    info!("req {:}", req);
 
     let _ = sender
         .send(Item {
@@ -235,7 +235,7 @@ fn is_drand_beacon(item: &Item) -> bool {
 // Consumer - only work on loop mode
 fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item>) {
     spawn(async move {
-        println!("Reading input from rollups receiver");
+        info!("Reading input from rollups receiver");
         let drand_period = env::var("DRAND_PERIOD").unwrap().parse::<u64>().unwrap();
         let drand_genesis_time = env::var("DRAND_GENESIS_TIME")
             .unwrap()
@@ -243,13 +243,13 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
             .unwrap();
 
         while let Some(item) = rx.recv().await {
-            println!("Received item");
-            println!("Request {}", item.request);
+            info!("Received item");
+            info!("Request {}", item.request);
 
             let mut manager = manager.lock().await;
 
             if is_drand_beacon(&item) {
-                println!("Received beacon");
+                info!("Received beacon");
 
                 // Root Request
                 let json = deserialize_obj(&item.request).unwrap();
@@ -275,7 +275,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
                 manager.flag_to_hold.release();
                 continue;
             } else {
-                println!("Received a common input");
+                info!("Received a common input");
                 // @todo devemos remover a nossa estrutura e deixar o input original?
                 manager.messages.push_back(item);
                 manager.request_count.set(manager.request_count.get() + 1);

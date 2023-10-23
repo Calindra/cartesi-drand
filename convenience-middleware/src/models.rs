@@ -114,7 +114,7 @@ pub mod models {
             let safe_query_timestamp = query_timestamp + self.safe_seconds;
             match manager.last_beacon.take() {
                 Some(beacon) => {
-                    println!(
+                    info!(
                         "beacon time {} vs {} request time",
                         beacon.timestamp, query_timestamp
                     );
@@ -143,7 +143,7 @@ pub mod models {
         }
         pub(crate) fn keep_newest_beacon(&self, drand_beacon: DrandBeacon) {
             let beacon_time = (drand_beacon.round * self.drand_period) + self.drand_genesis_time;
-            println!(
+            info!(
                 "Calculated beacon time {} for round {}",
                 beacon_time, drand_beacon.round
             );
@@ -155,11 +155,11 @@ pub mod models {
                         .last_beacon
                         .set(Beacon::some_from(&drand_beacon, beacon_time));
                 } else {
-                    println!("Keep current beacon");
+                    info!("Keep current beacon");
                     manager.last_beacon.set(Some(current_beacon));
                 }
             } else {
-                println!("No beacon, initializing");
+                info!("No beacon, initializing");
                 manager
                     .last_beacon
                     .set(Beacon::some_from(&drand_beacon, beacon_time));
@@ -224,16 +224,16 @@ pub mod models {
             let current = self.pending_beacon_timestamp.take();
             // mantendo o mais recente para economizar transacoes
             if current == 0 || current < timestamp {
-                println!("pending beacon timestamp {} changed", timestamp);
+                info!("pending beacon timestamp {} changed", timestamp);
                 self.pending_beacon_timestamp.set(timestamp);
             } else {
-                println!("pending beacon timestamp {} still the same", current);
+                info!("pending beacon timestamp {} still the same", current);
                 self.pending_beacon_timestamp.set(current);
             }
         }
 
         pub(crate) fn consume_input(&mut self) -> Option<Item> {
-            println!("Consuming input");
+            info!("Consuming input");
             let buffer = self.messages.borrow_mut();
 
             if buffer.is_empty() || self.flag_to_hold.is_holding {
@@ -246,7 +246,7 @@ pub mod models {
         }
 
         pub(crate) fn await_beacon(&mut self) {
-            println!("Awaiting beacon");
+            info!("Awaiting beacon");
 
             self.flag_to_hold.hold_up();
         }
