@@ -1,5 +1,5 @@
 # syntax=docker.io/docker/dockerfile:1.4
-FROM ubuntu:22.04
+FROM rust:1.73.0-bookworm as builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -16,9 +16,8 @@ WORKDIR /usr/src/${FOLDER}
 
 COPY . .
 
-RUN cargo build --release --target riscv64gc-unknown-linux-gnu
-
-RUN ls -l /usr/src/${FOLDER}/target/release
+# https://docs.docker.com/engine/reference/builder/#run---mounttypecache
+RUN --mount=type=cache, target=/usr/local/cargo/registry cargo build --release --target riscv64gc-unknown-linux-gnu
 
 FROM --platform=linux/riscv64 riscv64/ubuntu:22.04
 

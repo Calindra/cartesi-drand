@@ -8,6 +8,6 @@ group "default" {
 
 target "middleware" {
   context = "convenience-middleware"
-  dockerfile = "Dockerfile.middleware"
+  dockerfile = "Dockerfile"
   tags = ["${target.middleware.name}:${TAG}"]
 }
