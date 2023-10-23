@@ -3,5 +3,4 @@ resolver = "2"
 members = [
   "convenience-middleware",
   "dapp-contract-blackjack",
-  "dapp-contract-sunodo",
 ]

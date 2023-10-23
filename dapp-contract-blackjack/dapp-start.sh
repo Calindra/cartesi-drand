@@ -10,23 +10,22 @@ export DRAND_SAFE_SECONDS=5
 
 json_path="./convenience-middleware/drand.config.json"
 
-# Read from JSON
-if [ -f "$json_path" ]; then
-    echo "JSON file found"
+# # Read from JSON
+# if [ -f "$json_path" ]; then
+#     echo "JSON file found"
 
-    if ! command -v jq >/dev/null; then
-	    echo "jq not found"
-	    exit 1
-    fi
+#     if ! command -v jq >/dev/null; then
+# 	    echo "jq not found"
+# 	    exit 1
+#     fi
 
-    while IFS="=" read -r key value; do
-	    export "$key"="$value"
-    done < <(jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" $json_path)
-else
-   echo "JSON file not found, using default values"
-fi
+#     while IFS="=" read -r key value; do
+# 	    export "$key"="$value"
+#     done < <(jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" $json_path)
+# else
+#    echo "JSON file not found, using default values"
+# fi
 
 mkdir -p data/address data/names
 
-./cartesi-drand &
-./dapp-contract-blackjack
+./cartesi-drand & ./dapp-contract-blackjack
