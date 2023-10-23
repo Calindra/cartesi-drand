@@ -26,6 +26,6 @@ WORKDIR /usr/local/bin
 COPY --from=builder /usr/src/${FOLDER}/target/release/cartesi-drand .
 COPY --from=builder /usr/src/${FOLDER}/drand.config.json .
 
-EXPOSE 5004
+EXPOSE 8080
 
 CMD ["/usr/local/bin/cartesi-drand"]
