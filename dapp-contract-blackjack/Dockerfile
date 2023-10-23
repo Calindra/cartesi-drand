@@ -62,7 +62,7 @@ EOF
 ENV PATH="/opt/cartesi/bin:/opt/cartesi/dapp:${PATH}"
 
 WORKDIR /opt/cartesi/dapp
-COPY --from=builder /opt/cartesi/dapp/target/riscv64gc-unknown-linux-gnu/release/dapp .
+COPY --from=builder /opt/cartesi/dapp/target/release/dapp-contract-blackjack ./dapp
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
