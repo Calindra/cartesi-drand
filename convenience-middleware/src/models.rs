@@ -1,6 +1,7 @@
 pub mod models {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
+    use log::info;
     use serde::{Deserialize, Serialize};
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
@@ -149,7 +150,7 @@ pub mod models {
             let manager = self.input_buffer_manager.try_lock().unwrap();
             if let Some(current_beacon) = manager.last_beacon.take() {
                 if current_beacon.round < drand_beacon.round {
-                    println!("Set new beacon");
+                    info!("Set new beacon");
                     manager
                         .last_beacon
                         .set(Beacon::some_from(&drand_beacon, beacon_time));

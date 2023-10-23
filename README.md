@@ -15,6 +15,20 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 - Rust ^1.7.0
 
 
+## Building middleware
+### From source
+1. Install rust with for least 1.70.0 with rollup. https://www.rust-lang.org/tools/install
+
+
+## Building Dapp contract
+### Host mode
+Self container middleware:
+You can use sunodo to compile using Docker.
+Install sunodo follow this steps: https://docs.sunodo.io/guide/introduction/installing
+
+### Prod mode
+
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -95,13 +109,16 @@ Replace the Rollup's finish endpoint with this one. Example: http://localhost:80
 Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529
 It will return 404 when the seed isn't available.
 
+
+
+
 ## How to run
 
-Start the Rollups in host mode:
-```shell
-docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml -f ../docker-compose-host.yml up
-```
+- add instructions to self hosted
 
+With sunodo instance :
+```shell
+```
 Start the middleware:
 ```shell
 cd convenience-middleware/

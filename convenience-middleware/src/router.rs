@@ -1,5 +1,6 @@
 pub mod routes {
     use actix_web::{get, post, put, web, HttpResponse, Responder};
+    use log::error;
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
@@ -29,7 +30,7 @@ pub mod routes {
         // maybe can generate a error on write json but
         // already change the env in memory
         if let Err(e) = result {
-            eprintln!("Error updating drand config: {}", e);
+            error!("Error updating drand config: {}", e);
             return HttpResponse::BadRequest().finish();
         }
 
@@ -76,7 +77,7 @@ pub mod routes {
                 }
             }
             &_ => {
-                eprintln!("Unknown request type");
+                error!("Unknown request type");
             }
         };
 
@@ -140,7 +141,7 @@ pub mod routes {
                 }
             }
             &_ => {
-                eprintln!("Unknown request type");
+                error!("Unknown request type");
             }
         };
         HttpResponse::NotFound().finish()

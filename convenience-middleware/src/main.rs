@@ -1,4 +1,5 @@
 mod drand;
+mod logger;
 mod main_test;
 mod models;
 mod rollup;
@@ -11,6 +12,8 @@ use crate::utils::util::load_env_from_json;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use drand_verify::{G2Pubkey, Pubkey};
+use log::{set_boxed_logger, set_max_level, error, info};
+use logger::SimpleLogger;
 use serde_json::{json, Value};
 use std::error::Error;
 use std::{borrow::BorrowMut, env, sync::Arc};
@@ -23,14 +26,14 @@ async fn rollup(
     sender: Sender<Item>,
     manager: Arc<Mutex<InputBufferManager>>,
 ) -> Result<(), Box<dyn Error>> {
-    println!("Starting rollup sender");
+    info!("Starting rollup sender");
 
     let client = hyper::Client::new();
     let server_addr = env::var("ROLLUP_HTTP_SERVER_URL")?;
 
     let mut status = "accept";
     loop {
-        println!("Sending finish");
+        info!("Sending finish");
         let response = json!({"status" : status.clone()});
         let request = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -56,7 +59,7 @@ async fn rollup(
                     handle_inspect(&client, &server_addr[..], req, &sender, &manager).await?
                 }
                 &_ => {
-                    eprintln!("Unknown request type");
+                    error!("Unknown request type");
                     "reject"
                 }
             };
@@ -285,12 +288,17 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let logger = SimpleLogger;
+    set_boxed_logger(Box::new(logger))
+        .map(|_| set_max_level(log::LevelFilter::Info))
+        .unwrap();
+
     dotenv().ok();
     load_env_from_json().await.unwrap();
 
     let app_state = web::Data::new(AppState::new());
 
-    println!("Starting server");
+    info!("Starting server");
 
     HttpServer::new(move || {
         App::new()

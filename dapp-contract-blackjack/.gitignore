@@ -15,3 +15,7 @@ Cargo.lock
 
 # Ignore JSON files in the data directory
 data/**/*.json
+
+# Ignore sunodo folder
+# More info: https://github.com/sunodo/sunodo/
+**/.sunodo/

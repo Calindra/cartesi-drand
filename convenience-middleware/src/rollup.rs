@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod server {
     use hyper::{Body, Response};
+    use log::error;
     use serde_json::{json, Value};
 
     use super::{parse_input_from_response, RollupInput};
@@ -34,7 +35,7 @@ pub mod server {
         let response = send_finish(status)
             .await
             .map_err(|err| {
-                eprintln!("Error {:?}", err);
+                error!("Error {:?}", err);
                 err
             })
             .ok()?;
@@ -45,7 +46,7 @@ pub mod server {
         parse_input_from_response(response)
             .await
             .map_err(|err| {
-                eprintln!("Error {:?}", err);
+                error!("Error {:?}", err);
                 err
             })
             .ok()
