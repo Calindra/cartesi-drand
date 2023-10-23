@@ -61,10 +61,18 @@ EOF
 
 ENV PATH="/opt/cartesi/bin:/opt/cartesi/dapp:${PATH}"
 
+ARG CARTESI_DRAND_VERSION=0.2.10
+
 WORKDIR /opt/cartesi/dapp
+ADD https://github.com/Calindra/cartesi-drand/releases/download/v${CARTESI_DRAND_VERSION}/cartesi-drand-riscv64gc cartesi-drand
 COPY --from=builder /opt/cartesi/dapp/target/release/dapp-contract-blackjack ./dapp
+
+COPY dapp-start.sh .
+RUN chmod +x dapp-start.sh
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
+RUN cat dapp-start.sh
+
 ENTRYPOINT ["rollup-init"]
-CMD ["dapp"]
+CMD ["./dapp-start.sh"]
