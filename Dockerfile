@@ -5,63 +5,56 @@ FROM rust:1.73.0-bookworm as middleware
 
 ARG FOLDER_MIDDLEWARE
 
-RUN apt-get update && \
+# https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/reference.md#example-cache-apt-packages
+RUN <<EOF
+rm -f /etc/apt/apt.conf.d/docker-clean
+echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+EOF
+
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update && \
   apt-get install -y --no-install-recommends \
   # build-essential=12.9 \
-  ca-certificates=20230311 \
-  g++-riscv64-linux-gnu=4:12.2.0-5 \
-  && rm -rf /var/lib/apt/lists/*
+  # ca-certificates=20230311 \
+  g++-riscv64-linux-gnu=4:12.2.0-5
+
+RUN rustup target add riscv64gc-unknown-linux-gnu
 
 WORKDIR /usr/src/${FOLDER_MIDDLEWARE}
 
 COPY convenience-middleware .
 
-RUN rustup target add riscv64gc-unknown-linux-gnu
+# https://docs.docker.com/build/cache/#use-the-dedicated-run-cache
 # https://docs.docker.com/engine/reference/builder/#run---mounttypecache
-RUN --mount=type=cache,target=/usr/local/cargo/registry/ cargo build --release --target=riscv64gc-unknown-linux-gnu
+RUN \
+  --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
+  cargo build --release --target=riscv64gc-unknown-linux-gnu
 
-FROM ubuntu:22.04 as builder
-
-ENV RUSTUP_HOME=/usr/local/rustup \
-  CARGO_HOME=/usr/local/cargo \
-  PATH=/usr/local/cargo/bin:$PATH \
-  RUST_VERSION=1.72.0
+FROM rust:1.73.0-bookworm as dapp-contract
 
 RUN <<EOF
-apt-get update
-apt-get install -y --no-install-recommends \
-    build-essential=12.9ubuntu3 \
-    ca-certificates=20230311ubuntu0.22.04.1 \
-    g++-riscv64-linux-gnu=4:11.2.0--1ubuntu1 \
-    wget=1.21.2-2ubuntu1
-rm -rf /var/lib/apt/lists/*
+rm -f /etc/apt/apt.conf.d/docker-clean
+echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 EOF
 
-RUN set -eux; \
-  dpkgArch="$(dpkg --print-architecture)"; \
-  case "${dpkgArch##*-}" in \
-  amd64) rustArch='x86_64-unknown-linux-gnu'; rustupSha256='0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db' ;; \
-  armhf) rustArch='armv7-unknown-linux-gnueabihf'; rustupSha256='f21c44b01678c645d8fbba1e55e4180a01ac5af2d38bcbd14aa665e0d96ed69a' ;; \
-  arm64) rustArch='aarch64-unknown-linux-gnu'; rustupSha256='673e336c81c65e6b16dcdede33f4cc9ed0f08bde1dbe7a935f113605292dc800' ;; \
-  i386) rustArch='i686-unknown-linux-gnu'; rustupSha256='e7b0f47557c1afcd86939b118cbcf7fb95a5d1d917bdd355157b63ca00fc4333' ;; \
-  *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
-  esac; \
-  url="https://static.rust-lang.org/rustup/archive/1.26.0/${rustArch}/rustup-init"; \
-  wget "$url"; \
-  echo "${rustupSha256} *rustup-init" | sha256sum -c -; \
-  chmod +x rustup-init; \
-  ./rustup-init -y --no-modify-path --profile minimal --default-toolchain $RUST_VERSION --default-host ${rustArch}; \
-  rm rustup-init; \
-  chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
-  rustup --version; \
-  cargo --version; \
-  rustc --version;
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update && \
+  apt-get install -y --no-install-recommends \
+  # build-essential=12.9 \
+  # ca-certificates=20230311 \
+  g++-riscv64-linux-gnu=4:12.2.0-5
 
 RUN rustup target add riscv64gc-unknown-linux-gnu
 
 WORKDIR /opt/cartesi/dapp
 COPY dapp-contract-blackjack .
-RUN cargo build --release
+RUN \
+  --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
+  cargo build --release
 
 FROM --platform=linux/riscv64 riscv64/ubuntu:22.04
 
@@ -90,7 +83,7 @@ ENV PATH="/opt/cartesi/bin:/opt/cartesi/dapp:${PATH}"
 
 WORKDIR /opt/cartesi/dapp
 COPY --from=middleware /usr/src/${FOLDER_MIDDLEWARE}/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
-COPY --from=builder /opt/cartesi/dapp/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
+COPY --from=dapp-contract /opt/cartesi/dapp/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
 COPY dapp-start.sh ${FOLDER_MIDDLEWARE}/drand.config.json ${FOLDER_MIDDLEWARE}/.env ./
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
