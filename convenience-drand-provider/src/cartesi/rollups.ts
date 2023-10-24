@@ -22,12 +22,12 @@ import {
     IERC721Portal__factory,
 } from "@cartesi/rollups";
 import { Argv } from "yargs";
-import { networks } from "./networks";
-import { Deployment, Contract } from "./abi";
+import { networks } from "./networks.ts";
+import { Deployment, Contract } from "./abi.ts";
 import {
     readAddressFromFile,
     readAllContractsFromDir
-} from "./utils"
+} from "./utils.ts"
 
 export interface Args {
     dapp: string;

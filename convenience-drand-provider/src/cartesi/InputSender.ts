@@ -1,19 +1,19 @@
 import {
     rollups,
-} from "./rollups";
+} from "./rollups.ts";
 import { ethers } from "ethers";
 
 import {
     connect
-} from "./connect";
+} from "./connect.ts";
 import { IInputBox } from "@cartesi/rollups";
-import { InputSenderConfig } from "../configs";
+import { InputSenderConfig } from "../configs.ts";
 
 export default class InputSender {
 
     config: InputSenderConfig
     inputBox?: IInputBox
-    
+
     constructor(config: InputSenderConfig) {
         this.config = config
     }

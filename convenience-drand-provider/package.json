@@ -2,7 +2,8 @@
   "name": "convenience-drand-provider",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/app.ts",
+  "type": "module",
   "scripts": {
     "test": "jest -i --colors --detectOpenHandles --logHeapUsage",
     "dev": "ts-node ./src/app.ts",
