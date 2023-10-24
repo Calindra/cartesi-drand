@@ -97,7 +97,5 @@ ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
 RUN chmod +x dapp-start.sh cartesi-drand
 
-EXPOSE 8080
-
 ENTRYPOINT ["rollup-init"]
 CMD ["dapp-start.sh"]

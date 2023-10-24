@@ -16,7 +16,7 @@ export class DrandProvider {
     inspectAxiosInstance: AxiosInstance;
 
     cartesiConfig: CartesiConfig = {
-        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:5005").href,
+        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080").href,
     }
 
     /**

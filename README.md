@@ -28,7 +28,8 @@ You can use sunodo to compile using Docker.
 Install sunodo follow this steps: https://docs.sunodo.io/guide/introduction/installing
 
 ### Prod mode
-
+Consult this for more info:
+https://docs.sunodo.io/guide/deploying/deploying-application
 
 ```mermaid
 sequenceDiagram
