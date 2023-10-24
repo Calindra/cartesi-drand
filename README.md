@@ -18,7 +18,8 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 ## Building middleware
 ### From source
 1. Install rust with for least 1.70.0 with rollup. https://www.rust-lang.org/tools/install
-
+2. Install node and install packages
+3. Build rust and npm packages
 
 ## Building Dapp contract
 ### Host mode
@@ -110,8 +111,6 @@ Call this one to get a seed from Drand. Example: http://localhost:8080/random?ti
 It will return 404 when the seed isn't available.
 
 
-
-
 ## How to run
 
 - add instructions to self hosted
@@ -159,7 +158,6 @@ List games:
 ```shell
 curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
 ```
-
 
 Join game:
 ```shell
