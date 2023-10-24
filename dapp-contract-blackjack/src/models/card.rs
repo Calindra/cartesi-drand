@@ -1,6 +1,8 @@
 pub mod card {
     use std::fmt::Display;
 
+    use log::error;
+
     #[derive(Clone)]
     pub enum Suit {
         Spades,   // Espadas
@@ -127,7 +129,7 @@ pub mod card {
     impl Deck {
         pub fn new_with_capacity(nth: usize) -> Result<Self, &'static str> {
             if nth < 1 || nth > 8 {
-                eprintln!("Invalid number of decks.");
+                error!("Invalid number of decks.");
                 Err("Invalid number of decks.")?;
             }
 

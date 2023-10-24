@@ -6,7 +6,7 @@ pub mod game {
         },
         util::{json::generate_report, random::generate_id},
     };
-    use serde::Serialize;
+    use log::{debug, info};
     use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
@@ -216,7 +216,7 @@ pub mod game {
         }
 
         pub async fn stop_game(&mut self, table_id: &str) -> Result<(), &'static str> {
-            println!("Stopping game table_id {}", table_id);
+            info!("Stopping game table_id {}", table_id);
 
             let table = self
                 .tables
@@ -271,7 +271,7 @@ pub mod game {
             winner: Option<Arc<Player>>,
             hands: Value,
         ) -> Self {
-            println!(
+            info!(
                 "Scoreboard {}; game_id {}; winner {:?}",
                 id, game_id, winner
             );
@@ -389,10 +389,10 @@ pub mod game {
     //             });
 
     //             if let Err(err) = locker {
-    //                 eprintln!("{}", err)
+    //                 error!("{}", err)
     //             }
     //         } else {
-    //             println!("Table dont have reference")
+    //             error!("Table dont have reference")
     //         }
     //     }
     // }
@@ -474,7 +474,7 @@ pub mod game {
             let player_round = player.get_round();
 
             if table_round != player_round {
-                println!(
+                info!(
                     "Game round {}; Player round {}; Player id {};",
                     table_round, player_round, player_id
                 );
@@ -516,9 +516,9 @@ pub mod game {
         }
 
         pub fn can_advance_round(&self) -> bool {
-            println!("\nChecking if can advance round");
+            info!("\nChecking if can advance round");
             let result = self.players_with_hand.iter().all(|player| {
-                println!(
+                info!(
                     "Player {} round {}; Table round {} is_standing {} points {}",
                     player.get_name(),
                     player.get_round(),
@@ -529,7 +529,7 @@ pub mod game {
 
                 player.get_status_stand() || self.round != player.get_round()
             });
-            println!("Can advance {}\n", result);
+            info!("Can advance {}\n", result);
             result
         }
 
@@ -632,7 +632,7 @@ pub mod game {
 
             let players = players.as_slice();
 
-            println!("Searching for player {} in {:?}", player_id, players);
+            info!("Searching for player {} in {:?}", player_id, players);
 
             self.players_with_hand
                 .iter()

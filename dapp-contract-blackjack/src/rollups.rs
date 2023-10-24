@@ -1,5 +1,6 @@
 pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
+    use log::{error, info, warn, debug};
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
@@ -23,7 +24,7 @@ pub mod rollup {
         manager: Arc<Mutex<Manager>>,
         sender: &Sender<Value>,
     ) -> Result<(), Box<dyn Error>> {
-        println!("Starting loop...");
+        info!("Starting loop...");
 
         let client = Client::new();
         // let https = HttpsConnector::new();
@@ -32,7 +33,7 @@ pub mod rollup {
 
         let mut status = "accept";
         loop {
-            println!("Sending finish");
+            info!("Sending finish");
             let response = json!({ "status": status.clone() });
             let request = Request::builder()
                 .method(Method::POST)
@@ -41,10 +42,10 @@ pub mod rollup {
                 .body(Body::from(response.to_string()))?;
             let response = client.request(request).await?;
             let status_response = response.status();
-            println!("Receive finish status {}", &status_response);
+            info!("Receive finish status {}", &status_response);
 
             if status_response == StatusCode::ACCEPTED {
-                println!("No pending rollup request, trying again");
+                warn!("No pending rollup request, trying again");
             } else {
                 let body = to_bytes(response).await?;
                 let body = from_utf8(&body)?;
@@ -62,7 +63,7 @@ pub mod rollup {
                         handle_inspect(manager.clone(), &server_addr[..], body, sender).await?
                     }
                     &_ => {
-                        eprintln!("Unknown request type");
+                        error!("Unknown request type");
                         "reject"
                     }
                 }
@@ -74,7 +75,7 @@ pub mod rollup {
 
     #[cfg(not(target_arch = "riscv64"))]
     async fn wait_func() {
-        println!("waiting 5s...");
+        warn!("waiting 5s...");
         tokio::time::sleep(Duration::from_secs(5)).await;
     }
 
@@ -84,9 +85,9 @@ pub mod rollup {
         body: Value,
         sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
-        println!("Handling inspect");
+        info!("Handling inspect");
 
-        println!("body {:}", &body);
+        info!("body {:}", &body);
 
         let result = handle_request_action(&body, manager, true).await?;
 
@@ -103,10 +104,10 @@ pub mod rollup {
         body: Value,
         sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
-        println!("Handling advance");
+        info!("Handling advance");
 
         // body {"data":{"metadata":{"block_number":321,"epoch_index":0,"input_index":0,"msg_sender":"0x70997970c51812dc3a010c7d01b50e0d17dc79c8","timestamp":1694789355},"payload":"0x7b22696e707574223a7b22616374696f6e223a226e65775f706c61796572222c226e616d65223a22416c696365227d7d"},"request_type":"advance_state"}
-        println!("body {:}", &body);
+        info!("body {:}", &body);
         let run_async = std::env::var("RUN_GAME_ASYNC").unwrap_or("true".to_string());
 
         if run_async == "true" {
@@ -149,7 +150,7 @@ pub mod rollup {
             .body(hyper::Body::from(notice.to_string()))?;
 
         let result = client.request(req).await?;
-        println!("Send notice: {:?}", result.body());
+        info!("Send notice: {:?}", result.body());
         Ok(())
     }
 
@@ -168,7 +169,7 @@ pub mod rollup {
     }
 
     async fn async_pick(table: Arc<Mutex<Table>>, player_id: String, timestamp: u64) {
-        println!("Player calling: {}", player_id);
+        info!("Player calling: {}", player_id);
 
         let mut pick_cards = 2;
 
@@ -188,7 +189,7 @@ pub mod rollup {
                 .await;
 
             if let Err(err) = result {
-                eprintln!("Pick error: {:}", err);
+                error!("Pick error: {:}", err);
             } else {
                 pick_cards -= 1;
             }
@@ -203,7 +204,7 @@ pub mod rollup {
         let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
         let action = get_from_payload_action(&payload);
 
-        println!("Action: {:}", action.as_deref().unwrap_or("None"));
+        info!("Action: {:}", action.as_deref().unwrap_or("None"));
 
         match action.as_deref() {
             Some("update_drand") => {
@@ -287,7 +288,7 @@ pub mod rollup {
                     "name": player_name,
                 }));
 
-                println!("Report: {:}", report);
+                info!("Report: {:}", report);
 
                 return Ok(Some(report));
             }
@@ -315,7 +316,7 @@ pub mod rollup {
                     .ok_or("Invalid game_id")?;
 
                 manager.player_join(game_id, player.clone())?;
-                println!("Player joined: name {} game_id {}", player.name, game_id);
+                info!("Player joined: name {} game_id {}", player.name, game_id);
             }
             Some("show_player") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
@@ -364,7 +365,7 @@ pub mod rollup {
                 let mut manager = manager.lock().await;
                 let report = manager.get_games_report();
 
-                println!("Report: {:}", report);
+                info!("Report: {:}", report);
 
                 return Ok(Some(report));
             }
@@ -424,7 +425,7 @@ pub mod rollup {
 
                 // Add table to manager
                 manager.add_table(table);
-                println!("Game started: game_id {} table_id {}", game_id, table_id);
+                info!("Game started: game_id {} table_id {}", game_id, table_id);
 
                 // let notice = json!({
                 //     "game_id": game_id,
@@ -467,16 +468,16 @@ pub mod rollup {
 
                     // let report = table.get_report_hand();
 
-                    println!("Report enviado do show_hands");
+                    info!("Report enviado do show_hands");
 
                     return Ok(Some(report));
                 }
 
-                println!("Finding score by table_id {} ...", table_id);
+                info!("Finding score by table_id {} ...", table_id);
                 if let Ok(scoreboard) = manager.get_scoreboard(table_id) {
                     let report = generate_report(scoreboard.to_json());
 
-                    println!("Report: {:}", report);
+                    info!("Report: {:}", report);
 
                     return Ok(Some(report));
                 }
@@ -530,7 +531,7 @@ pub mod rollup {
                 if !table.any_player_can_hit() {
                     manager.stop_game(&table_id).await?;
                 }
-                println!("Stand: {} game_id {}", name, game_id);
+                info!("Stand: {} game_id {}", name, game_id);
             }
             _ => Err("Invalid action")?,
         }

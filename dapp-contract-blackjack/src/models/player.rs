@@ -6,6 +6,7 @@ pub mod player {
         sync::Arc,
     };
 
+    use log::info;
     use serde_json::{json, Value};
     use tokio::sync::Mutex;
 
@@ -186,7 +187,7 @@ pub mod player {
             }
 
             self.is_standing = self.points >= 21;
-            println!(
+            info!(
                 "Round {}; points {}; card {:}; Player {};",
                 self.round, self.points, card, self.player.name
             );
