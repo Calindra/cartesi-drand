@@ -1,3 +1,7 @@
+## [0.3.0] - 2023-10-18
+### Changed
+- Major improvements with change from rollups to sunodo and minor like add logs levels
+
 ## [0.2.10] - 2023-10-18
 ### Changed
 - Release binaries for riscv64gc-unknown-linux-gnu, x86_64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf, aarch64-unknown-linux-gnu, i686-unknown-linux-gnu
