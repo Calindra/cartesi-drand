@@ -16,6 +16,7 @@ serde = { version = "1.0.171", features = ["derive"] }
 hex-literal = "0.4.1"
 serde_json = "1.0.102"
 sha3 = "0.10.8"
+log = { version = "0.4.20", features = ["std", "serde"] }
 
 [dev-dependencies]
 httptest = "0.15.4"

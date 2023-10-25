@@ -1,6 +1,7 @@
 pub mod util {
     use std::{error::Error, path::Path};
 
+    use log::info;
     use serde_json::Value;
     use tokio::fs::read_to_string;
 
@@ -53,7 +54,7 @@ pub mod util {
     }
 
     pub async fn load_env_from_json() -> Result<(), Box<dyn Error>> {
-        println!("Loading env from json");
+        info!("Loading env from json");
 
         let path = Path::new("drand.config.json");
         if !path.exists() {

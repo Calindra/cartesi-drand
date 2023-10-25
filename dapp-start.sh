@@ -1,5 +1,5 @@
-#!/bin/sh
-
+#!/bin/bash
+echo "Starting dapp-contract-blackjack"
 export MIDDLEWARE_HTTP_SERVER_URL=http://127.0.0.1:8080
 
 # Export default values
@@ -12,18 +12,18 @@ json_path="./convenience-middleware/drand.config.json"
 
 # Read from JSON
 if [ -f "$json_path" ]; then
-    echo "JSON file found"
+	echo "JSON file found"
 
-    if ! command -v jq >/dev/null; then
-	    echo "jq not found"
-	    exit 1
-    fi
+	if ! command -v jq >/dev/null; then
+		echo "jq not found"
+		exit 1
+	fi
 
-    while IFS="=" read -r key value; do
-	    export "$key"="$value"
-    done < <(jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" $json_path)
+	while IFS="=" read -r key value; do
+		export "$key"="$value"
+	done < <(jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]" $json_path)
 else
-   echo "JSON file not found, using default values"
+	echo "JSON file not found, using default values"
 fi
 
 mkdir -p data/address data/names

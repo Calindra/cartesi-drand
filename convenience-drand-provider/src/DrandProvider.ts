@@ -1,6 +1,6 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
 import Axios, { AxiosInstance } from "axios";
-import InputSender from "./cartesi/InputSender";
+import InputSender from "./cartesi/InputSender.ts";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
 
@@ -16,7 +16,7 @@ export class DrandProvider {
     inspectAxiosInstance: AxiosInstance;
 
     cartesiConfig: CartesiConfig = {
-        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:5005").href,
+        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080").href,
     }
 
     /**

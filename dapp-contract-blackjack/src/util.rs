@@ -5,6 +5,8 @@ pub struct Metadata {
 pub mod random {
     use std::{env, error::Error, ops::Range, time::Duration};
 
+    use log::{error, info};
+
     use hyper::{body, Body, Client, Request, StatusCode};
     use rand::prelude::*;
     use rand_pcg::Pcg64;
@@ -26,7 +28,7 @@ pub mod random {
 
         let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
 
-        println!("Calling random at {:}", &uri);
+        info!("Calling random at {:}", &uri);
 
         loop {
             let request = Request::builder()
@@ -38,11 +40,11 @@ pub mod random {
             let response = client.request(request).await?;
 
             let status_response = response.status();
-            println!("Receive random status {}", &status_response);
+            info!("Receive random status {}", &status_response);
 
             match status_response {
                 StatusCode::NOT_FOUND => {
-                    println!("No pending random request, trying again... uri = {}", uri);
+                    info!("No pending random request, trying again... uri = {}", uri);
                     time::sleep(Duration::from_secs(1)).await;
                 }
 
@@ -55,7 +57,7 @@ pub mod random {
                 code => {
                     // @todo doc this for production
                     // this is to avoid loop with inspect mode
-                    println!("Unknown status code {:}", code);
+                    info!("Unknown status code {:}", code);
                     return Err("Unexpected status code for random number".into());
                 }
             }
@@ -64,7 +66,7 @@ pub mod random {
 
     pub async fn retrieve_seed(timestamp: u64) -> Result<String, &'static str> {
         call_seed(timestamp).await.map_err(|error| {
-            eprintln!("Problem: {:}", error);
+            error!("Problem: {:}", error);
             "Cant get seed now"
         })
     }
@@ -77,6 +79,7 @@ pub mod random {
 pub mod json {
     use std::path::PathBuf;
 
+    use log::info;
     use serde_json::{json, Value};
     use tokio::{
         fs::{read_to_string, File},
@@ -124,7 +127,7 @@ pub mod json {
     }
 
     pub async fn load_json(path: &PathBuf) -> Result<Value, io::Error> {
-        println!("Trying read {:?}", path);
+        info!("Trying read {:?}", path);
 
         let contents = read_to_string(path).await?;
         let value = serde_json::from_str::<Value>(&contents)?;
@@ -162,6 +165,7 @@ pub mod pubkey {
     use std::{env, error::Error};
 
     use hyper::{Body, Client, Method, Request};
+    use log::{error, info};
 
     #[derive(serde::Deserialize, serde::Serialize)]
     #[allow(non_snake_case)]
@@ -197,7 +201,7 @@ pub mod pubkey {
 
         let uri = format!("{}/update_drand_config", &server_addr);
 
-        println!("Calling update key at {:}", &uri);
+        info!("Calling update key at {:}", &uri);
 
         let request = Request::builder()
             .method(Method::PUT)
@@ -208,11 +212,11 @@ pub mod pubkey {
         let response = client.request(request).await?;
 
         if response.status().is_success() {
-            println!("Update key success");
+            info!("Update key success");
             Ok(())
         } else {
             let msg = "Update key failed";
-            eprintln!("{}", msg);
+            error!("{}", msg);
             Err(msg.into())
         }
     }
@@ -229,4 +233,30 @@ pub mod env {
     }
 
     pub(crate) use check_if_dotenv_is_loaded;
+}
+
+pub mod logger {
+    use log::{set_boxed_logger, Level, Log, Metadata, Record, SetLoggerError};
+
+    pub struct SimpleLogger;
+
+    impl Log for SimpleLogger {
+        fn enabled(&self, metadata: &Metadata) -> bool {
+            metadata.level() <= Level::Info
+        }
+
+        fn log(&self, record: &Record) {
+            println!("{} - {}", record.level(), record.args());
+        }
+
+        fn flush(&self) {}
+    }
+
+    impl SimpleLogger {
+        pub fn init() -> Result<(), SetLoggerError> {
+            let logger = Box::new(SimpleLogger);
+            set_boxed_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Info))
+        }
+    }
+
 }
