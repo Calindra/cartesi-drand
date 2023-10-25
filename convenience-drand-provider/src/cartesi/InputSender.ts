@@ -1,7 +1,8 @@
 import {
+    Args,
     rollups,
 } from "./rollups.ts";
-import { ethers } from "ethers";
+import { ContractTransactionResponse, ethers } from "ethers";
 
 import {
     connect
@@ -18,7 +19,7 @@ export default class InputSender {
         this.config = config
     }
 
-    async createInputBox(args: any) {
+    async createInputBox(args: Args) {
         // connect to provider
         console.log(`connecting to ${this.config.rpc}`);
         const { provider, signer } = connect(this.config.rpc, this.config.mnemonic, this.config.accountIndex);
@@ -31,8 +32,9 @@ export default class InputSender {
             finalArgs.address = this.config.dappAddress
         }
         // connect to rollups,
+        let chainId = Number(network.chainId)
         const { inputContract } = await rollups(
-            network.chainId,
+            chainId,
             signer || provider,
             finalArgs
         );
@@ -53,24 +55,24 @@ export default class InputSender {
 
         const inputContract = await this.findOrCreateInputBox(args)
 
-        const signerAddress = await inputContract.signer.getAddress();
+        const signerAddress = await inputContract.getAddress();
         console.log(`using account "${signerAddress}"`);
 
         // use message from command line option, or from user prompt
         console.log(`sending "${payload}" to "${dappAddress}"`);
 
         // convert string to input bytes (if it's not already bytes-like)
-        const inputBytes = ethers.utils.isBytesLike(payload)
+        const inputBytes = ethers.isBytesLike(payload)
             ? payload
-            : ethers.utils.toUtf8Bytes(payload);
+            : ethers.toUtf8Bytes(payload);
 
 
         // send transaction
-        const tx = await inputContract.addInput(dappAddress, inputBytes);
+        const tx =  <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
         console.log(`transaction: ${tx.hash}`);
         console.log("waiting for confirmation...");
         const receipt = await tx.wait(1);
-        console.log('receipt.transactionHash', receipt.transactionHash)
+        console.log('receipt.transactionHash', receipt?.hash)
         console.log(new Date().toISOString())
     };
 }
