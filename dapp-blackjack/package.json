@@ -17,7 +17,7 @@
         "process": "^0.11.10"
     },
     "dependencies": {
-        "@cartesi/rollups": "^1.0.0",
+        "@cartesi/rollups": "^1.1.0",
         "@ethersproject/abi": "^5.7.0",
         "@ethersproject/providers": "^5.7.2",
         "autoprefixer": "^10.4.15",
