@@ -9,8 +9,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-import { Provider } from "@ethersproject/providers";
-import { Signer } from "ethers";
+import { Signer, Provider } from "ethers";
 import {
     IInputBox,
     IInputBox__factory,
@@ -22,12 +21,12 @@ import {
     IERC721Portal__factory,
 } from "@cartesi/rollups";
 import { Argv } from "yargs";
-import { networks } from "./networks";
-import { Deployment, Contract } from "./abi";
+import { networks } from "./networks.ts";
+import { Deployment, Contract } from "./abi.ts";
 import {
     readAddressFromFile,
     readAllContractsFromDir
-} from "./utils"
+} from "./utils.ts"
 
 export interface Args {
     dapp: string;
@@ -150,16 +149,16 @@ export const rollups = async (
     const inputContract = IInputBox__factory.connect(
         // InputBox.address,
         "0x59b22D57D4f067708AB0c00552767405926dc768",
-        provider
+        provider as any
     );
-    const outputContract = ICartesiDApp__factory.connect(address, provider);
+    const outputContract = ICartesiDApp__factory.connect(address, provider as any);
     const erc20Portal = IERC20Portal__factory.connect(
         ERC20Portal.address,
-        provider
+        provider as any
     );
     const erc721Portal = IERC721Portal__factory.connect(
         ERC721Portal.address,
-        provider
+        provider as any
     );
 
 

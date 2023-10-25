@@ -9,8 +9,7 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-import { JsonRpcProvider, Provider } from "@ethersproject/providers";
-import { ethers, Signer } from "ethers";
+import { ethers, Signer, JsonRpcProvider, Provider } from "ethers";
 import { Argv } from "yargs";
 
 export interface Args {
@@ -75,12 +74,15 @@ export const connect = (
     const provider = new JsonRpcProvider(rpc);
 
     // create signer to be used to send transactions
-    const signer = mnemonic
-        ? ethers.Wallet.fromMnemonic(
-              mnemonic,
-              `m/44'/60'/0'/0/${accountIndex ?? 0}`
-          ).connect(provider)
-        : undefined;
+    let signer: Connection['signer'] | undefined;
+
+    if (mnemonic) {
+        const path = `m/44'/60'/0'/0/${accountIndex ?? 0}`;
+        const mneu = ethers.Mnemonic.fromPhrase(mnemonic);
+        const hdNode = ethers.HDNodeWallet.fromMnemonic(mneu, path);
+
+        signer = hdNode.connect(provider);
+    }
 
     return {
         provider,

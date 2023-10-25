@@ -1,5 +1,6 @@
 pub mod routes {
     use actix_web::{get, post, put, web, HttpResponse, Responder};
+    use log::{error, info};
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
@@ -13,7 +14,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<DrandEnv>,
     ) -> impl Responder {
-        println!(
+        info!(
             "Received update_drand_config request from DApp version={}",
             ctx.version
         );
@@ -29,7 +30,7 @@ pub mod routes {
         // maybe can generate a error on write json but
         // already change the env in memory
         if let Err(e) = result {
-            eprintln!("Error updating drand config: {}", e);
+            error!("Error updating drand config: {}", e);
             return HttpResponse::BadRequest().finish();
         }
 
@@ -41,7 +42,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
     ) -> impl Responder {
-        println!(
+        info!(
             "Received finish request from DApp {:?} version={}",
             body, ctx.version
         );
@@ -62,7 +63,7 @@ pub mod routes {
             "advance_state" => {
                 ctx.set_inspecting(false).await;
                 if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
-                    println!("Is Drand!!! {:?}", beacon);
+                    info!("Is Drand!!! {:?}", beacon);
                     ctx.keep_newest_beacon(beacon);
                 }
             }
@@ -76,7 +77,7 @@ pub mod routes {
                 }
             }
             &_ => {
-                eprintln!("Unknown request type");
+                error!("Unknown request type");
             }
         };
 
@@ -94,7 +95,7 @@ pub mod routes {
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
     ) -> impl Responder {
-        println!(
+        info!(
             "Received random request from DApp timestamp={} version={}",
             query.timestamp, ctx.version
         );
@@ -104,7 +105,7 @@ pub mod routes {
             return HttpResponse::Ok().body(randomness);
         }
         if ctx.is_inspecting() {
-            println!("When inspecting we does not call finish from /random endpoint.");
+            error!("When inspecting we does not call finish from /random endpoint.");
             return HttpResponse::BadRequest().finish();
         }
         // call finish to halt and wait the beacon
@@ -119,7 +120,7 @@ pub mod routes {
                 ctx.store_input(&rollup_input).await;
 
                 if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
-                    println!("Is Drand!!! {:?}", beacon);
+                    info!("Is Drand!!! {:?}", beacon);
                     ctx.keep_newest_beacon(beacon);
                     let randomness = ctx.get_randomness_for_timestamp(query.timestamp);
                     if let Some(randomness) = randomness {
@@ -140,7 +141,7 @@ pub mod routes {
                 }
             }
             &_ => {
-                eprintln!("Unknown request type");
+                error!("Unknown request type");
             }
         };
         HttpResponse::NotFound().finish()

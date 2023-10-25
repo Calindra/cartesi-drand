@@ -2,8 +2,11 @@ import nock from "nock";
 
 
 export default class Helper {
+
+    static nockUrl = new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080");
+
     static nockInspectEndpointRandomIsNeeded() {
-        return nock('http://localhost:5005')
+        return nock(Helper.nockUrl)
             .get(/\/inspect\/pendingdrandbeacon/)
             .reply(200, {
                 "status": "Accepted",
@@ -16,7 +19,7 @@ export default class Helper {
             })
     }
     static nockInspectEndpointRandomIsntNeeded() {
-        return nock('http://localhost:5005')
+        return nock(Helper.nockUrl)
             .get(/\/inspect\/pendingdrandbeacon/)
             .reply(200, {
                 "status": "Accepted",
