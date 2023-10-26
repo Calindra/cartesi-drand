@@ -31,6 +31,11 @@ Install sunodo follow this steps: https://docs.sunodo.io/guide/introduction/inst
 Consult this for more info:
 https://docs.sunodo.io/guide/deploying/deploying-application
 
+If you have problem with sunodo, try run this command:
+```sh
+docker buildx create --name mybuilder --use --bootstrap --platform linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/386,linux/riscv64
+```
+
 ```mermaid
 sequenceDiagram
     autonumber
