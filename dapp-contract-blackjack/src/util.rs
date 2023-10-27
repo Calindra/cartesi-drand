@@ -246,7 +246,7 @@ pub mod logger {
         }
 
         fn log(&self, record: &Record) {
-            println!("{} - {}", record.level(), record.args());
+            println!("DAPP CONTRACT {} - {}", record.level(), record.args());
         }
 
         fn flush(&self) {}
