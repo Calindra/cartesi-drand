@@ -112,7 +112,7 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub(crate) async fn send_report(
+    pub async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;

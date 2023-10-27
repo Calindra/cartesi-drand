@@ -9,18 +9,18 @@ use crate::{
     rollup::{self, RollupInput},
 };
 
-pub(crate) fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
+pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
     rollup_input.decoded_inspect() == "pendingdrandbeacon"
 }
 
-pub(crate) async fn send_pending_beacon_report(app_state: &Data<AppState>) {
+pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
     let manager = app_state.input_buffer_manager.lock().await;
     let x = manager.pending_beacon_timestamp.get();
     let report = json!({ "payload": format!("{x:#x}") });
     let _ = rollup::server::send_report(report).await.unwrap();
 }
 
-pub(crate) fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
+pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     let key = std::env::var("DRAND_PUBLIC_KEY").unwrap();
     let payload = || {
         let payload = payload.trim_start_matches("0x");

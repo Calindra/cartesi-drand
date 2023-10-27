@@ -9,7 +9,7 @@ pub mod server {
 
     use super::{parse_input_from_response, RollupInput};
 
-    pub(crate) async fn send_finish(
+    pub async fn send_finish(
         status: &str,
     ) -> Result<Response<Body>, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
@@ -31,7 +31,7 @@ pub mod server {
         Ok(response)
     }
 
-    pub(crate) async fn send_finish_and_retrieve_input(status: &str) -> Option<RollupInput> {
+    pub async fn send_finish_and_retrieve_input(status: &str) -> Option<RollupInput> {
         let response = send_finish(status)
             .await
             .map_err(|err| {
@@ -52,7 +52,7 @@ pub mod server {
             .ok()
     }
 
-    pub(crate) async fn send_report(
+    pub async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr =
@@ -70,13 +70,13 @@ pub mod server {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct RollupInput {
-    pub(crate) data: RollupInputData,
-    pub(crate) request_type: String,
+pub struct RollupInput {
+    pub data: RollupInputData,
+    pub request_type: String,
 }
 
 impl RollupInput {
-    pub(crate) fn decoded_inspect(&self) -> String {
+    pub fn decoded_inspect(&self) -> String {
         let payload = self.data.payload.trim_start_matches("0x");
         let bytes: Vec<u8> = hex::decode(&payload).unwrap();
         let inspect_decoded = std::str::from_utf8(&bytes).unwrap();
@@ -85,21 +85,21 @@ impl RollupInput {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct RollupInputData {
-    pub(crate) payload: String,
-    pub(crate) metadata: Option<RollupInputDataMetadata>,
+pub struct RollupInputData {
+    pub payload: String,
+    pub metadata: Option<RollupInputDataMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct RollupInputDataMetadata {
-    pub(crate) block_number: u128,
-    pub(crate) epoch_index: u128,
-    pub(crate) input_index: u128,
-    pub(crate) msg_sender: String,
-    pub(crate) timestamp: u64,
+pub struct RollupInputDataMetadata {
+    pub block_number: u128,
+    pub epoch_index: u128,
+    pub input_index: u128,
+    pub msg_sender: String,
+    pub timestamp: u64,
 }
 
-pub(crate) async fn parse_input_from_response(
+pub async fn parse_input_from_response(
     response: Response<Body>,
 ) -> Result<RollupInput, Box<dyn std::error::Error>> {
     let body = hyper::body::to_bytes(response).await?;
@@ -108,7 +108,7 @@ pub(crate) async fn parse_input_from_response(
     Ok(result_deserialization)
 }
 
-pub(crate) fn has_input_inside_input(body: &String) -> bool {
+pub fn has_input_inside_input(body: &String) -> bool {
     let result_deserialization = serde_json::from_str::<RollupInput>(body);
     let rollup_input = match result_deserialization {
         Ok(input) => input,

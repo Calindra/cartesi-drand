@@ -43,7 +43,7 @@ pub mod player {
     #[derive(Debug)]
     pub struct Player {
         id: String,
-        pub(crate) name: String,
+        pub name: String,
     }
 
     impl Display for Player {

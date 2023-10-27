@@ -560,7 +560,7 @@ pub mod game {
             })
         }
 
-        pub(crate) async fn get_winner(&self) -> Option<Arc<Player>> {
+        pub async fn get_winner(&self) -> Option<Arc<Player>> {
             let mut winner: Option<Arc<Player>> = None;
             let mut winner_points = 0;
 
