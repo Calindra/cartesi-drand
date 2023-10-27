@@ -230,7 +230,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 <div className="row">
                     <div className="col-12">
                         <h1>
-                            Black Jack
+                            Blackjack
                         </h1>
                         <p>
                             Welcome <b>{name}</b>.
