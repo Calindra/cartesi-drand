@@ -367,6 +367,7 @@ export class Dapp extends React.Component<{}, DappState> {
         if (this.ONCE) {
             this.ONCE = false;
             this._attachNetworkChanges();
+            this._connectWallet();
         }
     }
 
