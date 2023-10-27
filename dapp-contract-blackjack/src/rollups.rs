@@ -387,6 +387,7 @@ pub mod rollup {
                 let table = game.round_start(2, metadata.timestamp)?;
                 let table = Arc::new(Mutex::from(table));
 
+                // Draw two cards for each player
                 for _ in 0..2 {
                     for player_id in players.iter() {
                         let table = table.clone();
