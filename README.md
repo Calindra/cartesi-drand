@@ -114,16 +114,21 @@ It will return 404 when the seed isn't available.
 
 ## How to run
 
-- add instructions to self hosted
-
-With sunodo instance :
+### Production mode
+With sunodo instance:
 ```shell
+sunodo build
+sunodo run
 ```
+
+### Host mode
 Start the middleware:
 ```shell
 cd convenience-middleware/
 cargo run
 ```
+
+### Drand Provider
 
 Start the drand-provider:
 ```shell
@@ -139,104 +144,4 @@ sleep 10
 curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 sleep 10
 curl http://localhost:8080/random?timestamp=${TIMESTAMP}
-```
-
-Run the DApp contract
-```shell
-export MIDDLEWARE_HTTP_SERVER_URL=http://localhost:8080
-cd dapp-contract-blackjack/
-cargo run
-```
-
-New player:
-```shell
-cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Bob\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Alice\"}}" --accountIndex 1
-```
-
-List games:
-```shell
-curl http://localhost:8080/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
-```
-
-Join game:
-```shell
-cd frontend-console
-export GAME_ID=1
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
-```
-
-Change middleware drand public key: (see env for account)
-```shell
-cd frontend-console
-export MIDDLEWARE_PUBLIC_KEY="0x83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a"
-yarn start input send --payload "{\"input\":{\"action\":\"update_drand\",\"public_key\":\"${MIDDLEWARE_PUBLIC_KEY}\", \"genesis_time\": 1692803367}}" --accountIndex 19
-```
-
-
-Start game:
-```shell
-cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"${GAME_ID}\"}}"
-```
-
-Hit:
-```shell
-cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
-```
-
-Stand:
-```shell
-cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"stand\",\"table_id\":\"${GAME_ID}\"}}" --accountIndex 1
-```
-
-Show hands:
-```shell
-cd frontend-console
-curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_hands%22%2C%22game_id%22%3A%22${GAME_ID}%22%7D%7D
-```
-
-Show winner:
-```shell
-export TABLE_ID=1
-yarn start input send --payload "{\"input\":{\"action\":\"show_winner\",\"table_id\":\"${TABLE_ID}\",\"game_id\":\"${GAME_ID}\"}}"
-
-curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_winner%22%2C%22game_id%22%3A%22${GAME_ID}%22%2C%22table_id%22%3A%22${TABLE_ID}%22%7D%7D
-```
-
-Call player timeout:
-```shell
-cd frontend-console
-yarn start input send --payload "{\"input\":{\"action\":\"timeout\",\"game_id\":\"${GAME_ID}\"}}"
-```
-All players who are delayed for more than 3 minutes will be in the `stand` state.
-
-## Production Mode
-
-
-```shell
-docker compose -f ../docker-compose.yml -f ./docker-compose.override.yml up
-```
-
-```shell
-yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Bob\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":\"Alice\"}}" --accountIndex 1
-
-echo "Join"
-export GAME_ID=1
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"join_game\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
-
-echo "Start"
-yarn start input send --payload "{\"input\":{\"action\":\"start_game\",\"game_id\":\"${GAME_ID}\"}}"
-
-echo "Hit"
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}"
-yarn start input send --payload "{\"input\":{\"action\":\"hit\",\"game_id\":\"${GAME_ID}\"}}" --accountIndex 1
 ```
