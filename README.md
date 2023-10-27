@@ -157,7 +157,7 @@ yarn start input send --payload "{\"input\":{\"action\":\"new_player\",\"name\":
 
 List games:
 ```shell
-curl http://localhost:5005/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
+curl http://localhost:8080/inspect/%7B%22input%22%3A%7B%22action%22%3A%22show_games%22%7D%7D
 ```
 
 Join game:

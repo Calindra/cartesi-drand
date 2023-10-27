@@ -43,6 +43,7 @@ export class DrandProvider {
     inputSender: InputSender
 
     constructor() {
+        console.log('inspectEndpoint base url', this.cartesiConfig.inspectEndpoint)
         this.inspectAxiosInstance = Axios.create({ baseURL: this.cartesiConfig.inspectEndpoint })
         this.drandClient = this.createDrandClient()
         this.inputSender = new InputSender(this.inputSenderConfig)
@@ -64,7 +65,7 @@ export class DrandProvider {
 
             if (Axios.isAxiosError(error)) {
                 console.error(
-                    "No connection to cartesi machine", error.code
+                    "No connection to cartesi machine", error
                 );
             } else {
                 console.error('Error on pending drand beacon', error);

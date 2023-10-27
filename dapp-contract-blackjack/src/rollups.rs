@@ -73,13 +73,16 @@ pub mod rollup {
         }
     }
 
-    #[cfg(not(target_arch = "riscv64"))]
-    async fn wait_func() {
-        warn!("waiting 5s...");
-        tokio::time::sleep(Duration::from_secs(5)).await;
+    
+    pub async fn wait_func() {
+        #[cfg(not(target_arch = "riscv64"))]
+        {
+            warn!("waiting 5s...");
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
     }
 
-    async fn handle_inspect(
+    pub async fn handle_inspect(
         manager: Arc<Mutex<Manager>>,
         server_addr: &str,
         body: Value,
@@ -98,7 +101,7 @@ pub mod rollup {
         Ok("accept")
     }
 
-    async fn handle_advance(
+    pub async fn handle_advance(
         manager: Arc<Mutex<Manager>>,
         server_addr: &str,
         body: Value,
@@ -110,10 +113,10 @@ pub mod rollup {
         info!("body {:}", &body);
         let run_async = std::env::var("RUN_GAME_ASYNC").unwrap_or("true".to_string());
 
-        if run_async == "true" {
-            sender.send(body).await?;
-            return Ok("accept");
-        }
+        // if run_async == "true" {
+        //     sender.send(body).await?;
+        //     return Ok("accept");
+        // }
 
         let result = handle_request_action(&body, manager, true).await?;
         if let Some(report) = result {
@@ -357,6 +360,7 @@ pub mod rollup {
                     "joined": joined,
                     "playing": playing,
                 });
+                info!("player {:?}", player);
                 let report = generate_report(player);
 
                 return Ok(Some(report));
@@ -365,7 +369,7 @@ pub mod rollup {
                 let mut manager = manager.lock().await;
                 let report = manager.get_games_report();
 
-                info!("Report: {:}", report);
+                info!("ShowGameReport: {:}", report);
 
                 return Ok(Some(report));
             }
