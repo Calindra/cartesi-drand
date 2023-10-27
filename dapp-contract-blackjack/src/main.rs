@@ -6,12 +6,8 @@ mod util;
 
 use dotenv::dotenv;
 use log::{error, info};
-use rollups::rollup::{handle_request_action, rollup};
-use serde_json::Value;
-use tokio::sync::{
-    mpsc::{Receiver, Sender},
-    Mutex,
-};
+use rollups::rollup::rollup;
+use tokio::sync::Mutex;
 
 use crate::{models::game::game::Manager, util::logger::SimpleLogger};
 
@@ -37,6 +33,5 @@ async fn main() {
     const SLOTS: usize = 10;
 
     let manager = Arc::new(Mutex::new(Manager::new_with_games(SLOTS)));
-
     start_rollup(manager).await;
 }

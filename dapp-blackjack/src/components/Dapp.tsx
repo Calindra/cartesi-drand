@@ -363,10 +363,13 @@ export class Dapp extends React.Component<{}, DappState> {
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
     }
 
-    componentDidMount(): void {
+    async componentDidMount() {
         if (this.ONCE) {
             this.ONCE = false;
             this._attachNetworkChanges();
+            if (await this.isConnected()) {
+                this._connectWallet();
+            }
         }
     }
 
@@ -394,6 +397,20 @@ export class Dapp extends React.Component<{}, DappState> {
     async _attachNetworkChanges() {
         window.ethereum?.on("chainChanged", (chainId) => this._handleChainChanged(chainId))
     }
+
+    async isConnected() {
+        const eth = window.ethereum;
+        if (!eth) {
+            console.error('No ethereum provider')
+            return;
+        }
+        const accounts = await eth.request({method: 'eth_accounts'});       
+        if (accounts.length) {
+           return true;
+        } else {
+           return false;
+        }
+     }
 
     async _connectWallet() {
         // This method is run when the user clicks the Connect. It connects the
@@ -463,7 +480,7 @@ export class Dapp extends React.Component<{}, DappState> {
         this.setState({ isLoading: false })
 
         // this._stopPollingData();
-        // this._startPollingData();
+        this._startPollingData();
     }
     private async _loadUserData(userAddress: string) {
         console.log('read player...')
