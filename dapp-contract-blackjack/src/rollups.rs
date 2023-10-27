@@ -1,6 +1,6 @@
 pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
-    use log::{error, info, warn, debug};
+    use log::{debug, error, info, warn};
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::{mpsc::Sender, Mutex};
@@ -20,60 +20,6 @@ pub mod rollup {
         },
     };
 
-    pub async fn rollup(
-        manager: Arc<Mutex<Manager>>,
-        sender: &Sender<Value>,
-    ) -> Result<(), Box<dyn Error>> {
-        info!("Starting loop...");
-
-        let client = Client::new();
-        // let https = HttpsConnector::new();
-        // let client = Client::builder().build::<_, hyper::Body>(https);
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
-
-        let mut status = "accept";
-        loop {
-            info!("Sending finish");
-            let response = json!({ "status": status.clone() });
-            let request = Request::builder()
-                .method(Method::POST)
-                .header(header::CONTENT_TYPE, "application/json")
-                .uri(format!("{}/finish", &server_addr))
-                .body(Body::from(response.to_string()))?;
-            let response = client.request(request).await?;
-            let status_response = response.status();
-            info!("Receive finish status {}", &status_response);
-
-            if status_response == StatusCode::ACCEPTED {
-                warn!("No pending rollup request, trying again");
-            } else {
-                let body = to_bytes(response).await?;
-                let body = from_utf8(&body)?;
-                let body = from_str::<Value>(body)?;
-
-                let request_type = body["request_type"]
-                    .as_str()
-                    .ok_or("request_type is not a string")?;
-
-                status = match request_type {
-                    "advance_state" => {
-                        handle_advance(manager.clone(), &server_addr[..], body, sender).await?
-                    }
-                    "inspect_state" => {
-                        handle_inspect(manager.clone(), &server_addr[..], body, sender).await?
-                    }
-                    &_ => {
-                        error!("Unknown request type");
-                        "reject"
-                    }
-                }
-            }
-            #[cfg(not(target_arch = "riscv64"))]
-            wait_func().await;
-        }
-    }
-
-    
     pub async fn wait_func() {
         #[cfg(not(target_arch = "riscv64"))]
         {
@@ -86,7 +32,6 @@ pub mod rollup {
         manager: Arc<Mutex<Manager>>,
         server_addr: &str,
         body: Value,
-        sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
         info!("Handling inspect");
 
@@ -105,19 +50,9 @@ pub mod rollup {
         manager: Arc<Mutex<Manager>>,
         server_addr: &str,
         body: Value,
-        sender: &Sender<Value>,
     ) -> Result<&'static str, Box<dyn Error>> {
         info!("Handling advance");
-
-        // body {"data":{"metadata":{"block_number":321,"epoch_index":0,"input_index":0,"msg_sender":"0x70997970c51812dc3a010c7d01b50e0d17dc79c8","timestamp":1694789355},"payload":"0x7b22696e707574223a7b22616374696f6e223a226e65775f706c61796572222c226e616d65223a22416c696365227d7d"},"request_type":"advance_state"}
         info!("body {:}", &body);
-        let run_async = std::env::var("RUN_GAME_ASYNC").unwrap_or("true".to_string());
-
-        // if run_async == "true" {
-        //     sender.send(body).await?;
-        //     return Ok("accept");
-        // }
-
         let result = handle_request_action(&body, manager, true).await?;
         if let Some(report) = result {
             send_report(report).await?;
@@ -173,30 +108,25 @@ pub mod rollup {
 
     async fn async_pick(table: Arc<Mutex<Table>>, player_id: String, timestamp: u64) {
         info!("Player calling: {}", player_id);
+        // start game stop here
+        let seed = retrieve_seed(timestamp).await;
 
-        let mut pick_cards = 2;
+        if seed.is_err() {
+            // here in prod mode we got an infinite loop, so we need a break when an inspect arrives.
+            // after the inspect ends the cartesi machine do a time travel to the retrieve_seed point.
+            return;
+        }
 
-        while pick_cards > 0 {
-            let seed = retrieve_seed(timestamp).await;
+        let seed = seed.unwrap();
 
-            if seed.is_err() {
-                // here in prod mode we got an infinite loop
-                break;
-            }
+        let result = table
+            .lock()
+            .await
+            .hit_player(&player_id, timestamp, &seed)
+            .await;
 
-            let seed = seed.unwrap();
-
-            let result = table
-                .lock()
-                .await
-                .hit_player(&player_id, timestamp, &seed)
-                .await;
-
-            if let Err(err) = result {
-                error!("Pick error: {:}", err);
-            } else {
-                pick_cards -= 1;
-            }
+        if let Err(err) = result {
+            error!("Pick error: {:}", err);
         }
     }
 
@@ -406,22 +336,14 @@ pub mod rollup {
 
                 // Generate table from game
                 let table = game.round_start(2, metadata.timestamp)?;
-
-                let mut wait_players = Vec::with_capacity(players.len());
-
                 let table = Arc::new(Mutex::from(table));
 
-                for player_id in players.iter() {
-                    let table = table.clone();
-                    let player_id = player_id.to_owned();
-
-                    wait_players.push(tokio::spawn(async move {
+                for _ in 0..2 {
+                    for player_id in players.iter() {
+                        let table = table.clone();
+                        let player_id = player_id.to_owned();
                         async_pick(table.clone(), player_id, timestamp).await;
-                    }));
-                }
-
-                for p in wait_players {
-                    p.await.ok().ok_or("Could not await")?;
+                    }
                 }
 
                 let table = Arc::into_inner(table).ok_or("Could not get table")?;
@@ -431,15 +353,6 @@ pub mod rollup {
                 // Add table to manager
                 manager.add_table(table);
                 info!("Game started: game_id {} table_id {}", game_id, table_id);
-
-                // let notice = json!({
-                //     "game_id": game_id,
-                //     "table_id": table_id,
-                //     "players": players,
-                // });
-
-                // let notice = generate_report(notice);
-                // send_notice(notice).await.or(Err("Could not send notice"))?;
             }
             Some("stop_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
