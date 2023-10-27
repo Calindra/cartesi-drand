@@ -124,9 +124,13 @@ async fn main() {
 
             status = match request_type {
                 "advance_state" => {
-                    handle_advance(manager.clone(), &server_addr[..], body, &sender_rollup)
-                        .await
-                        .unwrap()
+                    let result =
+                        handle_advance(manager.clone(), &server_addr[..], body, &sender_rollup)
+                            .await;
+                    match result {
+                        Ok(resp) => resp,
+                        Err(_) => "reject",
+                    }
                 }
                 "inspect_state" => {
                     handle_inspect(manager.clone(), &server_addr[..], body, &sender_rollup)
