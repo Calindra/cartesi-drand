@@ -455,6 +455,7 @@ pub mod rollup {
                     let hands = table.generate_hands();
                     let report = generate_report(hands);
 
+                    // cache
                     // let report = table.get_report_hand();
 
                     info!("Report enviado do show_hands");
