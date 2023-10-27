@@ -157,30 +157,25 @@ pub mod rollup {
 
     async fn async_pick(table: Arc<Mutex<Table>>, player_id: String, timestamp: u64) {
         info!("Player calling: {}", player_id);
+        // start game stop here
+        let seed = retrieve_seed(timestamp).await;
 
-        let mut pick_cards = 2;
+        if seed.is_err() {
+            // here in prod mode we got an infinite loop, so we need a break when an inspect arrives.
+            // after the inspect ends the cartesi machine do a time travel to the retrieve_seed point.
+            return;
+        }
 
-        while pick_cards > 0 {
-            let seed = retrieve_seed(timestamp).await;
+        let seed = seed.unwrap();
 
-            if seed.is_err() {
-                // here in prod mode we got an infinite loop
-                break;
-            }
+        let result = table
+            .lock()
+            .await
+            .hit_player(&player_id, timestamp, &seed)
+            .await;
 
-            let seed = seed.unwrap();
-
-            let result = table
-                .lock()
-                .await
-                .hit_player(&player_id, timestamp, &seed)
-                .await;
-
-            if let Err(err) = result {
-                error!("Pick error: {:}", err);
-            } else {
-                pick_cards -= 1;
-            }
+        if let Err(err) = result {
+            error!("Pick error: {:}", err);
         }
     }
 
@@ -390,22 +385,14 @@ pub mod rollup {
 
                 // Generate table from game
                 let table = game.round_start(2, metadata.timestamp)?;
-
-                let mut wait_players = Vec::with_capacity(players.len());
-
                 let table = Arc::new(Mutex::from(table));
 
-                for player_id in players.iter() {
-                    let table = table.clone();
-                    let player_id = player_id.to_owned();
-
-                    wait_players.push(tokio::spawn(async move {
+                for _ in 0..2 {
+                    for player_id in players.iter() {
+                        let table = table.clone();
+                        let player_id = player_id.to_owned();
                         async_pick(table.clone(), player_id, timestamp).await;
-                    }));
-                }
-
-                for p in wait_players {
-                    p.await.ok().ok_or("Could not await")?;
+                    }
                 }
 
                 let table = Arc::into_inner(table).ok_or("Could not get table")?;
@@ -415,15 +402,6 @@ pub mod rollup {
                 // Add table to manager
                 manager.add_table(table);
                 info!("Game started: game_id {} table_id {}", game_id, table_id);
-
-                // let notice = json!({
-                //     "game_id": game_id,
-                //     "table_id": table_id,
-                //     "players": players,
-                // });
-
-                // let notice = generate_report(notice);
-                // send_notice(notice).await.or(Err("Could not send notice"))?;
             }
             Some("stop_game") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;

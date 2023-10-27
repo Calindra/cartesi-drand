@@ -1,7 +1,11 @@
 {
     "cSpell.words": [
         "cartesi",
+        "dotenv",
         "drand",
-        "pendingdrandbeacon"
+        "pendingdrandbeacon",
+        "rollup",
+        "rollups",
+        "tokio"
     ]
 }
