@@ -180,7 +180,8 @@ pub mod rollup {
             let seed = retrieve_seed(timestamp).await;
 
             if seed.is_err() {
-                continue;
+                // here in prod mode we got an infinite loop
+                break;
             }
 
             let seed = seed.unwrap();
