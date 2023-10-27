@@ -1,4 +1,4 @@
-use std::{env, mem::size_of, str::from_utf8, sync::Arc};
+use std::{env, sync::Arc};
 
 mod models;
 mod rollups;
