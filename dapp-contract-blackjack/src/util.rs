@@ -224,6 +224,7 @@ pub mod pubkey {
 
 #[cfg(test)]
 pub mod env {
+    #[allow(unused_macros)]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
             let is_env_loaded = dotenv::dotenv().ok().is_some();
@@ -231,7 +232,7 @@ pub mod env {
             is_env_loaded
         }};
     }
-
+    #[allow(unused_imports)]
     pub(crate) use check_if_dotenv_is_loaded;
 }
 
@@ -246,7 +247,7 @@ pub mod logger {
         }
 
         fn log(&self, record: &Record) {
-            println!("{} - {}", record.level(), record.args());
+            println!("DAPP CONTRACT {} - {}", record.level(), record.args());
         }
 
         fn flush(&self) {}
@@ -258,5 +259,4 @@ pub mod logger {
             set_boxed_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Info))
         }
     }
-
 }

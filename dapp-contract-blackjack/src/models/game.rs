@@ -6,7 +6,7 @@ pub mod game {
         },
         util::{json::generate_report, random::generate_id},
     };
-    use log::{debug, info};
+    use log::{info};
     use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
@@ -52,7 +52,7 @@ pub mod game {
             }
         }
 
-        fn generate_games_report(games: &Vec<Game>) -> Value {
+        pub fn generate_games_report(games: &Vec<Game>) -> Value {
             let games = games
                 .iter()
                 .map(|game| {
@@ -66,21 +66,6 @@ pub mod game {
             generate_report(json!({
                 "games": games,
             }))
-        }
-
-        pub fn get_games_report(&mut self) -> Value {
-            if let Some(report) = &self.games_report_cache {
-                return report.clone();
-            }
-
-            let report = Manager::generate_games_report(&self.games);
-            self.games_report_cache = Some(report.clone());
-            report
-        }
-
-        pub fn regenerate_games_report(&mut self) {
-            self.games_report_cache = None;
-            self.get_games_report();
         }
 
         pub fn add_player(&mut self, player: Arc<Player>) -> Result<(), &'static str> {
@@ -98,14 +83,12 @@ pub mod game {
 
         pub fn remove_player_by_id(&mut self, id: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.players.remove(id).ok_or("Player not found.")?;
-            self.regenerate_games_report();
             Ok(player)
         }
 
         pub fn get_player_ref(&mut self, address: &str) -> Result<Arc<Player>, &'static str> {
             let player = self.remove_player_by_id(address)?;
             self.players.insert(player.get_id(), player.clone());
-            self.regenerate_games_report();
             Ok(player)
         }
 
@@ -126,7 +109,6 @@ pub mod game {
 
         pub fn first_game_available_owned(&mut self) -> Result<Game, &'static str> {
             let first = self.games.pop().ok_or("No games available.")?;
-            self.regenerate_games_report();
             Ok(first)
         }
 
@@ -154,7 +136,6 @@ pub mod game {
             }
 
             let game = self.games.swap_remove(index);
-            self.regenerate_games_report();
             Ok(game)
         }
 
@@ -193,7 +174,6 @@ pub mod game {
 
         pub fn add_game(&mut self, game: Game) {
             self.games.push(game);
-            self.regenerate_games_report();
         }
 
         pub fn add_table(&mut self, table: Table) {
@@ -580,7 +560,7 @@ pub mod game {
             })
         }
 
-        pub(crate) async fn get_winner(&self) -> Option<Arc<Player>> {
+        pub async fn get_winner(&self) -> Option<Arc<Player>> {
             let mut winner: Option<Arc<Player>> = None;
             let mut winner_points = 0;
 

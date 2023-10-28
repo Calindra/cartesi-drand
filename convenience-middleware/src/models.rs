@@ -18,32 +18,32 @@ pub mod models {
     }
 
     #[derive(Serialize)]
-    pub(crate) struct Item {
-        pub(crate) request: String,
+    pub struct Item {
+        pub request: String,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
-    pub(crate) struct RequestRollups {
+    pub struct RequestRollups {
         status: String,
     }
 
-    pub(crate) struct Flag {
-        pub(crate) is_holding: bool,
+    pub struct Flag {
+        pub is_holding: bool,
     }
 
     #[derive(Deserialize)]
-    pub(crate) struct Timestamp {
-        pub(crate) timestamp: u64,
+    pub struct Timestamp {
+        pub timestamp: u64,
     }
 
-    pub(crate) struct Beacon {
-        pub(crate) timestamp: u64,
-        pub(crate) round: u64,
-        pub(crate) randomness: String,
+    pub struct Beacon {
+        pub timestamp: u64,
+        pub round: u64,
+        pub randomness: String,
     }
 
     impl Beacon {
-        pub(crate) fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
+        pub fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
             Some(Beacon {
                 timestamp,
                 round: drand_beacon.round,
@@ -53,37 +53,37 @@ pub mod models {
     }
 
     #[derive(Serialize, Deserialize, Debug)]
-    pub(crate) struct PayloadWithBeacon {
-        pub(crate) beacon: DrandBeacon,
+    pub struct PayloadWithBeacon {
+        pub beacon: DrandBeacon,
     }
 
     #[derive(Serialize, Deserialize, Debug)]
-    pub(crate) struct DrandBeacon {
-        pub(crate) round: u64,
-        pub(crate) signature: String,
-        pub(crate) randomness: String,
+    pub struct DrandBeacon {
+        pub round: u64,
+        pub signature: String,
+        pub randomness: String,
     }
 
-    pub(crate) struct InputBufferManager {
-        pub(crate) messages: VecDeque<Item>,
-        pub(crate) flag_to_hold: Flag,
-        pub(crate) request_count: Cell<usize>,
-        pub(crate) last_beacon: Cell<Option<Beacon>>,
-        pub(crate) pending_beacon_timestamp: Cell<u64>,
-        pub(crate) randomness_salt: Cell<u64>,
-        pub(crate) is_inspecting: bool,
+    pub struct InputBufferManager {
+        pub messages: VecDeque<Item>,
+        pub flag_to_hold: Flag,
+        pub request_count: Cell<usize>,
+        pub last_beacon: Cell<Option<Beacon>>,
+        pub pending_beacon_timestamp: Cell<u64>,
+        pub randomness_salt: Cell<u64>,
+        pub is_inspecting: bool,
     }
 
-    pub(crate) struct AppState {
-        pub(crate) input_buffer_manager: Arc<Mutex<InputBufferManager>>,
-        pub(crate) drand_period: u64,
-        pub(crate) drand_genesis_time: u64,
-        pub(crate) safe_seconds: u64,
-        pub(crate) version: String,
+    pub struct AppState {
+        pub input_buffer_manager: Arc<Mutex<InputBufferManager>>,
+        pub drand_period: u64,
+        pub drand_genesis_time: u64,
+        pub safe_seconds: u64,
+        pub version: String,
     }
 
     impl AppState {
-        pub(crate) fn new() -> AppState {
+        pub fn new() -> AppState {
             let manager = InputBufferManager::default();
             let drand_period = std::env::var("DRAND_PERIOD")
                 .expect("Missing env DRAND_PERIOD")
@@ -106,7 +106,7 @@ pub mod models {
                 version: version.unwrap_or("unknown").to_string(),
             }
         }
-        pub(crate) fn get_randomness_for_timestamp(&self, query_timestamp: u64) -> Option<String> {
+        pub fn get_randomness_for_timestamp(&self, query_timestamp: u64) -> Option<String> {
             let mut manager = match self.input_buffer_manager.try_lock() {
                 Ok(manager) => manager,
                 Err(_) => return None,
@@ -141,7 +141,7 @@ pub mod models {
                 }
             }
         }
-        pub(crate) fn keep_newest_beacon(&self, drand_beacon: DrandBeacon) {
+        pub fn keep_newest_beacon(&self, drand_beacon: DrandBeacon) {
             let beacon_time = (drand_beacon.round * self.drand_period) + self.drand_genesis_time;
             info!(
                 "Calculated beacon time {} for round {}",
@@ -165,20 +165,20 @@ pub mod models {
                     .set(Beacon::some_from(&drand_beacon, beacon_time));
             }
         }
-        pub(crate) async fn store_input(&self, rollup_input: &RollupInput) {
+        pub async fn store_input(&self, rollup_input: &RollupInput) {
             let mut manager = self.input_buffer_manager.lock().await;
             let request = serde_json::to_string(rollup_input).unwrap();
             manager.messages.push_back(Item { request });
         }
-        pub(crate) async fn consume_input(&self) -> Option<Item> {
+        pub async fn consume_input(&self) -> Option<Item> {
             let mut manager = self.input_buffer_manager.lock().await;
             return manager.consume_input();
         }
-        pub(crate) async fn set_inspecting(&self, value: bool) {
+        pub async fn set_inspecting(&self, value: bool) {
             let mut manager = self.input_buffer_manager.lock().await;
             manager.is_inspecting = value;
         }
-        pub(crate) fn is_inspecting(&self) -> bool {
+        pub fn is_inspecting(&self) -> bool {
             #[cfg(target_arch = "riscv64")]
             {
                 let manager = match self.input_buffer_manager.try_lock() {
@@ -196,11 +196,11 @@ pub mod models {
             Flag { is_holding: false }
         }
 
-        pub(crate) fn hold_up(&mut self) {
+        pub fn hold_up(&mut self) {
             self.is_holding = true;
         }
 
-        pub(crate) fn release(&mut self) {
+        pub fn release(&mut self) {
             self.is_holding = false;
         }
     }
@@ -220,7 +220,7 @@ pub mod models {
     }
 
     impl InputBufferManager {
-        pub(crate) fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
+        pub fn set_pending_beacon_timestamp(&mut self, timestamp: u64) {
             let current = self.pending_beacon_timestamp.take();
             // mantendo o mais recente para economizar transacoes
             if current == 0 || current < timestamp {
@@ -232,7 +232,7 @@ pub mod models {
             }
         }
 
-        pub(crate) fn consume_input(&mut self) -> Option<Item> {
+        pub fn consume_input(&mut self) -> Option<Item> {
             info!("Consuming input");
             let buffer = self.messages.borrow_mut();
 
@@ -245,7 +245,7 @@ pub mod models {
             data
         }
 
-        pub(crate) fn await_beacon(&mut self) {
+        pub fn await_beacon(&mut self) {
             info!("Awaiting beacon");
 
             self.flag_to_hold.hold_up();

@@ -1,9 +1,9 @@
 pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
-    use log::{debug, error, info, warn};
+    use log::{error, info, warn};
     use serde_json::{from_str, json, Value};
     use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
-    use tokio::sync::{mpsc::Sender, Mutex};
+    use tokio::sync::Mutex;
 
     use crate::{
         models::{
@@ -20,6 +20,54 @@ pub mod rollup {
         },
     };
 
+    pub async fn rollup(manager: Arc<Mutex<Manager>>) -> Result<(), Box<dyn Error>> {
+        info!("Starting loop...");
+
+        let client = Client::new();
+        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+
+        let mut status = "accept";
+        loop {
+            info!("Sending finish");
+            let response = json!({ "status": status });
+            let request = Request::builder()
+                .method(Method::POST)
+                .header(header::CONTENT_TYPE, "application/json")
+                .uri(format!("{}/finish", &server_addr))
+                .body(Body::from(response.to_string()))?;
+            let response = client.request(request).await?;
+            let status_response = response.status();
+            info!("Receive finish status {}", &status_response);
+
+            if status_response == StatusCode::ACCEPTED {
+                warn!("No pending rollup request, trying again");
+            } else {
+                let body = to_bytes(response).await?;
+                let body = from_utf8(&body)?;
+                let body = from_str::<Value>(body)?;
+
+                let request_type = body["request_type"]
+                    .as_str()
+                    .ok_or("request_type is not a string")?;
+
+                status = match request_type {
+                    "advance_state" => {
+                        handle_advance(manager.clone(), &server_addr[..], body).await?
+                    }
+                    "inspect_state" => {
+                        handle_inspect(manager.clone(), &server_addr[..], body).await?
+                    }
+                    &_ => {
+                        error!("Unknown request type");
+                        "reject"
+                    }
+                }
+            }
+            #[cfg(not(target_arch = "riscv64"))]
+            wait_func().await;
+        }
+    }
+
     pub async fn wait_func() {
         #[cfg(not(target_arch = "riscv64"))]
         {
@@ -28,13 +76,7 @@ pub mod rollup {
         }
     }
 
-    pub async fn handle_inspect(
-        manager: Arc<Mutex<Manager>>,
-        server_addr: &str,
-        body: Value,
-    ) -> Result<&'static str, Box<dyn Error>> {
-        info!("Handling inspect");
-
+    async fn handle_body(manager: Arc<Mutex<Manager>>, body: &Value) -> Result<(), Box<dyn Error>> {
         info!("body {:}", &body);
 
         let result = handle_request_action(&body, manager, true).await?;
@@ -42,32 +84,39 @@ pub mod rollup {
         if let Some(report) = result {
             send_report(report).await?;
         }
+
+        Ok(())
+    }
+
+    pub async fn handle_inspect(
+        manager: Arc<Mutex<Manager>>,
+        _server_addr: &str,
+        body: Value,
+    ) -> Result<&'static str, Box<dyn Error>> {
+        info!("Handling inspect");
+
+        handle_body(manager, &body).await?;
 
         Ok("accept")
     }
 
     pub async fn handle_advance(
         manager: Arc<Mutex<Manager>>,
-        server_addr: &str,
+        _server_addr: &str,
         body: Value,
     ) -> Result<&'static str, Box<dyn Error>> {
         info!("Handling advance");
-        info!("body {:}", &body);
-        let result = handle_request_action(&body, manager, true).await?;
-        if let Some(report) = result {
-            send_report(report).await?;
-        }
+
+        handle_body(manager, &body).await?;
 
         Ok("accept")
     }
 
-    pub(crate) async fn send_report(
+    pub async fn send_report(
         report: Value,
     ) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
-        // let https = HttpsConnector::new();
-        // let client = Client::builder().build::<_, hyper::Body>(https);
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
@@ -297,8 +346,8 @@ pub mod rollup {
                 return Ok(Some(report));
             }
             Some("show_games") => {
-                let mut manager = manager.lock().await;
-                let report = manager.get_games_report();
+                let manager = manager.lock().await;
+                let report = Manager::generate_games_report(&manager.games);
 
                 info!("ShowGameReport: {:}", report);
 
@@ -338,6 +387,7 @@ pub mod rollup {
                 let table = game.round_start(2, metadata.timestamp)?;
                 let table = Arc::new(Mutex::from(table));
 
+                // Draw two cards for each player
                 for _ in 0..2 {
                     for player_id in players.iter() {
                         let table = table.clone();
@@ -384,6 +434,7 @@ pub mod rollup {
                     let hands = table.generate_hands();
                     let report = generate_report(hands);
 
+                    // cache
                     // let report = table.get_report_hand();
 
                     info!("Report enviado do show_hands");

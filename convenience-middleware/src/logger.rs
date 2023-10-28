@@ -8,7 +8,7 @@ impl log::Log for SimpleLogger {
     }
 
     fn log(&self, record: &Record) {
-        println!("{} - {}", record.level(), record.args());
+        println!("MIDDLEWARE {} - {}", record.level(), record.args());
     }
 
     fn flush(&self) {}
