@@ -173,19 +173,10 @@ export class Dapp extends React.Component<{}, DappState> {
 
         const actions = [
             {
-                id: 'show_games',
-                label: 'Show Games',
-                action: this._showGames.bind(this),
-                disabled: gamePlaying,
-            }, {
                 id: 'new_player',
                 label: 'New Player',
                 action: this._newPlayer.bind(this),
                 disabled: !noPlayerSelected
-            }, {
-                id: "show_player",
-                label: "Show Player",
-                action: this._showPlayer.bind(this),
             }, {
                 id: 'join_game',
                 label: 'Join Game',
@@ -196,14 +187,33 @@ export class Dapp extends React.Component<{}, DappState> {
                 label: 'Start Game',
                 action: this._startGame.bind(this),
                 disabled: noGameSelected || noPlayerSelected || gamePlaying || noPlayerJoined,
-            }, {
+            },
+        ]
+
+        if (this.DEBUG) {
+            actions.push({
+                id: 'show_games',
+                label: 'Show Games',
+                action: async () => {
+                    this._showGames.bind(this)
+                },
+                disabled: gamePlaying,
+            })
+            actions.push({
+                id: "show_player",
+                label: "Show Player",
+                action: async () => {
+                    this._showPlayer.bind(this);
+                },
+                disabled: false
+            })
+            actions.push({
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
                 disabled: noGameSelected || noPlayerSelected || noPlayerJoined || !gamePlaying,
-            },
-        ]
-
+            })
+        }
 
         let name: string | undefined;
         if (this.state.player) {
@@ -269,11 +279,15 @@ export class Dapp extends React.Component<{}, DappState> {
 
                 <div className="row">
                     <div className="col-12">
+                        {this.state.gamePlaying && !this.state.hands?.players?.length && (
+                            <div>Loading...</div>
+                        )}
                         <GamePlay
                             hands={this.state.hands} currentPlayerName={this.state.player?.name}
                             hit={() => this._chooseHit()}
                             stand={() => this._chooseStand()}
                             scoreboard={this.state.scoreboard}
+                            newGame={() => location.reload()}
                         />
                     </div>
                     {/* http://localhost:1234/?debug */}
@@ -351,7 +365,7 @@ export class Dapp extends React.Component<{}, DappState> {
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
-        this._showPlayer()
+        this._showPlayer({ loading: false })
     }
 
     async componentDidMount() {
@@ -545,15 +559,15 @@ export class Dapp extends React.Component<{}, DappState> {
         this.setState({ isLoading: false })
     }
 
-    async _showPlayer() {
+    async _showPlayer({ loading = true }: { loading: boolean }) {
         const address = this.state.selectedAddress;
         if (!address) {
             console.error('No selected address')
             return;
         }
-        this.setState({ isLoading: true });
+        loading ?? this.setState({ isLoading: true });
         await this._loadUserData(address);
-        this.setState({ isLoading: false });
+        loading ?? this.setState({ isLoading: false });
     }
 
     async _joinGame() {
@@ -573,11 +587,6 @@ export class Dapp extends React.Component<{}, DappState> {
             this.setState({ isLoading: false })
             return;
         }
-        /**
-         * Maybe input still in process
-         */
-        await Promise.all([this._loadUserData(address),
-            , this._readGames()]);
         this.setState({ gameJoined: true, isLoading: false });
         if (!this.isPollingData()) {
             this._startPollingData();
@@ -597,6 +606,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 // We run it once immediately so we don't have to wait for it
                 await this._showHands();
             } else {
+                await this._readGames();
                 const address = this.state.selectedAddress;
                 if (address) {
                     await this._loadUserData(address);

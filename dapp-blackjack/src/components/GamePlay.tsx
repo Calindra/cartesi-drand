@@ -1,6 +1,7 @@
 import { PlayerHand } from "../models/PlayerHand";
 import { Scoreboard } from "../models/Scoreboard";
 import { Card } from "./cards/Card";
+import { CardBack } from "./cards/CardBack";
 import { SuitType } from "./cards/Suit";
 
 interface Props {
@@ -9,13 +10,24 @@ interface Props {
     scoreboard?: Scoreboard,
     hit: () => void,
     stand: () => void,
+    newGame: () => void,
 }
 
-export function GamePlay({ hands, scoreboard, currentPlayerName, hit, stand }: Props) {
+export function GamePlay({ hands, scoreboard, currentPlayerName, hit, stand, newGame }: Props) {
     return (
         <div style={{ marginTop: '20px' }}>
             {scoreboard && (
-                <div style={{ marginBottom: '10px', fontSize: '19px' }}>Winner: {scoreboard.winner}</div>
+                <>
+                    <div style={{ marginBottom: '10px', fontSize: '19px' }}>Winner: {scoreboard.winner}</div>
+                    <button
+                        className="p-2 rounded cursor-pointer bg-red-600 hover:bg-red-800 transition disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
+                        onClick={newGame}
+                        type="button"
+                        style={{ marginRight: '9px' }}
+                    >
+                        New Game
+                    </button>
+                </>
             )}
             <div style={{ display: 'flex' }}>
                 {hands?.players?.map(playerHand => {
@@ -30,7 +42,11 @@ export function GamePlay({ hands, scoreboard, currentPlayerName, hit, stand }: P
                                         </div>
                                     )
                                 })}
-
+                                {!playerHand.hand?.length && (
+                                    <div style={{ position: 'absolute', rotate: `-3deg`, translate: `6px 19px` }}>
+                                        <CardBack />
+                                    </div>
+                                )}
                             </div>
                             {currentPlayerName === playerHand.name && (
                                 <div>
