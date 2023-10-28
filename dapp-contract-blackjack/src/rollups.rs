@@ -90,7 +90,7 @@ pub mod rollup {
 
     pub async fn handle_inspect(
         manager: Arc<Mutex<Manager>>,
-        server_addr: &str,
+        _server_addr: &str,
         body: Value,
     ) -> Result<&'static str, Box<dyn Error>> {
         info!("Handling inspect");
@@ -102,7 +102,7 @@ pub mod rollup {
 
     pub async fn handle_advance(
         manager: Arc<Mutex<Manager>>,
-        server_addr: &str,
+        _server_addr: &str,
         body: Value,
     ) -> Result<&'static str, Box<dyn Error>> {
         info!("Handling advance");

@@ -6,7 +6,7 @@ pub mod game {
         },
         util::{json::generate_report, random::generate_id},
     };
-    use log::{debug, info};
+    use log::{info};
     use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;

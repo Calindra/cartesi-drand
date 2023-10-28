@@ -15,7 +15,7 @@ pub mod server {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
         info!("Sending finish to {}", &server_addr);
         let client = hyper::Client::new();
-        let response = json!({"status" : status.clone()});
+        let response = json!({"status" : status});
         let request = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
