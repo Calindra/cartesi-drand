@@ -177,7 +177,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 label: 'Show Games',
                 action: this._showGames.bind(this),
                 disabled: gamePlaying,
-            },{
+            }, {
                 id: 'new_player',
                 label: 'New Player',
                 action: this._newPlayer.bind(this),
@@ -186,7 +186,7 @@ export class Dapp extends React.Component<{}, DappState> {
                 id: "show_player",
                 label: "Show Player",
                 action: this._showPlayer.bind(this),
-            },{
+            }, {
                 id: 'join_game',
                 label: 'Join Game',
                 action: this._joinGame.bind(this),
@@ -238,12 +238,12 @@ export class Dapp extends React.Component<{}, DappState> {
                         {gameIdSelected !== null && <><p>
                             Game: <b>{gameIdSelected}</b>.
                         </p>
-                        <p>
-                            Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
-                        </p>
-                        <p>
-                            Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
-                        </p>
+                            <p>
+                                Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
+                            </p>
+                            <p>
+                                Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
+                            </p>
                         </>}
                         <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
                             actions.map(({ id, label, action, disabled }) => {
@@ -280,7 +280,7 @@ export class Dapp extends React.Component<{}, DappState> {
                     <div className="col-12">
                         <code>
                             {JSON.stringify(this.state.hands || {})}
-                            </code>
+                        </code>
                     </div>
                     <div className="col-12">
                         {this.state.hands?.players?.map(playerHand => {
@@ -312,7 +312,11 @@ export class Dapp extends React.Component<{}, DappState> {
             }
         }
 
-        this.setState({ gameIdSelected })
+        this.setState({ gameIdSelected }, () => {
+            if (!this.isPollingData()) {
+                this._startPollingData();
+            }
+        })
     }
 
     private _showGames() {
@@ -361,6 +365,7 @@ export class Dapp extends React.Component<{}, DappState> {
         this.checkSigner(this._signer);
         this.checkProvider(this._provider);
         await Cartesi.sendInput({ action: "start_game", game_id }, this._signer, this._provider)
+        this._showPlayer()
     }
 
     async componentDidMount() {
@@ -404,13 +409,13 @@ export class Dapp extends React.Component<{}, DappState> {
             console.error('No ethereum provider')
             return;
         }
-        const accounts = await eth.request({method: 'eth_accounts'});       
+        const accounts = await eth.request({ method: 'eth_accounts' });
         if (accounts.length) {
-           return true;
+            return true;
         } else {
-           return false;
+            return false;
         }
-     }
+    }
 
     async _connectWallet() {
         // This method is run when the user clicks the Connect. It connects the
@@ -588,6 +593,9 @@ export class Dapp extends React.Component<{}, DappState> {
         await Promise.all([this._loadUserData(address),
             , this._readGames()]);
         this.setState({ gameJoined: true, isLoading: false });
+        if (!this.isPollingData()) {
+            this._startPollingData();
+        }
     }
 
     // The next two methods are needed to start and stop polling data. While
@@ -602,11 +610,20 @@ export class Dapp extends React.Component<{}, DappState> {
             if (this.state.gamePlaying) {
                 // We run it once immediately so we don't have to wait for it
                 await this._showHands();
+            } else {
+                const address = this.state.selectedAddress;
+                if (address) {
+                    await this._loadUserData(address);
+                }
             }
         } catch (e) {
             console.error(e);
         }
         this._pollDataInterval = setTimeout(() => this._startPollingData(), Dapp.POLL_TIME_MS);
+    }
+
+    async isPollingData() {
+        return !!this._pollDataInterval
     }
 
     _stopPollingData() {
