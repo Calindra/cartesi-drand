@@ -18,8 +18,9 @@ import { ConnectWallet } from "./ConnectWallet";
 // import { WaitingForTransactionMessage } from "./WaitingForTransactionMessage";
 // import { NoTokensMessage } from "./NoTokensMessage";
 import { Cartesi } from "../cartesi/Cartesi";
-import { Card } from "./cards/Card";
-import { SuitType } from "./cards/Suit";
+import { GamePlay } from "./GamePlay";
+import { PlayerHand } from "../models/PlayerHand";
+import { Scoreboard } from "../models/Scoreboard";
 // This is the default id used by the Hardhat Network
 const HARDHAT_NETWORK_ID = '31337';
 const HARDHAT_NETWORK_HEX = `0x${(+HARDHAT_NETWORK_ID).toString(16)}`;
@@ -41,18 +42,15 @@ interface GameData {
         playing: string[],
     } | null,
     hands: {
-        players: {
-            name: string,
-            points: number,
-            hand: SuitType[],
-        }[],
+        players: PlayerHand[],
     },
     isLoading: boolean,
     gameJoined: boolean,
     gamePlaying: boolean,
+    scoreboard?: Scoreboard,
 }
 
-type ReponseHands = GameData['hands'] & ({
+type ResponseHands = GameData['hands'] & ({
     scoreboard: {
         id: string,
         game_id: string,
@@ -87,6 +85,8 @@ interface DappState extends GameData {
 // transaction.
 export class Dapp extends React.Component<{}, DappState> {
     private ONCE = true;
+
+    private DEBUG = /debug/.test(location.href)
 
     initialState: {
         // The info of the token (i.e. It's Name and symbol)
@@ -197,16 +197,6 @@ export class Dapp extends React.Component<{}, DappState> {
                 action: this._startGame.bind(this),
                 disabled: noGameSelected || noPlayerSelected || gamePlaying || noPlayerJoined,
             }, {
-                id: 'choose_hit',
-                label: 'Hit',
-                action: this._chooseHit.bind(this),
-                disabled: noGameSelected || noPlayerSelected || noPlayerJoined || !gamePlaying,
-            }, {
-                id: 'choose_stand',
-                label: 'Stand',
-                action: this._chooseStand.bind(this),
-                disabled: noGameSelected || noPlayerSelected || noPlayerJoined || !gamePlaying,
-            }, {
                 id: 'show_hands',
                 label: 'Show Hands',
                 action: this._showHands.bind(this),
@@ -245,6 +235,7 @@ export class Dapp extends React.Component<{}, DappState> {
                                 Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
                             </p>
                         </>}
+
                         <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
                             actions.map(({ id, label, action, disabled }) => {
                                 return (
@@ -262,7 +253,7 @@ export class Dapp extends React.Component<{}, DappState> {
                             })
                         }
                         </nav>
-                        {this.state.games && <section className="games">
+                        {!this.state.gamePlaying && this.state.games && <section className="games">
                             {this.state.gameIdSelected === null && <h2>Select one game</h2>}
                             <div className="mt-2 flex flex-row gap-2 flex-wrap">
                                 {this.state.games.map(({ id, players }) => (
@@ -278,26 +269,21 @@ export class Dapp extends React.Component<{}, DappState> {
 
                 <div className="row">
                     <div className="col-12">
-                        <code>
-                            {JSON.stringify(this.state.hands || {})}
-                        </code>
+                        <GamePlay
+                            hands={this.state.hands} currentPlayerName={this.state.player?.name}
+                            hit={() => this._chooseHit()}
+                            stand={() => this._chooseStand()}
+                            scoreboard={this.state.scoreboard}
+                        />
                     </div>
-                    <div className="col-12">
-                        {this.state.hands?.players?.map(playerHand => {
-                            return (
-                                <div key={playerHand.name} style={{ position: 'relative', height: '200px' }}>
-                                    {playerHand.name} - {playerHand.points}
-                                    {playerHand.hand?.map((card: SuitType, i: number) => {
-                                        return (
-                                            <div key={`${i}-${card}`} style={{ position: 'absolute', rotate: `${i * 12}deg`, translate: `${i * 12}px ${10 + i * 3}px` }}>
-                                                <Card name={card} />
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    {/* http://localhost:1234/?debug */}
+                    {this.DEBUG && (
+                        <div className="col-12">
+                            <pre>
+                                {JSON.stringify(this.state.hands || {}, null, 4)}
+                            </pre>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -649,10 +635,16 @@ export class Dapp extends React.Component<{}, DappState> {
         const table_id = this.state.gameIdSelected;
         this.checkGameIdSelected(table_id);
         console.log('show hands...')
-        const hands = await Cartesi.inspectWithJson<ReponseHands>({ action: 'show_hands', table_id })
+        const hands = await Cartesi.inspectWithJson<ResponseHands>({ action: 'show_hands', table_id })
         // const hands = JSON.parse(`{"game_id":"1","players":[{"hand":["3-Hearts","A-Spades","2-Spades","K-Spades"],"name":"Alice","points":14},{"hand":["A-Hearts","3-Spades"],"name":"Oshiro","points":14}],"table_id":"31cd40cd-0350-4d05-9dd3-592e30f7382d"}`)
-        if (hands) {
+        if (hands && !(hands as any).hands) {
             this.setState({ hands })
+        }
+        if (hands && (hands as any).hands) {
+            this.setState({ hands: (hands as any).hands })
+        }
+        if (hands && (hands as any).scoreboard) {
+            this.setState({ scoreboard: (hands as any).scoreboard })
         }
 
         /**

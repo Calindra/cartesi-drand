@@ -3,6 +3,7 @@
         "cartesi",
         "dotenv",
         "drand",
+        "ethereum",
         "pendingdrandbeacon",
         "rollup",
         "rollups",
