@@ -32,8 +32,8 @@ export function GamePlay({ hands, scoreboard, currentPlayerName, hit, stand, new
             <div style={{ display: 'flex' }}>
                 {hands?.players?.map(playerHand => {
                     return (
-                        <div>
-                            <div key={playerHand.name} style={{ position: 'relative', height: '200px', width: '179px' }}>
+                        <div key={playerHand.name}>
+                            <div style={{ position: 'relative', height: '200px', width: '179px' }}>
                                 {playerHand.name} - {playerHand.points}
                                 {playerHand.hand?.map((card: SuitType, i: number) => {
                                     return (

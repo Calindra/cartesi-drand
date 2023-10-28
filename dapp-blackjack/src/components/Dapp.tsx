@@ -162,8 +162,13 @@ export class Dapp extends React.Component<{}, DappState> {
         // If the token data or the user's balance hasn't loaded yet, we show
         // a loading component.
         if (this.state.isLoading) {
-            return <h1 className="text-lg">Loading...</h1>
-            // return <progress />;
+            return (
+                <div className="container p-4">
+                    <div className="row">
+                        <div className="col-12"></div><h1 className="text-lg">Loading...</h1>
+                    </div>
+                </div>
+            )
         }
 
         const noGameSelected = this.state.gameIdSelected === null;
@@ -217,7 +222,11 @@ export class Dapp extends React.Component<{}, DappState> {
 
         let name: string | undefined;
         if (this.state.player) {
-            name = `${this.state.player.name} (${this.state.player.address})`;
+            if (this.DEBUG) {
+                name = `${this.state.player.name} (${this.state.player.address})`;
+            } else {
+                name = this.state.player.name;
+            }
         } else {
             name = this.state.selectedAddress;
         }
@@ -235,34 +244,40 @@ export class Dapp extends React.Component<{}, DappState> {
                         <p>
                             Welcome <b>{name}</b>.
                         </p>
-                        {gameIdSelected !== null && <><p>
-                            Game: <b>{gameIdSelected}</b>.
-                        </p>
-                            <p>
-                                Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
-                            </p>
-                            <p>
-                                Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
-                            </p>
-                        </>}
+                        {this.DEBUG && (
+                            <>
 
-                        <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
-                            actions.map(({ id, label, action, disabled }) => {
-                                return (
-                                    <span key={id} className="flex-initial">
-                                        <button
-                                            className="p-2 rounded cursor-pointer bg-red-600 hover:bg-red-800 transition disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
-                                            onClick={() => { action() }}
-                                            disabled={disabled}
-                                            type="button"
-                                        >
-                                            {label}
-                                        </button>
-                                    </span>
-                                )
-                            })
-                        }
-                        </nav>
+                                {gameIdSelected !== null && <><p>
+                                    Game: <b>{gameIdSelected}</b>.
+                                </p>
+                                    <p>
+                                        Joined: <b>{this.state.gameJoined ? 'Yes' : 'No'}</b>.
+                                    </p>
+                                    <p>
+                                        Playing: <b>{this.state.gamePlaying ? 'Yes' : 'No'}</b>.
+                                    </p>
+                                </>}
+                            </>
+                        )}
+                        {!this.state.gamePlaying && (
+                            <nav className="flex gap-2 mt-5 flex-row justify-between items-center flex-wrap border-b-2 border-gray-400">{
+                                actions.map(({ id, label, action, disabled }) => {
+                                    return (
+                                        <span key={id} className="flex-initial">
+                                            <button
+                                                className="p-2 rounded cursor-pointer bg-red-600 hover:bg-red-800 transition disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
+                                                onClick={() => { action() }}
+                                                disabled={disabled}
+                                                type="button"
+                                            >
+                                                {label}
+                                            </button>
+                                        </span>
+                                    )
+                                })
+                            }
+                            </nav>
+                        )}
                         {!this.state.gamePlaying && this.state.games && <section className="games">
                             {this.state.gameIdSelected === null && <h2>Select one game</h2>}
                             <div className="mt-2 flex flex-row gap-2 flex-wrap">
@@ -304,7 +319,7 @@ export class Dapp extends React.Component<{}, DappState> {
     }
 
     private _selectGame(gameIdSelected: string) {
-        if (this.state.gameIdSelected !== null) {
+        if (this.state.gameIdSelected !== null && this.state.gameJoined) {
             let response = globalThis.confirm('You are already in a game. Leave it?')
 
             if (!response) {
