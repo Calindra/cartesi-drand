@@ -23,7 +23,7 @@ export function GamePlay({ hands, scoreboard, currentPlayerName, hit, stand, new
                         className="p-2 rounded cursor-pointer bg-red-600 hover:bg-red-800 transition disabled:opacity-50 disabled:hover:bg-red-600 disabled:cursor-not-allowed"
                         onClick={newGame}
                         type="button"
-                        style={{ marginRight: '9px' }}
+                        style={{ marginBottom: '16px' }}
                     >
                         New Game
                     </button>

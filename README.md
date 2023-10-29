@@ -145,3 +145,19 @@ curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 sleep 10
 curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 ```
+
+## Game Example
+
+Run the rollups:
+```
+sunodo build
+sunodo run
+```
+
+To run the blackjack frontend:
+```shell
+cd dapp-blackjack
+npm ci && npm start
+```
+
+Open [http://localhost:1234/](http://localhost:1234/)
