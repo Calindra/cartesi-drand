@@ -13,13 +13,14 @@ pub mod server {
         status: &str,
     ) -> Result<Response<Body>, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
+        let server_endpoint = std::env::var("ROLLUP_HTTP_SERVER_ENDPOINT").or("/finish");
         info!("Sending finish to {}", &server_addr);
         let client = hyper::Client::new();
         let response = json!({"status" : status});
         let request = hyper::Request::builder()
             .method(hyper::Method::POST)
             .header(hyper::header::CONTENT_TYPE, "application/json")
-            .uri(format!("{}/finish", &server_addr))
+            .uri(format!("{}{}", &server_addr, &server_endpoint))
             .body(hyper::Body::from(response.to_string()))?;
 
         let response = client.request(request).await?;
