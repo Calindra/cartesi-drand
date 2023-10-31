@@ -295,8 +295,9 @@ async fn main() -> std::io::Result<()> {
 
     let app_state = web::Data::new(AppState::new());
 
-    info!("Starting server");
-
+    let env_port = std::env::var("MIDDLEWARE_PORT").unwrap_or("7979".to_string());
+    let port = env_port.parse::<u16>().unwrap();
+    info!("Starting server on port {}", port);
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
@@ -304,7 +305,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::consume_buffer)
             .service(routes::update_drand_config)
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }
