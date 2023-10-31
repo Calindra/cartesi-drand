@@ -50,8 +50,14 @@ mod middleware_tests {
             );
 
             BIND_SERVER.call_once(|| {
-                let url = server.url_str("");
+                let url = server.url("");
+                let port = url.port().unwrap();
+                let port = port.to_string();
+
+                let url = url.to_string();
                 let url = url.trim_end_matches("/");
+
+                std::env::set_var("MIDDLEWARE_PORT", port);
                 std::env::set_var("ROLLUP_HTTP_SERVER_URL", url);
             });
         };

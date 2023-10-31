@@ -1,5 +1,4 @@
 mod drand;
-mod logger;
 mod main_test;
 mod models;
 mod rollup;
@@ -11,9 +10,9 @@ use crate::router::routes;
 use crate::utils::util::load_env_from_json;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
+use drand_logger::SimpleLogger;
 use drand_verify::{G2Pubkey, Pubkey};
-use log::{set_boxed_logger, set_max_level, error, info};
-use logger::SimpleLogger;
+use log::{info, error};
 use serde_json::{json, Value};
 use std::error::Error;
 use std::{borrow::BorrowMut, env, sync::Arc};
@@ -288,10 +287,8 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let logger = SimpleLogger;
-    set_boxed_logger(Box::new(logger))
-        .map(|_| set_max_level(log::LevelFilter::Info))
-        .unwrap();
+    let logger = SimpleLogger::new("MIDDLEWARE");
+    logger.init().expect("Logger error");
 
     dotenv().ok();
     load_env_from_json().await.unwrap();

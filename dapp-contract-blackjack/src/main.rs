@@ -5,11 +5,12 @@ mod rollups;
 mod util;
 
 use dotenv::dotenv;
+use drand_logger::SimpleLogger;
 use log::{error, info};
 use rollups::rollup::rollup;
 use tokio::sync::Mutex;
 
-use crate::{models::game::game::Manager, util::logger::SimpleLogger};
+use crate::models::game::game::Manager;
 
 // Read from rollup and send to handle
 async fn start_rollup(manager: Arc<Mutex<Manager>>) {
@@ -25,7 +26,8 @@ async fn main() {
     dotenv().ok();
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
-    SimpleLogger::init().expect("Logger error");
+    let logger = SimpleLogger::new("DAPP CONTRACT");
+    logger.init().expect("Logger error");
 
     const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
     info!("BlackJack v{}", VERSION.unwrap_or("unknown"));

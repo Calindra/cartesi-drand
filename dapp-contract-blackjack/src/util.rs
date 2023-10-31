@@ -236,27 +236,3 @@ pub mod env {
     pub(crate) use check_if_dotenv_is_loaded;
 }
 
-pub mod logger {
-    use log::{set_boxed_logger, Level, Log, Metadata, Record, SetLoggerError};
-
-    pub struct SimpleLogger;
-
-    impl Log for SimpleLogger {
-        fn enabled(&self, metadata: &Metadata) -> bool {
-            metadata.level() <= Level::Info
-        }
-
-        fn log(&self, record: &Record) {
-            println!("DAPP CONTRACT {} - {}", record.level(), record.args());
-        }
-
-        fn flush(&self) {}
-    }
-
-    impl SimpleLogger {
-        pub fn init() -> Result<(), SetLoggerError> {
-            let logger = Box::new(SimpleLogger);
-            set_boxed_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Info))
-        }
-    }
-}
