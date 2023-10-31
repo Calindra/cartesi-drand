@@ -105,10 +105,10 @@ The DApp’s owner can run an instance of the Convenience API to provide this ra
 The middleware provides 2 endpoints
 
 **/finish**
-Replace the Rollup's finish endpoint with this one. Example: http://localhost:8080/finish
+Replace the Rollup's finish endpoint with this one. Example: http://localhost:7979/finish
 
 **/random?timestamp=[timestamp]**
-Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529
+Call this one to get a seed from Drand. Example: http://localhost:7979/random?timestamp=1692129529
 It will return 404 when the seed isn't available.
 
 
@@ -122,6 +122,17 @@ sunodo run
 ```
 
 ### Host mode
+
+Start the sunodo:
+```shell
+sunodo run --no-backend
+```
+
+Edit the environment file convenience-middleware/.env and set the value of ROLLUP_HTTP_SERVER_URL to http://localhost:8080/host-runner
+```
+ROLLUP_HTTP_SERVER_URL="http://localhost:8080/host-runner"
+```
+
 Start the middleware:
 ```shell
 cd convenience-middleware/
@@ -139,11 +150,11 @@ npm ci && npm run dev
 Run this smoke test:
 ```shell
 export TIMESTAMP=`date +%s`
-curl http://localhost:8080/random?timestamp=${TIMESTAMP}
+curl "http://localhost:7979/random?timestamp=${TIMESTAMP}"
 sleep 10
-curl http://localhost:8080/random?timestamp=${TIMESTAMP}
+curl "http://localhost:7979/random?timestamp=${TIMESTAMP}"
 sleep 10
-curl http://localhost:8080/random?timestamp=${TIMESTAMP}
+curl "http://localhost:7979/random?timestamp=${TIMESTAMP}"
 ```
 
 ## Game Example
