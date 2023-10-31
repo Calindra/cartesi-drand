@@ -15,8 +15,16 @@ export class DrandProvider {
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
     inspectAxiosInstance: AxiosInstance;
 
+
+    static getInspectURL(): string {
+        const url = new URL(process.env.INSPECT_ENDPOINT ?? "http://localhost:8080");
+        url.pathname = url.pathname.replace(/\/$/, "");
+        url.pathname += "/inspect";
+        return url.href;
+    }
+
     cartesiConfig: CartesiConfig = {
-        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080").href,
+        inspectEndpoint: DrandProvider.getInspectURL(),
     }
 
     /**
