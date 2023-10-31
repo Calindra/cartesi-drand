@@ -5,6 +5,5 @@ declare module "*.gif" {
 
 interface Window {
   /** @link {https://docs.metamask.io/wallet/reference/provider-api/} */
-  ethereum?: // import("@ethersproject/providers").ExternalProvider &
-  import("ethers").Eip1193Provider & import("ethers").AbstractProvider;
+  ethereum?: import("ethers").Eip1193Provider & import("ethers").AbstractProvider;
 }

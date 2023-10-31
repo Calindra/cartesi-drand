@@ -9,7 +9,8 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-import { Signer, Provider } from "ethers";
+import type { Signer, Provider } from "ethers";
+
 import {
     IInputBox,
     IInputBox__factory,
@@ -25,13 +26,21 @@ import { networks } from "./networks.ts";
 import { Deployment, Contract } from "./abi.ts";
 import {
     readAddressFromFile,
-    readAllContractsFromDir
+    readAllContractsFromDir,
+    readDeploymentFromFile
 } from "./utils.ts"
+import { getProvider } from "./adapter.ts";
 
-export interface Args {
+export interface ArgsBuilder {
     dapp: string;
     address?: string;
     addressFile?: string;
+    deploymentFile?: string;
+}
+
+export interface Args {
+    payload: string;
+    address?: string;
     deploymentFile?: string;
 }
 
@@ -50,7 +59,7 @@ interface Contracts {
  * @param yargs yargs instance
  * @returns Argv instance with all options
  */
-export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
+export const builder = <T>(yargs: Argv<T>) => {
     return yargs
         .option("dapp", {
             describe: "DApp name",
@@ -81,23 +90,24 @@ export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
 const readDApp = (
     dapp: string | undefined,
     chainId: number
-): string | undefined => {
+): string | null => {
     const network = networks[chainId];
     if (network && dapp) {
         return readAddressFromFile(`../deployments/${network.name}/${dapp}.json`);
     }
+    return null;
 };
 
 
-const readDeployment = (chainId: number, args: Args): Deployment => {
+const readDeployment = async (chainId: number, args: Args): Promise<Deployment> => {
     if (args.deploymentFile) {
-        const deployment = require(args.deploymentFile);
+        const deployment = readDeploymentFromFile(args.deploymentFile);
         if (!deployment) {
             throw new Error(
                 `rollups deployment '${args.deploymentFile}' not found`
             );
         }
-        return deployment as Deployment;
+        return deployment;
     } else {
         const network = networks[chainId];
         if (!network) {
@@ -114,7 +124,8 @@ const readDeployment = (chainId: number, args: Args): Deployment => {
             return deployment as Deployment;
         }
 
-        const deployment = require(`@cartesi/rollups/export/abi/${network.name}.json`);
+        const deployment = await import(`@cartesi/rollups/export/abi/${network.name}.json`);
+        // const deployment = require(`@cartesi/rollups/export/abi/${network.name}.json`);
         if (!deployment) {
             throw new Error(`rollups not deployed to network ${network.name}`);
         }
@@ -140,27 +151,28 @@ export const rollups = async (
         throw new Error("unable to resolve DApp address");
     }
 
-    const deployment = readDeployment(chainId, args);
+    const deployment = await readDeployment(chainId, args);
     const InputBox = deployment.contracts["InputBox"];
     const ERC20Portal = deployment.contracts["ERC20Portal"];
     const ERC721Portal = deployment.contracts["ERC721Portal"];
+
+    const providerOut = getProvider(provider);
 
     // connect to contracts
     const inputContract = IInputBox__factory.connect(
         // InputBox.address,
         "0x59b22D57D4f067708AB0c00552767405926dc768",
-        provider as any
+        providerOut
     );
-    const outputContract = ICartesiDApp__factory.connect(address, provider as any);
+    const outputContract = ICartesiDApp__factory.connect(address, providerOut);
     const erc20Portal = IERC20Portal__factory.connect(
         ERC20Portal.address,
-        provider as any
+        providerOut
     );
     const erc721Portal = IERC721Portal__factory.connect(
         ERC721Portal.address,
-        provider as any
+        providerOut
     );
-
 
     return {
         dapp: address,

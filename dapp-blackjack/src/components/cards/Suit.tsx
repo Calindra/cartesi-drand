@@ -9,9 +9,7 @@ export function Suit({ name }: { name: SuitType }) {
 }
 
 export function getColorClassName(name: SuitType) {
-    if (name === 'hearts') return "red"
-    if (name === 'spades') return "black"
-    if (name === 'clubs') return "black"
-    if (name === 'diamonds') return "red"
+    if (name === 'hearts' || name === 'diamonds') return "red"
+    if (name === 'spades' || name === 'clubs') return "black"
     return ""
 }

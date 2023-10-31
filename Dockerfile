@@ -85,6 +85,8 @@ WORKDIR /opt/cartesi/dapp
 COPY --from=middleware /usr/src/${FOLDER_MIDDLEWARE}/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
 COPY --from=dapp-contract /opt/cartesi/dapp/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
 COPY dapp-start.sh ${FOLDER_MIDDLEWARE}/drand.config.json ${FOLDER_MIDDLEWARE}/.env ./
+# RUN mkdir -p ./convenience-middleware
+# COPY ${FOLDER_MIDDLEWARE}/drand.config.json ./convenience-middleware/
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
