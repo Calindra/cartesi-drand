@@ -5,7 +5,7 @@
 # Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
 
 tasks:
-  - init: npm install && cargo build
-    command: cargo watch -x run
+  - init: docker buildx create --name mybuilder --use --bootstrap --platform linux/amd64,linux/amd64/v2,linux/amd64/v3,linux/386,linux/riscv64 && npm install -g @sunodo/cli && npm install && cargo build
+    command: echo "hello"
 
 

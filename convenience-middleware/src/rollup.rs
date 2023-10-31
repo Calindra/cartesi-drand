@@ -45,6 +45,9 @@ pub mod server {
         if response.status() == hyper::StatusCode::ACCEPTED {
             return None;
         }
+        if response.status() == hyper::StatusCode::NOT_FOUND {
+            return None;
+        }
         parse_input_from_response(response)
             .await
             .map_err(|err| {
