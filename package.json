@@ -10,6 +10,7 @@
   "license": "MIT",
   "workspaces": [
     "convenience-drand-provider",
-    "dapp-blackjack"
+    "dapp-blackjack",
+    "web3-client"
   ]
 }
