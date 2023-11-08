@@ -92,8 +92,10 @@ export class CartesiClient {
    * @param payload The data to be sent to the Cartesi Machine, transform to payload
    */
   async advance<T extends ObjectLike>(payload: T) {
+    const { logger } = this.config;
+
     try {
-      const { provider, logger, signer } = this.config;
+      const { provider, signer } = this.config;
       const [address, network] = await Promise.all([this.getAddress(), provider.getNetwork()]);
       logger.info(`connected to chain ${network.chainId}`);
 
@@ -119,7 +121,7 @@ export class CartesiClient {
       const receipt = await tx.wait(1);
       logger.info(JSON.stringify(receipt));
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
   }
 }
