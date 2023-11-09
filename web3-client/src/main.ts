@@ -16,13 +16,24 @@ export interface Log {
 }
 
 export interface CartesiContructor {
-  endpoint_cartesi_rollups: URL;
-  address_dapp: AddressLike;
+  /**
+   * The endpoint of the Cartesi Rollups server
+   */
+  endpoint: URL;
+  /**
+   * The address of the DApp contract
+   * AddressLike, type used by ethers to string
+   */
+  address: AddressLike;
   signer: Signer;
-  wallet: Wallet;
+  wallet?: Wallet;
   provider: Provider;
   logger: Log;
 }
+
+type RequirePropToOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+export type CartesiContructorOptionalProps = RequirePropToOptional<CartesiContructor, "logger">;
 
 export class Utils {
   static isObject(value: unknown): value is ObjectLike {
@@ -47,13 +58,23 @@ export class Hex {
 }
 
 export class CartesiClient {
-  constructor(private readonly config: CartesiContructor) {}
+  private readonly config: CartesiContructor;
+
+  constructor(config: CartesiContructorOptionalProps) {
+    this.config = {
+      ...config,
+      logger: config.logger ?? {
+        info: console.log,
+        error: console.error,
+      },
+    };
+  }
 
   /**
    * Convert AddressLike, type used by ethers to string
    */
   private async getAddress(): Promise<string> {
-    return resolveAddress(this.config.address_dapp);
+    return resolveAddress(this.config.address);
   }
 
   /**
@@ -64,7 +85,7 @@ export class CartesiClient {
     const inputJSON = JSON.stringify({ input: payload });
     const jsonEncoded = encodeURIComponent(inputJSON);
 
-    const url = new URL(this.config.endpoint_cartesi_rollups);
+    const url = new URL(this.config.endpoint);
     url.pathname = url.pathname.replace(/\/$/, "");
     url.pathname += `/${jsonEncoded}`;
 
@@ -100,6 +121,7 @@ export class CartesiClient {
       logger.info(`connected to chain ${network.chainId}`);
 
       // connect to rollups,
+      // TODO: use singleton
       const inputContract = IInputBox__factory.connect(address, signer);
       const signerAddress = await signer.getAddress();
       logger.info(`using account "${signerAddress}"`);
