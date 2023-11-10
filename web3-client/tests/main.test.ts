@@ -1,29 +1,14 @@
-import mock, { Mocker } from "http-request-mock";
-import { expect, it, describe, beforeEach, afterEach, jest } from "@jest/globals";
+import mock from "http-request-mock";
+import { expect, it, describe, beforeEach, afterEach } from "@jest/globals";
 import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { JsonRpcProvider, Signer, ethers } from "ethers";
-
-describe("Main", () => {
-  const mocker = mock.setupForFetch();
-
-  let cartesiClient: CartesiClient;
-  const endpoint = new URL("http://localhost:8545");
-
-  beforeEach(async () => {
-    const provider = ethers.getDefaultProvider("http://localhost:8545");
-    cartesiClient = new CartesiClientBuilder().withEndpoint(endpoint).withProvider(provider).build();
-  });
-
-  afterEach(() => {
-    mocker.reset();
-  });
-});
+import { ethers } from "ethers";
+import { Hex } from "../src/hex";
 
 describe("CartesiClient", () => {
-  const mocker = mock.setupForFetch();
+  const mocker = mock.setupForUnitTest("fetch");
 
   let cartesiClient: CartesiClient;
-  const endpoint = new URL("http://localhost:8545");
+  const endpoint = new URL("http://localhost:8545/inspect");
 
   beforeEach(async () => {
     const provider = ethers.getDefaultProvider(endpoint.href);
@@ -37,10 +22,15 @@ describe("CartesiClient", () => {
   describe("inspect", () => {
     it("should return null if the response is not valid", async () => {
       // Arrange
-      const payload = { foo: "bar" };
-      const encode = encodeURIComponent(JSON.stringify(payload));
-      const url = new URL(`/inspect/${encode}`, endpoint.href);
-      mocker.get(url.href, { status: 404 });
+      const payload = { action: "show_games" };
+      const games = { games: [1, 2, 3] };
+      const gamesPayload = Hex.obj2hex(games);
+      const wrongBody = {
+        foo: "bar",
+      };
+      mocker.get(endpoint.href, wrongBody, {
+        times: 1,
+      });
 
       // Act
       const result = await cartesiClient.inspect(payload);
@@ -51,16 +41,24 @@ describe("CartesiClient", () => {
 
     it("should return the payload from the first report if the response is valid", async () => {
       // Arrange
-      const payload = { foo: "bar" };
-      const encode = encodeURIComponent(JSON.stringify(payload));
-      const url = new URL(`/inspect/${encode}`, endpoint.href);
-      mocker.get(url.href, { body: { reports: [{ payload: "0x7b22626172223a22666f6f227d" }] } });
+      const payload = { action: "show_games" };
+      const games = { games: [1, 2, 3] };
+      const gamesPayload = Hex.obj2hex(games);
+      mocker.get(
+        endpoint.href,
+        {
+          reports: [{ payload: gamesPayload }],
+        },
+        {
+          times: 1,
+        }
+      );
 
       // Act
       const result = await cartesiClient.inspect(payload);
 
       // Assert
-      expect(result).toEqual({ bar: "foo" });
+      expect(result).toMatchObject(games);
     });
   });
 

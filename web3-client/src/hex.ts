@@ -1,3 +1,5 @@
+import { ObjectLike } from "./types";
+
 export class Hex {
   static hex2a(hex: string) {
     let str = "";
@@ -7,5 +9,9 @@ export class Hex {
       if (v) str += String.fromCharCode(v);
     }
     return str;
+  }
+
+  static obj2hex(obj: ObjectLike): string {
+    return "0x" + Buffer.from(JSON.stringify(obj)).toString("hex").toUpperCase();
   }
 }

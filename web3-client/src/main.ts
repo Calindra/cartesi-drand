@@ -37,7 +37,7 @@ export class CartesiClientBuilder {
   private logger: Log;
 
   constructor() {
-    this.endpoint = new URL("http://localhost:8545");
+    this.endpoint = new URL("http://localhost:8545/inspect");
     this.address = "";
     this.signer = new ethers.VoidSigner("0x");
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
@@ -117,15 +117,21 @@ export class CartesiClient {
    * used to request reports
    */
   async inspect<T extends ObjectLike, U extends ObjectLike>(payload: T): Promise<U | null> {
-    const inputJSON = JSON.stringify({ input: payload });
-    const jsonEncoded = encodeURIComponent(inputJSON);
-
-    const url = new URL(this.config.endpoint);
-    url.pathname = url.pathname.replace(/\/$/, "");
-    url.pathname += `/${jsonEncoded}`;
-
     try {
-      const response = await fetch(url);
+      const inputJSON = JSON.stringify({ input: payload });
+      const jsonEncoded = encodeURIComponent(inputJSON);
+
+      const url = new URL(this.config.endpoint);
+      url.pathname += `/${jsonEncoded}`;
+
+      this.config.logger.info("Inspecting endpoint: ", url.href);
+
+      const response = await fetch(url.href, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
       const result: unknown = await response.json();
 
       if (Utils.isObject(result) && "reports" in result && Utils.isArrayNonNullable(result.reports)) {
