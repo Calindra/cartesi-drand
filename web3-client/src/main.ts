@@ -97,14 +97,14 @@ export class CartesiClient {
   /**
    * Convert AddressLike, type used by ethers to string
    */
-  private async getAddress(): Promise<string> {
+  async getAddress(): Promise<string> {
     return resolveAddress(this.config.address);
   }
 
   /**
    * Singleton to create contract
    */
-  private async getInputContract(): Promise<InputBox> {
+  async getInputContract(): Promise<InputBox> {
     if (!CartesiClient.inputContract) {
       const address = await this.getAddress();
       CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
@@ -150,11 +150,13 @@ export class CartesiClient {
   }
 
   /**
-   *
+   * Send InputBox
    * @param payload The data to be sent to the Cartesi Machine, transform to payload
    */
   async advance<T extends ObjectLike>(payload: T) {
     const { logger } = this.config;
+
+    // const inputBoxAddress
 
     try {
       const { provider, signer } = this.config;
@@ -184,6 +186,12 @@ export class CartesiClient {
       logger.info(JSON.stringify(receipt));
     } catch (e) {
       logger.error(e);
+
+      if (e instanceof Error) {
+        throw e;
+      }
+
+      throw new Error("Error on advance", { cause: e });
     }
   }
 }
