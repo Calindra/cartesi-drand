@@ -4,16 +4,13 @@ import {
   type Signer,
   type Provider,
   Wallet,
-  AddressLike,
+  type AddressLike,
   resolveAddress,
-  ContractTransactionResponse,
+  type ContractTransactionResponse,
 } from "ethers";
-type ObjectLike = Record<string, unknown>;
-
-export interface Log {
-  info(...args: unknown[]): void;
-  error(...args: unknown[]): void;
-}
+import { Utils } from "./utils";
+import { Hex } from "./hex";
+import type { ObjectLike, Log } from "./types";
 
 export interface CartesiContructor {
   /**
@@ -21,7 +18,7 @@ export interface CartesiContructor {
    */
   endpoint: URL;
   /**
-   * The address of the DApp contract
+   * Input box address
    * AddressLike, type used by ethers to string
    */
   address: AddressLike;
@@ -31,50 +28,88 @@ export interface CartesiContructor {
   logger: Log;
 }
 
-type RequirePropToOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export class CartesiClientBuilder {
+  private endpoint: URL;
+  private address: AddressLike;
+  private signer: Signer;
+  private wallet?: Wallet;
+  private provider: Provider;
+  private logger: Log;
 
-export type CartesiContructorOptionalProps = RequirePropToOptional<CartesiContructor, "logger">;
-
-export class Utils {
-  static isObject(value: unknown): value is ObjectLike {
-    return typeof value === "object" && value !== null;
+  constructor() {
+    this.endpoint = new URL("http://localhost:8545");
+    this.address = "";
+    this.signer = new ethers.VoidSigner("0x");
+    this.provider = ethers.getDefaultProvider(this.endpoint.href);
+    this.logger = {
+      info: console.log,
+      error: console.error,
+    };
   }
 
-  static isArrayNonNullable<T = unknown>(value: unknown): value is Array<T> {
-    return Array.isArray(value) && value.length > 0;
+  withEndpoint(endpoint: URL): CartesiClientBuilder {
+    this.endpoint = endpoint;
+    return this;
   }
-}
 
-export class Hex {
-  static hex2a(hex: string) {
-    let str = "";
+  withAddress(address: AddressLike): CartesiClientBuilder {
+    this.address = address;
+    return this;
+  }
 
-    for (let i = 0; i < hex.length; i += 2) {
-      let v = parseInt(hex.substring(i, i + 2), 16);
-      if (v) str += String.fromCharCode(v);
-    }
-    return str;
+  withSigner(signer: Signer): CartesiClientBuilder {
+    this.signer = signer;
+    return this;
+  }
+
+  withWallet(wallet: Wallet): CartesiClientBuilder {
+    this.wallet = wallet;
+    return this;
+  }
+
+  withProvider(provider: Provider): CartesiClientBuilder {
+    this.provider = provider;
+    return this;
+  }
+
+  withLogger(logger: Log): CartesiClientBuilder {
+    this.logger = logger;
+    return this;
+  }
+
+  build(): CartesiClient {
+    return new CartesiClient({
+      endpoint: this.endpoint,
+      address: this.address,
+      signer: this.signer,
+      wallet: this.wallet,
+      provider: this.provider,
+      logger: this.logger,
+    });
   }
 }
 
 export class CartesiClient {
-  private readonly config: CartesiContructor;
+  private static inputContract: InputBox;
 
-  constructor(config: CartesiContructorOptionalProps) {
-    this.config = {
-      ...config,
-      logger: config.logger ?? {
-        info: console.log,
-        error: console.error,
-      },
-    };
-  }
+  constructor(private readonly config: CartesiContructor) {}
 
   /**
    * Convert AddressLike, type used by ethers to string
    */
   private async getAddress(): Promise<string> {
     return resolveAddress(this.config.address);
+  }
+
+  /**
+   * Singleton to create contract
+   */
+  private async getInputContract(): Promise<InputBox> {
+    if (!CartesiClient.inputContract) {
+      const address = await this.getAddress();
+      CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
+    }
+    return CartesiClient.inputContract;
   }
 
   /**
@@ -121,8 +156,7 @@ export class CartesiClient {
       logger.info(`connected to chain ${network.chainId}`);
 
       // connect to rollups,
-      // TODO: use singleton
-      const inputContract = IInputBox__factory.connect(address, signer);
+      const inputContract = await this.getInputContract();
       const signerAddress = await signer.getAddress();
       logger.info(`using account "${signerAddress}"`);
 
