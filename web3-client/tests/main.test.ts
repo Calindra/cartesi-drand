@@ -23,8 +23,6 @@ describe("CartesiClient", () => {
     it("should return null if the response is not valid", async () => {
       // Arrange
       const payload = { action: "show_games" };
-      const games = { games: [1, 2, 3] };
-      const gamesPayload = Hex.obj2hex(games);
       const wrongBody = {
         foo: "bar",
       };
