@@ -11,6 +11,7 @@ import {
 import { Utils } from "./utils";
 import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
+import InputBoxContract from "@cartesi/rollups/deployments/mainnet/InputBox.json";
 
 export interface CartesiContructor {
   /**
@@ -18,10 +19,9 @@ export interface CartesiContructor {
    */
   endpoint: URL;
   /**
-   * Input box address
    * AddressLike, type used by ethers to string
    */
-  address: AddressLike;
+  dapp_address: AddressLike;
   signer: Signer;
   wallet?: Wallet;
   provider: Provider;
@@ -30,7 +30,7 @@ export interface CartesiContructor {
 
 export class CartesiClientBuilder {
   private endpoint: URL;
-  private address: AddressLike;
+  private dapp_address: AddressLike;
   private signer: Signer;
   private wallet?: Wallet;
   private provider: Provider;
@@ -38,7 +38,7 @@ export class CartesiClientBuilder {
 
   constructor() {
     this.endpoint = new URL("http://localhost:8545/inspect");
-    this.address = "";
+    this.dapp_address = "";
     this.signer = new ethers.VoidSigner("0x");
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
     this.logger = {
@@ -47,13 +47,13 @@ export class CartesiClientBuilder {
     };
   }
 
-  withEndpoint(endpoint: URL): CartesiClientBuilder {
-    this.endpoint = endpoint;
+  withEndpoint(endpoint: URL | string): CartesiClientBuilder {
+    this.endpoint = new URL(endpoint);
     return this;
   }
 
-  withAddress(address: AddressLike): CartesiClientBuilder {
-    this.address = address;
+  withDappAddress(address: AddressLike): CartesiClientBuilder {
+    this.dapp_address = address;
     return this;
   }
 
@@ -80,7 +80,7 @@ export class CartesiClientBuilder {
   build(): CartesiClient {
     return new CartesiClient({
       endpoint: this.endpoint,
-      address: this.address,
+      dapp_address: this.dapp_address,
       signer: this.signer,
       wallet: this.wallet,
       provider: this.provider,
@@ -97,8 +97,8 @@ export class CartesiClient {
   /**
    * Convert AddressLike, type used by ethers to string
    */
-  async getAddress(): Promise<string> {
-    return resolveAddress(this.config.address);
+  async getDappAddress(): Promise<string> {
+    return resolveAddress(this.config.dapp_address);
   }
 
   /**
@@ -106,7 +106,7 @@ export class CartesiClient {
    */
   async getInputContract(): Promise<InputBox> {
     if (!CartesiClient.inputContract) {
-      const address = await this.getAddress();
+      const address = InputBoxContract.address;
       CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
     }
     return CartesiClient.inputContract;
@@ -156,17 +156,15 @@ export class CartesiClient {
   async advance<T extends ObjectLike>(payload: T) {
     const { logger } = this.config;
 
-    // const inputBoxAddress
-
     try {
       const { provider, signer } = this.config;
-      const [address, network] = await Promise.all([this.getAddress(), provider.getNetwork()]);
+      const [network, signerAddress] = await Promise.all([provider.getNetwork(), signer.getAddress()]);
+
       logger.info(`connected to chain ${network.chainId}`);
+      logger.info(`using account "${signerAddress}"`);
 
       // connect to rollups,
       const inputContract = await this.getInputContract();
-      const signerAddress = await signer.getAddress();
-      logger.info(`using account "${signerAddress}"`);
 
       // use message from command line option, or from user prompt
       logger.info(`sending "${JSON.stringify(payload)}"`);
@@ -178,8 +176,10 @@ export class CartesiClient {
         })
       );
 
+      const dappAddress = await this.getDappAddress();
+
       // send transaction
-      const tx = <ContractTransactionResponse>await inputContract.addInput(address, inputBytes);
+      const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
       logger.info(`transaction: ${tx.hash}`);
       logger.info("waiting for confirmation...");
       const receipt = await tx.wait(1);
