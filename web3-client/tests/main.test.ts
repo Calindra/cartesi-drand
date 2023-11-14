@@ -1,10 +1,10 @@
 import mock from "http-request-mock";
 import { expect, it, describe, beforeEach, afterEach, jest } from "@jest/globals";
 import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { ContractTransaction, Network, Provider, ethers } from "ethers";
+import { Network, type Provider, ethers } from "ethers";
 import { Hex } from "../src/hex";
-import { InputBox } from "@cartesi/rollups";
-import { Log } from "../src/types";
+import type { InputBox } from "@cartesi/rollups";
+import type { Log } from "../src/types";
 
 function generateValidEth(): string {
   const hexChars = "0123456789abcdef";
@@ -76,13 +76,13 @@ describe("CartesiClient", () => {
       it("Error network if an exception is thrown", async () => {
         // Arrange
         const payload = { action: "new_player", name: "calindra" };
-        const logger: Log = { error: jest.fn(), info: jest.fn() };
+        const logger: Log = { error: jest.fn(), info: console.log };
+        const address = generateValidEth();
 
         const provider = {
           getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
         } as any as Provider;
 
-        const address = generateValidEth();
 
         const client = new CartesiClientBuilder()
           .withDappAddress(address)
@@ -96,19 +96,19 @@ describe("CartesiClient", () => {
       it("Error contract if an exception is thrown", async () => {
         // Arrange
         const payload = { action: "new_player", name: "calindra" };
-        const logger: Log = { error: jest.fn(), info: jest.fn() };
+        const logger: Log = { error: jest.fn(), info: console.log };
+        const address = generateValidEth();
 
         const provider: Pick<Provider, "getNetwork"> = {
           getNetwork: jest
-            .fn<() => Promise<Network>>()
+            .fn<Provider["getNetwork"]>()
             .mockReturnValueOnce(Promise.resolve(new Network("homestead", 1))),
         };
 
         const inputContract: Pick<InputBox, "addInput"> = {
-          addInput: jest.fn<() => Promise<ContractTransaction>>().mockRejectedValueOnce(new Error("contract error")),
+          addInput: jest.fn<InputBox["addInput"]>().mockRejectedValueOnce(new Error("contract error")),
         };
 
-        const address = generateValidEth();
 
         const client = new CartesiClientBuilder()
           .withDappAddress(address)
