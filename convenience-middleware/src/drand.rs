@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 
 use actix_web::web::Data;
-use drand_verify::{G2Pubkey, Pubkey};
+use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
 use serde_json::json;
 
 use crate::{
@@ -45,10 +45,10 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     pk.verify(round, b"", &signature)
         .ok()
         .map(|_| {
-            let beacon = &mut payload.beacon;
+            let mut beacon = payload.beacon.clone();
 
             // make sure that the signature is the source of randomness
-            beacon.randomness = derive_randomness(&signature);
+            beacon.randomness = hex::encode(derive_randomness(&signature));
             beacon
         })
 }
