@@ -37,10 +37,10 @@ export class CartesiClientBuilder {
   private logger: Log;
 
   constructor() {
-    this.endpoint = new URL("http://localhost:8545/inspect");
+    this.endpoint = new URL("http://localhost:8545");
     this.dapp_address = "";
-    this.signer = new ethers.VoidSigner("0x");
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
+    this.signer = new ethers.VoidSigner("0x", this.provider);
     this.logger = {
       info: console.log,
       error: console.error,
@@ -158,7 +158,10 @@ export class CartesiClient {
 
     try {
       const { provider, signer } = this.config;
-      const [network, signerAddress] = await Promise.all([provider.getNetwork(), signer.getAddress()]);
+      logger.info("getting network", provider);
+      const network = await provider.getNetwork();
+      logger.info("getting siggner address", signer);
+      const signerAddress = await signer.getAddress();
 
       logger.info(`connected to chain ${network.chainId}`);
       logger.info(`using account "${signerAddress}"`);

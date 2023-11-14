@@ -1,7 +1,7 @@
 import mock from "http-request-mock";
 import { expect, it, describe, beforeEach, afterEach, jest } from "@jest/globals";
 import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { Network, type Provider, ethers } from "ethers";
+import { Network, type Provider, ethers, VoidSigner, Contract, ContractTransactionResponse } from "ethers";
 import { Hex } from "../src/hex";
 import type { InputBox } from "@cartesi/rollups";
 import type { Log } from "../src/types";
@@ -19,7 +19,7 @@ describe("CartesiClient", () => {
   const mocker = mock.setupForUnitTest("fetch");
 
   let cartesiClient: CartesiClient;
-  const endpoint = new URL("http://localhost:8545/inspect");
+  const endpoint = new URL("http://127.0.0.1:8545/inspect");
 
   beforeEach(async () => {
     const provider = ethers.getDefaultProvider(endpoint.href);
@@ -83,7 +83,6 @@ describe("CartesiClient", () => {
           getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
         } as any as Provider;
 
-
         const client = new CartesiClientBuilder()
           .withDappAddress(address)
           .withLogger(logger) //omit error log
@@ -109,7 +108,6 @@ describe("CartesiClient", () => {
           addInput: jest.fn<InputBox["addInput"]>().mockRejectedValueOnce(new Error("contract error")),
         };
 
-
         const client = new CartesiClientBuilder()
           .withDappAddress(address)
           .withLogger(logger) //omit error log
@@ -120,44 +118,33 @@ describe("CartesiClient", () => {
         return expect(client.advance(payload)).rejects.toThrow("contract error");
       });
     });
-    // it("should error network if an exception is thrown", async () => {
-    //   // Arrange
-    //   const payload = { action: "new_player", name: "calindra" };
-    //   const logger: Log = { error: jest.fn(), info: jest.fn() };
 
-    //   const provider = {
-    //     getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
-    //   } as any as Provider;
-
-    //   const inputContract = {
-    //     addInput: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("contract error")),
-    //   } as any as InputBox;
-
-    //   const address = generateValidEth();
-
-    //   const client = new CartesiClientBuilder()
-    //     .withDappAddress(address)
-    //     .withLogger(logger) //omit error log
-    //     .withProvider(provider)
-    //     .build();
-    //   jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
-    //   // Act / Assert
-    //   return expect(client.advance(payload)).rejects.toThrow("network error");
-    // });
-
-    it.skip("should call successful", async () => {
+    it("should call successful", async () => {
       // Arrange
       const payload = { action: "new_player", name: "calindra" };
 
       const address = generateValidEth();
 
-      // const inputContract = {
-      //   addInput: jest.fn().mockReturnValueOnce({
-      //     connect: jest.fn(),
-      //   }),
-      // } as any as InputBox;
-      const client = new CartesiClientBuilder().withDappAddress(address).build();
-      // jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
+      const advance_endpoint = new URL("/advance", endpoint).href;
+      const provider = ethers.getDefaultProvider(advance_endpoint);
+
+      const inputContract: Pick<InputBox, "addInput"> = {
+        addInput: jest.fn<() => Promise<ethers.ContractTransaction>>().mockResolvedValueOnce({
+          hash: "mocked hash",
+          wait: jest.fn<() => Promise<ContractTransactionResponse["wait"]>>().mockResolvedValueOnce({} as any),
+        } as any),
+      };
+
+      jest.spyOn(provider, "getNetwork").mockResolvedValue(new Network("hardhat", 8545));
+
+      // connect: jest.fn<() => any>().mockResolvedValueOnce({} as any),
+      const client = new CartesiClientBuilder()
+        .withEndpoint(advance_endpoint)
+        .withProvider(provider)
+        .withDappAddress(address)
+        .build();
+
+      jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract as InputBox);
       // Act / Assert
       return expect(client.advance(payload)).resolves.not.toThrow();
     });
