@@ -44,5 +44,11 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     pk.verify(round, b"", &signature)
         .ok()
-        .map(|_| payload.beacon)
+        .map(|_| {
+            let beacon = &mut payload.beacon;
+
+            // make sure that the signature is the source of randomness
+            beacon.randomness = derive_randomness(&signature);
+            beacon
+        })
 }
