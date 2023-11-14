@@ -42,13 +42,17 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     let round = payload.beacon.round;
 
-    pk.verify(round, b"", &signature)
-        .ok()
-        .map(|_| {
+    match pk.verify(round, b"", &signature) {
+        Ok(valid) => {
+            if (!valid) {
+                return None
+            }
             let mut beacon = payload.beacon.clone();
 
             // make sure that the signature is the source of randomness
             beacon.randomness = hex::encode(derive_randomness(&signature));
-            beacon
-        })
+            Some(beacon)
+        }
+        Err(_) => None,
+    }
 }
