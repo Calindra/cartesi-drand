@@ -1,22 +1,25 @@
 import mock from "http-request-mock";
 import { expect, it, describe, beforeEach, afterEach, jest } from "@jest/globals";
 import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { Provider, ethers } from "ethers";
+import { ContractTransaction, Network, Provider, ethers } from "ethers";
 import { Hex } from "../src/hex";
 import { InputBox } from "@cartesi/rollups";
 import { Log } from "../src/types";
+
+function generateValidEth(): string {
+  const hexChars = "0123456789abcdef";
+  let address = "0x";
+  for (let i = 0; i < 40; i++) {
+    address += hexChars[Math.floor(Math.random() * hexChars.length)];
+  }
+  return address;
+}
 
 describe("CartesiClient", () => {
   const mocker = mock.setupForUnitTest("fetch");
 
   let cartesiClient: CartesiClient;
   const endpoint = new URL("http://localhost:8545/inspect");
-
-  function generate_address(): string {
-    for (let i = 0; i < 40; i++) {}
-
-    return "0x123";
-  }
 
   beforeEach(async () => {
     const provider = ethers.getDefaultProvider(endpoint.href);
@@ -69,41 +72,94 @@ describe("CartesiClient", () => {
   });
 
   describe("advance", () => {
-    it("should error network if an exception is thrown", async () => {
-      // Arrange
-      const payload = { foo: "bar" };
-      const logger: Log = { error: jest.fn(), info: jest.fn() };
-      const provider = {
-        getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
-      } as any as Provider;
+    describe("should error", () => {
+      it("Error network if an exception is thrown", async () => {
+        // Arrange
+        const payload = { action: "new_player", name: "calindra" };
+        const logger: Log = { error: jest.fn(), info: jest.fn() };
 
-      const inputContract = {
-        addInput: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("contract error")),
-      } as any as InputBox;
-      const client = new CartesiClientBuilder()
-        .withDappAddress("0x123")
-        .withLogger(logger)
-        .withProvider(provider)
-        .build();
-      jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
-      // Act / Assert
-      expect(client.advance(payload)).rejects.toThrow("network error");
+        const provider = {
+          getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
+        } as any as Provider;
+
+        const address = generateValidEth();
+
+        const client = new CartesiClientBuilder()
+          .withDappAddress(address)
+          .withLogger(logger) //omit error log
+          .withProvider(provider)
+          .build();
+        // Act / Assert
+        return expect(client.advance(payload)).rejects.toThrow("network error");
+      });
+
+      it("Error contract if an exception is thrown", async () => {
+        // Arrange
+        const payload = { action: "new_player", name: "calindra" };
+        const logger: Log = { error: jest.fn(), info: jest.fn() };
+
+        const provider: Pick<Provider, "getNetwork"> = {
+          getNetwork: jest
+            .fn<() => Promise<Network>>()
+            .mockReturnValueOnce(Promise.resolve(new Network("homestead", 1))),
+        };
+
+        const inputContract: Pick<InputBox, "addInput"> = {
+          addInput: jest.fn<() => Promise<ContractTransaction>>().mockRejectedValueOnce(new Error("contract error")),
+        };
+
+        const address = generateValidEth();
+
+        const client = new CartesiClientBuilder()
+          .withDappAddress(address)
+          .withLogger(logger) //omit error log
+          .withProvider(provider as Provider)
+          .build();
+        jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract as InputBox);
+        // Act / Assert
+        return expect(client.advance(payload)).rejects.toThrow("contract error");
+      });
     });
+    // it("should error network if an exception is thrown", async () => {
+    //   // Arrange
+    //   const payload = { action: "new_player", name: "calindra" };
+    //   const logger: Log = { error: jest.fn(), info: jest.fn() };
+
+    //   const provider = {
+    //     getNetwork: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("network error")),
+    //   } as any as Provider;
+
+    //   const inputContract = {
+    //     addInput: jest.fn<() => Promise<unknown>>().mockRejectedValueOnce(new Error("contract error")),
+    //   } as any as InputBox;
+
+    //   const address = generateValidEth();
+
+    //   const client = new CartesiClientBuilder()
+    //     .withDappAddress(address)
+    //     .withLogger(logger) //omit error log
+    //     .withProvider(provider)
+    //     .build();
+    //   jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
+    //   // Act / Assert
+    //   return expect(client.advance(payload)).rejects.toThrow("network error");
+    // });
 
     it.skip("should call successful", async () => {
       // Arrange
-      const payload = { foo: "bar" };
+      const payload = { action: "new_player", name: "calindra" };
 
-      const inputContract = {
-        addInput: jest.fn().mockReturnValueOnce({
-          connect: jest.fn(),
-        }),
-      } as any as InputBox;
-      const client = new CartesiClientBuilder().build();
-      jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
-      jest.spyOn(client, "getDappAddress").mockResolvedValue("0x123");
+      const address = generateValidEth();
+
+      // const inputContract = {
+      //   addInput: jest.fn().mockReturnValueOnce({
+      //     connect: jest.fn(),
+      //   }),
+      // } as any as InputBox;
+      const client = new CartesiClientBuilder().withDappAddress(address).build();
+      // jest.spyOn(client, "getInputContract").mockResolvedValue(inputContract);
       // Act / Assert
-      expect(client.advance(payload)).resolves.not.toThrow();
+      return expect(client.advance(payload)).resolves.not.toThrow();
     });
   });
 });

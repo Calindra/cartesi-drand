@@ -8,7 +8,7 @@
   "scripts": {
     "watch": "parcel watch",
     "build": "parcel build",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles --watch"
   },
   "author": "Calindra",
   "license": "MIT",
