@@ -288,6 +288,7 @@ fn start_listener(manager: Arc<Mutex<InputBufferManager>>, mut rx: Receiver<Item
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
     let logger = SimpleLogger;
     set_boxed_logger(Box::new(logger))
         .map(|_| set_max_level(log::LevelFilter::Info))

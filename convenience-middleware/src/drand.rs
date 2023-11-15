@@ -2,6 +2,7 @@ use std::borrow::BorrowMut;
 
 use actix_web::web::Data;
 use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
+use log::{warn, error};
 use serde_json::json;
 
 use crate::{
@@ -44,7 +45,8 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     match pk.verify(round, b"", &signature) {
         Ok(valid) => {
-            if (!valid) {
+            if !valid {
+                warn!("Invalid beacon signature for round {}; signature: {}", round, &payload.beacon.signature);
                 return None
             }
             let mut beacon = payload.beacon.clone();
@@ -53,6 +55,9 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
             beacon.randomness = hex::encode(derive_randomness(&signature));
             Some(beacon)
         }
-        Err(_) => None,
+        Err(e) => {
+            error!("Drand VerificationError: {}", e.to_string());
+            None
+        },
     }
 }
