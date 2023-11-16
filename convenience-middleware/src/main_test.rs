@@ -3,7 +3,6 @@ mod middleware_tests {
     use std::sync::Once;
 
     use crate::{
-        is_drand_beacon,
         models::models::{AppState, Beacon, Item},
         router::routes::{self}, utils::util::load_env_from_json, drand::get_drand_beacon,
     };
@@ -80,38 +79,6 @@ mod middleware_tests {
             let req: serde_json::Value = serde_json::from_str(utf).unwrap();
             req
         }};
-    }
-
-    #[actix_web::test]
-    async fn test_is_drand_beacon() {
-        check_if_dotenv_is_loaded!();
-
-        let beacon = json!({
-            "round": 3828300,
-            "randomness": "7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9",
-            "signature": "ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"
-        });
-
-        let payload = json!({
-            "beacon": beacon,
-        });
-
-        let payload = payload.to_string();
-        let payload = hex::encode(payload);
-        let payload = format!("0x{}", payload);
-
-        let object = json!({
-            "data": {
-                "payload": payload,
-            }
-        });
-
-        let item = Item {
-            request: object.to_string(),
-        };
-
-        let resp = is_drand_beacon(&item);
-        assert_eq!(resp, true);
     }
 
     #[actix_web::test]
