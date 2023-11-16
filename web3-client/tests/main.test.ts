@@ -1,7 +1,7 @@
 import mock from "http-request-mock";
 import { expect, it, describe, beforeEach, afterEach, jest } from "@jest/globals";
 import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { Network, type Provider, ethers, VoidSigner, Contract, ContractTransactionResponse } from "ethers";
+import { Network, type Provider, ethers, ContractTransactionResponse } from "ethers";
 import { Hex } from "../src/hex";
 import type { InputBox } from "@cartesi/rollups";
 import type { Log } from "../src/types";
@@ -137,7 +137,6 @@ describe("CartesiClient", () => {
 
       jest.spyOn(provider, "getNetwork").mockResolvedValue(new Network("hardhat", 8545));
 
-      // connect: jest.fn<() => any>().mockResolvedValueOnce({} as any),
       const client = new CartesiClientBuilder()
         .withEndpoint(advance_endpoint)
         .withProvider(provider)
