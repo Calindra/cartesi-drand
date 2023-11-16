@@ -57,7 +57,7 @@ pub mod models {
         pub beacon: DrandBeacon,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, Clone)]
     pub struct DrandBeacon {
         pub round: u64,
         pub signature: String,

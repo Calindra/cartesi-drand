@@ -105,7 +105,7 @@ pub mod routes {
             return HttpResponse::Ok().body(randomness);
         }
         if ctx.is_inspecting() {
-            error!("When inspecting we does not call finish from /random endpoint.");
+            info!("When inspecting we does not call finish from /random endpoint.");
             return HttpResponse::BadRequest().finish();
         }
         // call finish to halt and wait the beacon

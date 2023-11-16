@@ -1,7 +1,8 @@
 use std::borrow::BorrowMut;
 
 use actix_web::web::Data;
-use drand_verify::{G2Pubkey, Pubkey};
+use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
+use log::{warn, error};
 use serde_json::json;
 
 use crate::{
@@ -20,6 +21,12 @@ pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
     let _ = rollup::server::send_report(report).await.unwrap();
 }
 
+/**
+ * Check if the request is a drand beacon
+ * Example of a drand beacon request
+ *
+ * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
+ */
 pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     let key = std::env::var("DRAND_PUBLIC_KEY").unwrap();
     let payload = || {
@@ -42,7 +49,21 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     let round = payload.beacon.round;
 
-    pk.verify(round, b"", &signature)
-        .ok()
-        .map(|_| payload.beacon)
+    match pk.verify(round, b"", &signature) {
+        Ok(valid) => {
+            if !valid {
+                warn!("Invalid beacon signature for round {}; signature: {}", round, &payload.beacon.signature);
+                return None
+            }
+            let mut beacon = payload.beacon.clone();
+
+            // make sure that the signature is the source of randomness
+            beacon.randomness = hex::encode(derive_randomness(&signature));
+            Some(beacon)
+        }
+        Err(e) => {
+            error!("Drand VerificationError: {}", e.to_string());
+            None
+        },
+    }
 }

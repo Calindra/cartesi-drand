@@ -1,3 +1,7 @@
+## [0.3.1] - 2023-10-18
+### Changed
+- Fix beacon randomness validation
+
 ## [0.3.0] - 2023-10-18
 ### Changed
 - Major improvements with change from rollups to sunodo and minor like add logs levels

@@ -3,9 +3,8 @@ mod middleware_tests {
     use std::sync::Once;
 
     use crate::{
-        is_drand_beacon,
         models::models::{AppState, Beacon, Item},
-        router::routes::{self}, utils::util::load_env_from_json,
+        router::routes::{self}, utils::util::load_env_from_json, drand::get_drand_beacon,
     };
     use actix_web::{
         http::{self},
@@ -80,38 +79,6 @@ mod middleware_tests {
             let req: serde_json::Value = serde_json::from_str(utf).unwrap();
             req
         }};
-    }
-
-    #[actix_web::test]
-    async fn test_is_drand_beacon() {
-        check_if_dotenv_is_loaded!();
-
-        let beacon = json!({
-            "round": 3828300,
-            "randomness": "7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9",
-            "signature": "ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"
-        });
-
-        let payload = json!({
-            "beacon": beacon,
-        });
-
-        let payload = payload.to_string();
-        let payload = hex::encode(payload);
-        let payload = format!("0x{}", payload);
-
-        let object = json!({
-            "data": {
-                "payload": payload,
-            }
-        });
-
-        let item = Item {
-            request: object.to_string(),
-        };
-
-        let resp = is_drand_beacon(&item);
-        assert_eq!(resp, true);
     }
 
     #[actix_web::test]
@@ -330,5 +297,22 @@ mod middleware_tests {
             randomness,
             "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
         );
+    }
+
+    #[actix_web::test]
+    async fn test_get_drand_beacon() {
+        env_logger::init();
+        check_if_dotenv_is_loaded!();
+        let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
+        let beacon = get_drand_beacon(payload);
+        assert!(beacon.is_some());
+
+        let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031322c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
+        let beacon = get_drand_beacon(payload);
+        assert!(beacon.is_none());
+
+        let payload = "7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a2262373561303161343638663439616264653362356338316330373133643831393834356431313362623561363662643361353736666534306231303932373237316439643235633163316262663636623733653762336332623633393936343833333333227d7d";
+        let beacon = get_drand_beacon(payload);
+        assert!(beacon.is_none());
     }
 }
