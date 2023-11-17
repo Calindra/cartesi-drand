@@ -1,25 +1,21 @@
 mod drand;
-mod logger;
 mod main_test;
 mod models;
 mod rollup;
 mod router;
 mod utils;
 
-use crate::models::models::{AppState, Beacon, InputBufferManager, Item};
+use crate::models::models::{AppState, InputBufferManager, Item};
 use crate::router::routes;
 use crate::utils::util::load_env_from_json;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use drand_verify::{G2Pubkey, Pubkey};
-use log::{set_boxed_logger, set_max_level, error, info};
-use logger::SimpleLogger;
+use log::{error, info};
 use serde_json::{json, Value};
 use std::error::Error;
-use std::{borrow::BorrowMut, env, sync::Arc};
-use tokio::sync::mpsc::{Receiver, Sender};
+use std::{env, sync::Arc};
+use tokio::sync::mpsc::Sender;
 use tokio::{spawn, sync::Mutex};
-use utils::util::deserialize_obj;
 
 // Rollup Sender - only work on loop mode
 async fn rollup(
@@ -133,14 +129,10 @@ fn start_senders(manager: Arc<Mutex<InputBufferManager>>, sender: Sender<Item>) 
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init();
-    let logger = SimpleLogger;
-    set_boxed_logger(Box::new(logger))
-        .map(|_| set_max_level(log::LevelFilter::Info))
-        .unwrap();
-
     dotenv().ok();
     load_env_from_json().await.unwrap();
+
+    env_logger::init();
 
     let app_state = web::Data::new(AppState::new());
 
