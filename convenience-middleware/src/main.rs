@@ -4,6 +4,7 @@ mod models;
 mod rollup;
 mod router;
 mod utils;
+mod errors;
 
 use crate::models::models::AppState;
 use crate::router::routes;
