@@ -1,9 +1,10 @@
 pub mod routes {
-    use actix_web::{get, post, put, web, HttpResponse, Responder};
+    use actix_web::{get, post, put, web, HttpResponse, Responder, ResponseError};
     use log::{error, info};
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
+        errors::VerificationError,
         models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
         rollup::{has_input_inside_input, server::send_finish_and_retrieve_input},
         utils::util::{load_env_from_memory, write_env_to_json},
@@ -13,7 +14,7 @@ pub mod routes {
     async fn update_drand_config(
         ctx: web::Data<AppState>,
         body: web::Json<DrandEnv>,
-    ) -> impl Responder {
+    ) -> Result<impl Responder, impl ResponseError> {
         info!(
             "Received update_drand_config request from DApp version={}",
             ctx.version
@@ -31,10 +32,12 @@ pub mod routes {
         // already change the env in memory
         if let Err(e) = result {
             error!("Error updating drand config: {}", e);
-            return HttpResponse::BadRequest().finish();
+            return Err(VerificationError::InvalidDrandConfig {
+                cause: e.to_string(),
+            });
         }
 
-        HttpResponse::NoContent().finish()
+        Ok(HttpResponse::NoContent().finish())
     }
 
     #[post("/finish")]

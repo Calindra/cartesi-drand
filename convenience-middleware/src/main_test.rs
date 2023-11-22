@@ -3,11 +3,14 @@ mod middleware_tests {
     use std::sync::Once;
 
     use crate::{
-        models::models::{AppState, Beacon, Item},
-        router::routes::{self}, utils::util::load_env_from_json, drand::get_drand_beacon,
+        drand::get_drand_beacon,
+        models::models::{AppState, Beacon, DrandEnv},
+        router::routes::{self},
+        utils::util::load_env_from_json,
     };
     use actix_web::{
         http::{self},
+        middleware::Logger,
         test,
         web::{self},
         App,
@@ -315,4 +318,29 @@ mod middleware_tests {
         let beacon = get_drand_beacon(payload);
         assert!(beacon.is_none());
     }
+
+    // #[actix_web::test]
+    // async fn test_update_key() {
+    //     env_logger::init();
+    //     check_if_dotenv_is_loaded!();
+    //     let logger = Logger::default();
+
+    //     let app_state = web::Data::new(AppState::new());
+    //     let app = App::new()
+    //         .wrap(logger)
+    //         .app_data(app_state.clone())
+    //         .service(routes::update_drand_config);
+
+    //     let drand_env = serde_json::to_string(&DrandEnv {
+    //         DRAND_PUBLIC_KEY: "0x123".to_string(),
+    //         DRAND_PERIOD: None,
+    //         DRAND_GENESIS_TIME: None,
+    //         DRAND_SAFE_SECONDS: Some(1000),
+    //     })
+    //     .unwrap();
+
+    //     let req = test::TestRequest::default()
+    //         .set_json(drand_env)
+    //         .to_http_request();
+    // }
 }

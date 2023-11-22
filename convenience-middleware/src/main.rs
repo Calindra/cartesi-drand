@@ -1,15 +1,15 @@
 mod drand;
+mod errors;
 mod main_test;
 mod models;
 mod rollup;
 mod router;
 mod utils;
-mod errors;
 
 use crate::models::models::AppState;
 use crate::router::routes;
 use crate::utils::util::load_env_from_json;
-use actix_web::{web, App, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
 use log::info;
 
@@ -25,7 +25,10 @@ async fn main() -> std::io::Result<()> {
     info!("Starting server");
 
     HttpServer::new(move || {
+        let logger = Logger::default();
+
         App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random)
             .service(routes::consume_buffer)

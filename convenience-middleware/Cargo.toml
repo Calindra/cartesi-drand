@@ -18,6 +18,7 @@ serde_json = "1.0.102"
 sha3 = "0.10.8"
 log = { version = "0.4.20", features = ["std", "serde"] }
 env_logger = "0.10.1"
+derive_more = { version = "0.99.17", no-default-features = true, features = ["error", "display"] }
 
 [dev-dependencies]
 httptest = "0.15.4"
