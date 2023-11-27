@@ -2,16 +2,29 @@ use actix_web::{error, http::header::ContentType, HttpResponse};
 use derive_more::{Display, Error};
 
 #[derive(Debug, Display, Error)]
-pub enum VerificationError {
+pub enum CheckerError {
     #[display(fmt = "Error updating drand config: {}", cause)]
-    InvalidDrandConfig { cause: String },
-    // #[display(fmt = "Timeout")]
-    // Timeout,
-    // #[display(fmt = "Invalid signature")]
-    // InvalidSignature,
+    InvalidDrandConfig {
+        cause: String,
+    },
+
+    #[display(fmt = "Already inspecting")]
+    AlreadyInspecting,
+
+    #[display(fmt = "Error sending finish request to rollup")]
+    SendRollupAndRetrieveInputError,
+
+    #[display(fmt = "Error sending finish request to rollup")]
+    ByPassInspect,
+
+    #[display(fmt = "Unknown request type")]
+    UnknownRequestType,
+
+    #[display(fmt = "Store input to consume later")]
+    StoreInputByPass,
 }
 
-impl serde::Serialize for VerificationError {
+impl serde::Serialize for CheckerError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -25,12 +38,15 @@ impl serde::Serialize for VerificationError {
     }
 }
 
-impl error::ResponseError for VerificationError {
+impl error::ResponseError for CheckerError {
     fn status_code(&self) -> hyper::StatusCode {
         match *self {
-            VerificationError::InvalidDrandConfig { .. } => hyper::StatusCode::BAD_REQUEST,
-            // VerificationError::Timeout => hyper::StatusCode::REQUEST_TIMEOUT,
-            // VerificationError::InvalidSignature => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::InvalidDrandConfig { .. } => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::AlreadyInspecting => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::SendRollupAndRetrieveInputError => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::ByPassInspect => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::UnknownRequestType => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::StoreInputByPass => hyper::StatusCode::BAD_REQUEST,
         }
     }
 

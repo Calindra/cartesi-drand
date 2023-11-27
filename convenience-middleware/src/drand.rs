@@ -2,23 +2,29 @@ use std::borrow::BorrowMut;
 
 use actix_web::web::Data;
 use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
-use log::{warn, error};
+use log::error;
 use serde_json::json;
 
 use crate::{
     models::models::{AppState, DrandBeacon, PayloadWithBeacon},
-    rollup::{self, RollupInput},
+    rollup::{input::RollupInput, server::send_report},
 };
 
 pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
-    rollup_input.decoded_inspect() == "pendingdrandbeacon"
+    match rollup_input.decoded_inspect() {
+        Ok(decoded) => decoded == "pendingdrandbeacon",
+        Err(e) => {
+            error!("Error decoding input: {}", e);
+            false
+        }
+    }
 }
 
 pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
     let manager = app_state.input_buffer_manager.lock().await;
     let x = manager.pending_beacon_timestamp.get();
     let report = json!({ "payload": format!("{x:#x}") });
-    let _ = rollup::server::send_report(report).await.unwrap();
+    let _ = send_report(report).await.unwrap();
 }
 
 /**
@@ -52,8 +58,11 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     match pk.verify(round, b"", &signature) {
         Ok(valid) => {
             if !valid {
-                warn!("Invalid beacon signature for round {}; signature: {}", round, &payload.beacon.signature);
-                return None
+                error!(
+                    "Invalid beacon signature for round {}; signature: {}",
+                    round, &payload.beacon.signature
+                );
+                return None;
             }
             let mut beacon = payload.beacon.clone();
 
@@ -64,6 +73,6 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
         Err(e) => {
             error!("Drand VerificationError: {}", e.to_string());
             None
-        },
+        }
     }
 }

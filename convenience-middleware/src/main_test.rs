@@ -4,13 +4,12 @@ mod middleware_tests {
 
     use crate::{
         drand::get_drand_beacon,
-        models::models::{AppState, Beacon, DrandEnv},
+        models::models::{AppState, Beacon},
         router::routes::{self},
         utils::util::load_env_from_json,
     };
     use actix_web::{
         http::{self},
-        middleware::Logger,
         test,
         web::{self},
         App,
