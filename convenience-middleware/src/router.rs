@@ -44,7 +44,7 @@ pub mod routes {
     async fn consume_buffer(
         ctx: web::Data<AppState>,
         body: web::Json<RequestRollups>,
-    ) -> Result<impl Responder, impl ResponseError> {
+    ) -> impl Responder {
         info!(
             "Received finish request from DApp {:?} version={}",
             body, ctx.version
@@ -53,14 +53,14 @@ pub mod routes {
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
             if has_input_inside_input(&item.request) {
-                return Ok::<HttpResponse, CheckerError>(HttpResponse::Ok().body(item.request));
+                return HttpResponse::Ok().body(item.request);
             } else {
-                return Ok(HttpResponse::Accepted().finish());
+                return HttpResponse::Accepted().finish();
             }
         }
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
             Ok(input) => input,
-            Err(_) => return Ok(HttpResponse::Accepted().finish()),
+            Err(_) => return HttpResponse::Accepted().finish(),
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
@@ -76,7 +76,7 @@ pub mod routes {
                     send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
-                    return Ok(HttpResponse::Accepted().finish());
+                    return HttpResponse::Accepted().finish();
                 }
             }
             &_ => {
@@ -85,11 +85,19 @@ pub mod routes {
         };
 
         // Dispatch the input to the DApp
-        let body = serde_json::to_string(&rollup_input).unwrap();
-        if has_input_inside_input(&body) {
-            return Ok(HttpResponse::Ok().body(body));
-        } else {
-            return Ok(HttpResponse::Accepted().finish());
+        match serde_json::to_string(&rollup_input) {
+            Ok(body) => {
+                if has_input_inside_input(&body) {
+                    return HttpResponse::Ok().body(body);
+                } else {
+                    return HttpResponse::Accepted().finish();
+                }
+            }
+
+            Err(e) => {
+                error!("Error serializing input: {}", e);
+                return HttpResponse::Accepted().finish();
+            }
         }
     }
 
