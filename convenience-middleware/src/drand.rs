@@ -39,9 +39,9 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     let payload = serde_json::from_str::<PayloadWithBeacon>(&payload).ok()?;
 
-    let key = key.as_str();
+    let key_s: &str = key.as_str();
     let mut pk = [0u8; 96];
-    hex::decode_to_slice(key, pk.borrow_mut()).ok()?;
+    hex::decode_to_slice(key_s, pk.borrow_mut()).ok()?;
 
     let pk = G2Pubkey::from_fixed(pk).ok()?;
 
@@ -52,7 +52,7 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     match pk.verify(round, b"", &signature) {
         Ok(valid) => {
             if !valid {
-                warn!("Invalid beacon signature for round {}; signature: {}", round, &payload.beacon.signature);
+                warn!("Invalid beacon signature for round {}; signature: {}; public_key: {};", round, &payload.beacon.signature, key);
                 return None
             }
             let mut beacon = payload.beacon.clone();
