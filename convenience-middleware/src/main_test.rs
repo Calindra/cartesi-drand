@@ -14,7 +14,7 @@ mod middleware_tests {
         App,
     };
     use dotenv::dotenv;
-    use drand_verify::{G2Pubkey, Pubkey as _};
+    use drand_verify::{G2Pubkey, Pubkey as _, G2PubkeyRfc};
     use http::Method;
     use httptest::{
         matchers::*,
@@ -335,7 +335,7 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_verify_quick() {
         const PK_HEX2: [u8; 96] = hex!("83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a");
-        let pk = G2Pubkey::from_fixed(PK_HEX2).unwrap();
+        let pk = G2PubkeyRfc::from_fixed(PK_HEX2).unwrap();
 
         // https://api3.drand.sh/dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493/public/1
         let signature = hex::decode("a1d1b86acd60adb8ed8dafbc8efdd5ebe3914c42de11a0a0636cf42d22a15a4a3d129f155732bd874c62bd153a2a65bd").unwrap();

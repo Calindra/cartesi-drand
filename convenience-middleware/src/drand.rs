@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 
 use actix_web::web::Data;
-use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
+use drand_verify::{derive_randomness, G2Pubkey, G2PubkeyRfc, Pubkey};
 use log::{warn, error};
 use serde_json::json;
 
@@ -43,7 +43,7 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
     let mut pk = [0u8; 96];
     hex::decode_to_slice(key_s, pk.borrow_mut()).ok()?;
 
-    let pk = G2Pubkey::from_fixed(pk).ok()?;
+    let pk = G2PubkeyRfc::from_fixed(pk).ok()?;
 
     let signature = hex::decode(&payload.beacon.signature).ok()?;
 
