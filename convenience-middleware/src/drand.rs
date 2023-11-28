@@ -1,4 +1,4 @@
-use std::borrow::BorrowMut;
+use std::{borrow::BorrowMut, error::Error};
 
 use actix_web::web::Data;
 use drand_verify::{derive_randomness, G2Pubkey, Pubkey};
@@ -10,14 +10,9 @@ use crate::{
     rollup::{input::RollupInput, server::send_report},
 };
 
-pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
-    match rollup_input.decoded_inspect() {
-        Ok(decoded) => decoded == "pendingdrandbeacon",
-        Err(e) => {
-            error!("Error decoding input: {}", e);
-            false
-        }
-    }
+pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> Result<bool, Box<dyn Error>> {
+    let result = rollup_input.decoded_inspect()?;
+    Ok(result == "pendingdrandbeacon")
 }
 
 pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {

@@ -11,16 +11,16 @@ pub enum CheckerError {
     #[display(fmt = "Already inspecting")]
     AlreadyInspecting,
 
-    #[display(fmt = "Error sending finish request to rollup")]
+    // #[display(fmt = "Error sending finish request to rollup")]
     SendRollupAndRetrieveInputError,
 
-    #[display(fmt = "Error sending finish request to rollup")]
+    // #[display(fmt = "Error sending finish request to rollup")]
     ByPassInspect,
 
-    #[display(fmt = "Unknown request type")]
+    // #[display(fmt = "Unknown request type")]
     UnknownRequestType,
 
-    #[display(fmt = "Store input to consume later")]
+    // #[display(fmt = "Store input to consume later")]
     StoreInputByPass,
 }
 
@@ -43,10 +43,14 @@ impl error::ResponseError for CheckerError {
         match *self {
             CheckerError::InvalidDrandConfig { .. } => hyper::StatusCode::BAD_REQUEST,
             CheckerError::AlreadyInspecting => hyper::StatusCode::BAD_REQUEST,
-            CheckerError::SendRollupAndRetrieveInputError => hyper::StatusCode::BAD_REQUEST,
-            CheckerError::ByPassInspect => hyper::StatusCode::BAD_REQUEST,
-            CheckerError::UnknownRequestType => hyper::StatusCode::BAD_REQUEST,
-            CheckerError::StoreInputByPass => hyper::StatusCode::BAD_REQUEST,
+            // CheckerError::SendRollupAndRetrieveInputError => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::SendRollupAndRetrieveInputError => hyper::StatusCode::NOT_FOUND,
+            // CheckerError::ByPassInspect => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::ByPassInspect => hyper::StatusCode::NOT_FOUND,
+            // CheckerError::UnknownRequestType => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::UnknownRequestType => hyper::StatusCode::NOT_FOUND,
+            // CheckerError::StoreInputByPass => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::StoreInputByPass => hyper::StatusCode::NOT_FOUND,
         }
     }
 

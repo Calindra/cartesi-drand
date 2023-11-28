@@ -72,7 +72,7 @@ pub mod routes {
             }
             "inspect_state" => {
                 ctx.set_inspecting(true).await;
-                if is_querying_pending_beacon(&rollup_input) {
+                if is_querying_pending_beacon(&rollup_input).unwrap() {
                     send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
@@ -144,7 +144,7 @@ pub mod routes {
             }
             "inspect_state" => {
                 ctx.set_inspecting(true).await;
-                if is_querying_pending_beacon(&rollup_input) {
+                if is_querying_pending_beacon(&rollup_input).unwrap() {
                     send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
