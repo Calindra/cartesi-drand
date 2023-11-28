@@ -17,7 +17,8 @@ bs58 = "0.5.0"
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 hex = { version = "0.4.3", features = ["serde"] }
 async-trait = "0.1.73"
-log = { version = "0.4.20", features = ["std"] }
+log = { version = "0.4.20", features = ["std", "serde"] }
+env_logger = "0.10.1"
 
 # riscv compile problem
 # hyper-tls = "0.5.0"

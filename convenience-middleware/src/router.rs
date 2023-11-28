@@ -88,15 +88,15 @@ pub mod routes {
         match serde_json::to_string(&rollup_input) {
             Ok(body) => {
                 if has_input_inside_input(&body) {
-                    return HttpResponse::Ok().body(body);
+                    HttpResponse::Ok().body(body)
                 } else {
-                    return HttpResponse::Accepted().finish();
+                    HttpResponse::Accepted().finish()
                 }
             }
 
             Err(e) => {
                 error!("Error serializing input: {}", e);
-                return HttpResponse::Accepted().finish();
+                HttpResponse::BadRequest().finish()
             }
         }
     }

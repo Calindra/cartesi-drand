@@ -303,7 +303,7 @@ mod middleware_tests {
 
     #[actix_web::test]
     async fn test_get_drand_beacon() {
-        env_logger::init();
+        env_logger::builder().is_test(true).try_init().unwrap();
         check_if_dotenv_is_loaded!();
         let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
         let beacon = get_drand_beacon(payload);
@@ -320,7 +320,7 @@ mod middleware_tests {
 
     // #[actix_web::test]
     // async fn test_update_key() {
-    //     env_logger::init();
+    //     env_logger::builder().is_test(true).try_init().unwrap();
     //     check_if_dotenv_is_loaded!();
     //     let logger = Logger::default();
 
