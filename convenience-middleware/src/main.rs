@@ -17,7 +17,12 @@ async fn main() -> std::io::Result<()> {
     dotenv().unwrap();
     load_env_from_json().await.unwrap();
 
-    env_logger::init();
+    let env = env_logger::Env::default().default_filter_or("info");
+    env_logger::builder()
+        .parse_env(env)
+        .format_timestamp(None)
+        .try_init()
+        .unwrap();
 
     let app_state = web::Data::new(AppState::new());
 
