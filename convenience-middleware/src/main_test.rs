@@ -4,17 +4,20 @@ mod middleware_tests {
     use std::sync::Once;
 
     use crate::{
-        models::models::{AppState, Beacon, Item},
-        router::routes::{self}, utils::util::load_env_from_json, drand::get_drand_beacon,
+        drand::get_drand_beacon,
+        models::models::{AppState, Beacon},
+        router::routes::{self},
+        utils::util::load_env_from_json,
     };
     use actix_web::{
         http::{self},
+        middleware::Logger,
         test,
         web::{self},
         App,
     };
     use dotenv::dotenv;
-    use drand_verify::{G2Pubkey, Pubkey as _, G2PubkeyRfc};
+    use drand_verify::{G2Pubkey, G2PubkeyRfc, Pubkey as _};
     use http::Method;
     use httptest::{
         matchers::*,
@@ -35,6 +38,7 @@ mod middleware_tests {
 
     static SERVER: ServerPool = ServerPool::new(1);
     static BIND_SERVER: Once = Once::new();
+    static BIND_LOGGER: Once = Once::new();
 
     #[macro_export]
     macro_rules! mock_rollup_server {
@@ -83,6 +87,20 @@ mod middleware_tests {
         }};
     }
 
+    fn generate_log() -> Logger {
+        BIND_LOGGER.call_once(|| {
+            let env = env_logger::Env::default().default_filter_or("info");
+            env_logger::builder()
+                .parse_env(env)
+                .format_timestamp(None)
+                .is_test(true)
+                .try_init()
+                .unwrap();
+        });
+
+        Logger::default()
+    }
+
     #[actix_web::test]
     async fn request_random_without_beacon() {
         check_if_dotenv_is_loaded!();
@@ -91,7 +109,9 @@ mod middleware_tests {
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -132,7 +152,10 @@ mod middleware_tests {
         let manager = app_state.input_buffer_manager.clone();
         manager.lock().await.last_beacon.set(Some(beacon));
 
+        let logger = generate_log();
+
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -166,7 +189,10 @@ mod middleware_tests {
         let manager = app_state.input_buffer_manager.clone();
         manager.lock().await.last_beacon.set(Some(beacon));
 
+        let logger = generate_log();
+
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -193,7 +219,9 @@ mod middleware_tests {
 
         let app_state = web::Data::new(AppState::new());
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer);
 
@@ -218,7 +246,9 @@ mod middleware_tests {
 
         let app_state = web::Data::new(AppState::new());
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer);
 
@@ -241,9 +271,11 @@ mod middleware_tests {
             )
         ]);
 
+        let logger = generate_log();
         let app_state = web::Data::new(AppState::new());
 
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer)
             .service(routes::request_random);
@@ -279,8 +311,10 @@ mod middleware_tests {
         ]);
 
         let app_state = web::Data::new(AppState::new());
+        let logger = generate_log();
 
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer)
             .service(routes::request_random);
@@ -303,8 +337,7 @@ mod middleware_tests {
 
     #[actix_web::test]
     async fn test_get_drand_beacon() {
-        std::env::set_var("RUST_LOG", "info");
-        env_logger::init();
+        generate_log();
         check_if_dotenv_is_loaded!();
         // let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
         let payload = "0x7b22626561636f6e223a7b22726f756e64223a323739373337332c2272616e646f6d6e657373223a2261383438323038386331353964376135633961353463663539396336383666656262656630306439376430633436306466656533636438306666333731646439222c227369676e6174757265223a22383537333235623964346439653831623332666639386630646136666332633661663032623130323037656631343864326433396238326237373135396437363661396564663861363861373933313335383930613764666136363136366137227d7d";
@@ -313,11 +346,11 @@ mod middleware_tests {
 
         let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031322c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
         let beacon = get_drand_beacon(payload);
-        // assert!(beacon.is_none());
+        assert!(beacon.is_none());
 
         let payload = "7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a2262373561303161343638663439616264653362356338316330373133643831393834356431313362623561363662643361353736666534306231303932373237316439643235633163316262663636623733653762336332623633393936343833333333227d7d";
         let beacon = get_drand_beacon(payload);
-        // assert!(beacon.is_none());
+        assert!(beacon.is_none());
     }
 
     #[actix_web::test]

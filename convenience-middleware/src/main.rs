@@ -14,7 +14,7 @@ use log::info;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
+    dotenv().unwrap();
     load_env_from_json().await.unwrap();
 
     env_logger::init();

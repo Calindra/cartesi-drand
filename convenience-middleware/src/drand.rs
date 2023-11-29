@@ -39,9 +39,8 @@ pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
 
     let payload = serde_json::from_str::<PayloadWithBeacon>(&payload).ok()?;
 
-    let key_s: &str = key.as_str();
     let mut pk = [0u8; 96];
-    hex::decode_to_slice(key_s, pk.borrow_mut()).ok()?;
+    hex::decode_to_slice(&key, pk.borrow_mut()).ok()?;
 
     let pk = G2PubkeyRfc::from_fixed(pk).ok()?;
 
