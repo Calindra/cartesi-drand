@@ -35,7 +35,9 @@ pub mod server {
             return Err("Skip".into());
         }
 
-        Ok(parse_input_from_response(response).await?)
+        let result = parse_input_from_response(response).await?;
+
+        Ok(result)
     }
 
     pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
@@ -54,7 +56,7 @@ pub mod server {
 }
 
 pub mod input {
-    use crate::{utils::util::deserialize_obj, models::models::Item};
+    use crate::{models::models::Item, utils::util::deserialize_obj};
     use hyper::{Body, Response};
     use serde::{Deserialize, Serialize};
     use std::error::Error;
@@ -108,12 +110,14 @@ pub mod input {
 
     pub fn has_input_inside_input(input: &RollupInput) -> bool {
         let json = input.data.payload.trim_start_matches("0x");
-        let json = hex::decode(json);
-        let json = match json {
+        let json = match hex::decode(json) {
             Ok(json) => json,
             Err(_) => return false,
         };
-        let json = std::str::from_utf8(&json).unwrap();
+        let json = match std::str::from_utf8(&json) {
+            Ok(json) => json,
+            Err(_) => return false,
+        };
         let value = deserialize_obj(json);
         let value = match value {
             Some(json) => json,
