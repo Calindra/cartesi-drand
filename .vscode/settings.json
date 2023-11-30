@@ -5,6 +5,7 @@
         "drand",
         "ethereum",
         "pendingdrandbeacon",
+        "Pubkey",
         "rollup",
         "rollups",
         "tokio"

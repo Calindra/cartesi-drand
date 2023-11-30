@@ -1,4 +1,4 @@
-use crate::utils::util::deserialize_obj;
+use crate::{models::models::Item, utils::util::deserialize_obj};
 use hyper::{Body, Response};
 use serde::{Deserialize, Serialize};
 
@@ -9,9 +9,7 @@ pub mod server {
 
     use super::{parse_input_from_response, RollupInput};
 
-    pub async fn send_finish(
-        status: &str,
-    ) -> Result<Response<Body>, Box<dyn std::error::Error>> {
+    pub async fn send_finish(status: &str) -> Result<Response<Body>, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
         info!("Sending finish to {}", &server_addr);
         let client = hyper::Client::new();
@@ -52,9 +50,7 @@ pub mod server {
             .ok()
     }
 
-    pub async fn send_report(
-        report: Value,
-    ) -> Result<&'static str, Box<dyn std::error::Error>> {
+    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr =
             std::env::var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
         let client = hyper::Client::new();
@@ -73,6 +69,14 @@ pub mod server {
 pub struct RollupInput {
     pub data: RollupInputData,
     pub request_type: String,
+}
+
+impl TryFrom<Item> for RollupInput {
+    type Error = serde_json::Error;
+
+    fn try_from(item: Item) -> Result<Self, Self::Error> {
+        serde_json::from_str(&item.request)
+    }
 }
 
 impl RollupInput {
@@ -108,13 +112,8 @@ pub async fn parse_input_from_response(
     Ok(result_deserialization)
 }
 
-pub fn has_input_inside_input(body: &String) -> bool {
-    let result_deserialization = serde_json::from_str::<RollupInput>(body);
-    let rollup_input = match result_deserialization {
-        Ok(input) => input,
-        Err(_) => return false,
-    };
-    let json = rollup_input.data.payload.trim_start_matches("0x");
+pub fn has_input_inside_input(input: &RollupInput) -> bool {
+    let json = input.data.payload.trim_start_matches("0x");
     let json = hex::decode(json);
     let json = match json {
         Ok(json) => json,
