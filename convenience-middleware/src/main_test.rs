@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod middleware_tests {
+    use hex_literal::hex;
     use std::sync::Once;
 
     use crate::{
@@ -10,11 +11,13 @@ mod middleware_tests {
     };
     use actix_web::{
         http::{self},
+        middleware::Logger,
         test,
         web::{self},
         App,
     };
     use dotenv::dotenv;
+    use drand_verify::{G2Pubkey, G2PubkeyRfc, Pubkey as _};
     use http::Method;
     use httptest::{
         matchers::*,
@@ -35,6 +38,7 @@ mod middleware_tests {
 
     static SERVER: ServerPool = ServerPool::new(1);
     static BIND_SERVER: Once = Once::new();
+    static BIND_LOGGER: Once = Once::new();
 
     #[macro_export]
     macro_rules! mock_rollup_server {
@@ -83,6 +87,20 @@ mod middleware_tests {
         }};
     }
 
+    fn generate_log() -> Logger {
+        BIND_LOGGER.call_once(|| {
+            let env = env_logger::Env::default().default_filter_or("info");
+            env_logger::builder()
+                .parse_env(env)
+                .format_timestamp(None)
+                .is_test(true)
+                .try_init()
+                .unwrap();
+        });
+
+        Logger::default()
+    }
+
     #[actix_web::test]
     async fn request_random_without_beacon() {
         check_if_dotenv_is_loaded!();
@@ -91,7 +109,9 @@ mod middleware_tests {
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -132,7 +152,10 @@ mod middleware_tests {
         let manager = app_state.input_buffer_manager.clone();
         manager.lock().await.last_beacon.set(Some(beacon));
 
+        let logger = generate_log();
+
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -166,7 +189,10 @@ mod middleware_tests {
         let manager = app_state.input_buffer_manager.clone();
         manager.lock().await.last_beacon.set(Some(beacon));
 
+        let logger = generate_log();
+
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::request_random);
 
@@ -193,7 +219,9 @@ mod middleware_tests {
 
         let app_state = web::Data::new(AppState::new());
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer);
 
@@ -218,7 +246,9 @@ mod middleware_tests {
 
         let app_state = web::Data::new(AppState::new());
 
+        let logger = generate_log();
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer);
 
@@ -237,13 +267,15 @@ mod middleware_tests {
                 json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
             ),
             json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B22726F756E64223A343038383031312C2272616E646F6D6E657373223A2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222C227369676E6174757265223A22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227D2C22696E707574223A2230783030227D"},"request_type":"advance_state"})
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D2C22696E707574223A2230783030227D"},"request_type":"advance_state"})
             )
         ]);
 
+        let logger = generate_log();
         let app_state = web::Data::new(AppState::new());
 
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer)
             .service(routes::request_random);
@@ -262,7 +294,7 @@ mod middleware_tests {
         let randomness = call_random!(&mut app);
         assert_eq!(
             randomness,
-            "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
+            "a0e68303b27400e78fd3170af2a5387f9a8fe291545f8461cafafd90fb0e7357"
         );
     }
 
@@ -274,13 +306,15 @@ mod middleware_tests {
                 json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
             ),
             json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d"},"request_type":"advance_state"})
+                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D7D"},"request_type":"advance_state"})
             )
         ]);
 
         let app_state = web::Data::new(AppState::new());
+        let logger = generate_log();
 
         let app = App::new()
+            .wrap(logger)
             .app_data(app_state.clone())
             .service(routes::consume_buffer)
             .service(routes::request_random);
@@ -297,15 +331,15 @@ mod middleware_tests {
         // check randomness
         assert_eq!(
             randomness,
-            "29c0ecf5b324ed9710bddf053e5b4ec0f0faf002ccfcc9692214be6ef4110d29"
+            "a0e68303b27400e78fd3170af2a5387f9a8fe291545f8461cafafd90fb0e7357"
         );
     }
 
     #[actix_web::test]
     async fn test_get_drand_beacon() {
-        env_logger::builder().is_test(true).try_init().unwrap();
+        generate_log();
         check_if_dotenv_is_loaded!();
-        let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
+        let payload = "0x7b22626561636f6e223a7b22726f756e64223a323739373337332c2272616e646f6d6e657373223a2261383438323038386331353964376135633961353463663539396336383666656262656630306439376430633436306466656533636438306666333731646439222c227369676e6174757265223a22383537333235623964346439653831623332666639386630646136666332633661663032623130323037656631343864326433396238326237373135396437363661396564663861363861373933313335383930613764666136363136366137227d7d";
         let beacon = get_drand_beacon(payload);
         assert!(beacon.is_some());
 
@@ -342,4 +376,27 @@ mod middleware_tests {
     //         .set_json(drand_env)
     //         .to_http_request();
     // }
+    #[actix_web::test]
+    async fn test_verify_fast() {
+        const PK_HEX3: [u8; 96] = hex!("a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e");
+        let pk = G2Pubkey::from_fixed(PK_HEX3).unwrap();
+
+        // https://api3.drand.sh/dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493/public/1
+        let signature = hex::decode("9544ddce2fdbe8688d6f5b4f98eed5d63eee3902e7e162050ac0f45905a55657714880adabe3c3096b92767d886567d0").unwrap();
+        let round: u64 = 1;
+        let result = pk.verify(round, b"", &signature).unwrap();
+        assert!(result);
+    }
+
+    #[actix_web::test]
+    async fn test_verify_quick() {
+        const PK_HEX2: [u8; 96] = hex!("83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a");
+        let pk = G2PubkeyRfc::from_fixed(PK_HEX2).unwrap();
+
+        // https://api3.drand.sh/dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493/public/1
+        let signature = hex::decode("a1d1b86acd60adb8ed8dafbc8efdd5ebe3914c42de11a0a0636cf42d22a15a4a3d129f155732bd874c62bd153a2a65bd").unwrap();
+        let round: u64 = 2798644;
+        let result = pk.verify(round, b"", &signature).unwrap();
+        assert!(result);
+    }
 }

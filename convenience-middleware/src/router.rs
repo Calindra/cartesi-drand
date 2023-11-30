@@ -6,7 +6,10 @@ pub mod routes {
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
         errors::CheckerError,
         models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
-        rollup::{input::has_input_inside_input, server::send_finish_and_retrieve_input},
+        rollup::{
+            input::{has_input_inside_input, RollupInput},
+            server::send_finish_and_retrieve_input,
+        },
         utils::util::{load_env_from_memory, write_env_to_json},
     };
 
@@ -52,10 +55,17 @@ pub mod routes {
 
         // the DApp consume from the buffer first
         if let Some(item) = ctx.consume_input().await {
-            if has_input_inside_input(&item.request) {
-                return HttpResponse::Ok().body(item.request);
-            } else {
-                return HttpResponse::Accepted().finish();
+            let request = item.request.clone();
+            match RollupInput::try_from(item) {
+                Ok(input) => {
+                    if has_input_inside_input(&input) {
+                        return HttpResponse::Ok().body(request);
+                    } else {
+                        return HttpResponse::Accepted().finish();
+                    }
+                }
+
+                Err(_) => return HttpResponse::Accepted().finish(),
             }
         }
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
@@ -85,19 +95,10 @@ pub mod routes {
         };
 
         // Dispatch the input to the DApp
-        match serde_json::to_string(&rollup_input) {
-            Ok(body) => {
-                if has_input_inside_input(&body) {
-                    HttpResponse::Ok().body(body)
-                } else {
-                    HttpResponse::Accepted().finish()
-                }
-            }
-
-            Err(e) => {
-                error!("Error serializing input: {}", e);
-                HttpResponse::BadRequest().finish()
-            }
+        if has_input_inside_input(&rollup_input) {
+            return HttpResponse::Ok().json(rollup_input);
+        } else {
+            return HttpResponse::Accepted().finish();
         }
     }
 
