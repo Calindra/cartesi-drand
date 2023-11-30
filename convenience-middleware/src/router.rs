@@ -1,10 +1,9 @@
 pub mod routes {
-    use actix_web::{get, post, put, web, HttpResponse, Responder, ResponseError};
+    use actix_web::{get, post, put, web, HttpResponse, Responder};
     use log::{error, info};
 
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
-        errors::CheckerError,
         models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
         rollup::{
             input::{has_input_inside_input, RollupInput},
@@ -17,7 +16,7 @@ pub mod routes {
     async fn update_drand_config(
         ctx: web::Data<AppState>,
         body: web::Json<DrandEnv>,
-    ) -> Result<impl Responder, impl ResponseError> {
+    ) -> impl Responder {
         info!(
             "Received update_drand_config request from DApp version={}",
             ctx.version
@@ -35,12 +34,10 @@ pub mod routes {
         // already change the env in memory
         if let Err(e) = result {
             error!("Error updating drand config: {}", e);
-            return Err(CheckerError::InvalidDrandConfig {
-                cause: e.to_string(),
-            });
+            return HttpResponse::BadRequest().finish();
         }
 
-        Ok(HttpResponse::NoContent().finish())
+        HttpResponse::NoContent().finish()
     }
 
     #[post("/finish")]
@@ -70,7 +67,7 @@ pub mod routes {
         }
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
             Ok(input) => input,
-            Err(_) => return HttpResponse::Accepted().finish(),
+            _ => return HttpResponse::Accepted().finish(),
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
@@ -106,7 +103,7 @@ pub mod routes {
     async fn request_random(
         ctx: web::Data<AppState>,
         query: web::Query<Timestamp>,
-    ) -> Result<impl Responder, impl ResponseError> {
+    ) -> impl Responder {
         info!(
             "Received random request from DApp timestamp={} version={}",
             query.timestamp, ctx.version
@@ -114,19 +111,16 @@ pub mod routes {
         let randomness: Option<String> = ctx.get_randomness_for_timestamp(query.timestamp);
         if let Some(randomness) = randomness {
             // we already have the randomness to continue the process
-            return Ok(HttpResponse::Ok().body(randomness));
+            return HttpResponse::Ok().body(randomness);
         }
         if ctx.is_inspecting() {
             info!("When inspecting we does not call finish from /random endpoint.");
-            return Err(CheckerError::AlreadyInspecting);
+            return HttpResponse::BadRequest().finish();
         }
         // call finish to halt and wait the beacon
         let rollup_input = match send_finish_and_retrieve_input("accept").await {
             Ok(input) => input,
-            Err(err) => {
-                error!("Error sending finish request to rollup: {}", &err);
-                return Err(CheckerError::SendRollupAndRetrieveInputError);
-            }
+            _ => return HttpResponse::NotFound().finish(),
         };
         match rollup_input.request_type.as_str() {
             "advance_state" => {
@@ -139,7 +133,7 @@ pub mod routes {
                     ctx.keep_newest_beacon(beacon);
                     let randomness = ctx.get_randomness_for_timestamp(query.timestamp);
                     if let Some(randomness) = randomness {
-                        return Ok(HttpResponse::Ok().body(randomness));
+                        return HttpResponse::Ok().body(randomness);
                     }
                 }
             }
@@ -149,7 +143,7 @@ pub mod routes {
                     send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
-                    return Err(CheckerError::ByPassInspect);
+                    return HttpResponse::NotFound().finish();
                 } else {
                     // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
                     ctx.store_input(&rollup_input).await;
@@ -157,10 +151,8 @@ pub mod routes {
             }
             &_ => {
                 error!("Unknown request type");
-                return Err(CheckerError::UnknownRequestType);
             }
         };
-        // Ok(HttpResponse::NotFound().finish())
-        Err(CheckerError::StoreInputByPass)
+        HttpResponse::NotFound().finish()
     }
 }
