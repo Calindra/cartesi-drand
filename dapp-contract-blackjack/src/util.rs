@@ -8,7 +8,7 @@ pub mod random {
     use log::{error, info};
 
     use hyper::{
-        body::{self, HttpBody},
+        body::{self},
         Body, Client, Request, StatusCode,
     };
     use rand::prelude::*;
@@ -45,15 +45,19 @@ pub mod random {
             info!("Receive random status {}", &status_response);
 
             match status_response {
-                // StatusCode::BAD_REQUEST => {
-                //     let body_bytes = body::to_bytes(response.into_body()).await?;
-                //     let body_str = String::from_utf8(body_bytes.to_vec())?;
-                //     let body_str = serde_json::to_string_pretty(&body_str)?;
+                StatusCode::BAD_REQUEST => {
+                    let get_body = |response: hyper::Response<Body>| async {
+                        let body_bytes = body::to_bytes(response.into_body()).await?;
+                        let body_str = String::from_utf8(body_bytes.to_vec())?;
+                        let body_str = serde_json::to_string_pretty(&body_str)?;
+                        Ok::<String, Box<dyn Error>>(body_str)
+                    };
 
-                //     error!("Bad Request: {:?}", body_str);
-                //     // info!("No pending random request, trying again... uri = {}", uri);
-                //     time::sleep(Duration::from_secs(1)).await;
-                // }
+                    let body_str = get_body(response).await;
+
+                    error!("Bad Request: {:?}", body_str);
+                    return Err("Bad request status code for random number".into());
+                }
                 StatusCode::NOT_FOUND => {
                     info!("No pending random request, trying again... uri = {}", uri);
                     time::sleep(Duration::from_secs(1)).await;
