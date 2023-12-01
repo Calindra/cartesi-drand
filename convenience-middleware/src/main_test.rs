@@ -129,7 +129,7 @@ mod middleware_tests {
             "status: {:?}",
             status.as_str()
         );
-        assert_eq!(resp.status(), 404);
+        assert_eq!(resp.status(), 400);
         assert_eq!(
             manager.lock().await.pending_beacon_timestamp.get(),
             timestamp + app_state.safe_seconds
@@ -169,7 +169,7 @@ mod middleware_tests {
         let resp = test::call_service(&app, req).await;
         let status = resp.status();
         assert!(status.is_client_error(), "status: {:?}", status.as_str());
-        assert_eq!(status, 404);
+        assert_eq!(status, 400);
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
