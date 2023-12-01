@@ -158,15 +158,14 @@ pub mod rollup {
     async fn async_pick(table: Arc<Mutex<Table>>, player_id: String, timestamp: u64) {
         info!("Player calling: {}", player_id);
         // start game stop here
-        let seed = retrieve_seed(timestamp).await;
-
-        if seed.is_err() {
-            // here in prod mode we got an infinite loop, so we need a break when an inspect arrives.
-            // after the inspect ends the cartesi machine do a time travel to the retrieve_seed point.
-            return;
-        }
-
-        let seed = seed.unwrap();
+        let seed = match retrieve_seed(timestamp).await {
+            Ok(seed) => seed,
+            Err(_) => {
+                // here in prod mode we got an infinite loop, so we need a break when an inspect arrives.
+                // after the inspect ends the cartesi machine do a time travel to the retrieve_seed point.
+                return;
+            }
+        };
 
         let result = table
             .lock()
