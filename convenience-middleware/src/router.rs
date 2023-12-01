@@ -157,6 +157,7 @@ pub mod routes {
             }
             &_ => {
                 error!("Unknown request type");
+                return Err(CheckerError::UnknownRequestType);
             }
         };
         Err(CheckerError::StoreInputByPass)
