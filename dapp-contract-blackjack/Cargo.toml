@@ -6,7 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 dotenv = "0.15.0"
-hyper = { version = "0.14", features = ["http1", "runtime", "client"] }
+hyper = { version = "0.14", features = [
+    "http1",
+    "runtime",
+    "client",
+    "backports",
+    "deprecated",
+] }
 rand = "0.8.5"
 rand_pcg = "0.3.1"
 rand_seeder = "0.2.3"
