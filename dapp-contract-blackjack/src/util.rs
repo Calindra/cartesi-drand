@@ -49,14 +49,28 @@ pub mod random {
                     let get_body = |response: hyper::Response<Body>| async {
                         let body_bytes = body::to_bytes(response.into_body()).await?;
                         let body_str = String::from_utf8(body_bytes.to_vec())?;
-                        let body_str = serde_json::to_string_pretty(&body_str)?;
+                        let body_str = serde_json::to_string(&body_str)?;
                         Ok::<String, Box<dyn Error>>(body_str)
                     };
 
-                    let body_str = get_body(response).await;
-
-                    error!("Bad Request: {:?}", body_str);
-                    return Err("Bad request status code for random number".into());
+                    return match get_body(response).await {
+                        Ok(body_str) => {
+                            error!("Bad Request: {:?}", body_str);
+                            Err(format!(
+                                "Bad request status code for random number with body: {}",
+                                body_str
+                            )
+                            .into())
+                        }
+                        Err(error) => {
+                            error!("Bad Request: {:?}", error);
+                            Err(format!(
+                                "Bad request status code for random number with error: {}",
+                                error.to_string()
+                            )
+                            .into())
+                        }
+                    };
                 }
                 StatusCode::NOT_FOUND => {
                     info!("No pending random request, trying again... uri = {}", uri);
