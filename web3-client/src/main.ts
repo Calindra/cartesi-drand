@@ -30,7 +30,7 @@ export interface CartesiContructor {
 
 export class CartesiClientBuilder {
   private endpoint: URL;
-  private dapp_address: AddressLike;
+  private dappAddress: AddressLike;
   private signer: Signer;
   private wallet?: Wallet;
   private provider: Provider;
@@ -38,7 +38,7 @@ export class CartesiClientBuilder {
 
   constructor() {
     this.endpoint = new URL("http://localhost:8545");
-    this.dapp_address = "";
+    this.dappAddress = "";
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
     this.signer = new ethers.VoidSigner("0x", this.provider);
     this.logger = {
@@ -53,7 +53,7 @@ export class CartesiClientBuilder {
   }
 
   withDappAddress(address: AddressLike): CartesiClientBuilder {
-    this.dapp_address = address;
+    this.dappAddress = address;
     return this;
   }
 
@@ -80,7 +80,7 @@ export class CartesiClientBuilder {
   build(): CartesiClient {
     return new CartesiClient({
       endpoint: this.endpoint,
-      dapp_address: this.dapp_address,
+      dapp_address: this.dappAddress,
       signer: this.signer,
       wallet: this.wallet,
       provider: this.provider,
