@@ -1,4 +1,4 @@
-use std::borrow::BorrowMut;
+use std::{borrow::BorrowMut, error::Error};
 
 use actix_web::web::Data;
 use drand_verify::{derive_randomness, G2Pubkey, G2PubkeyRfc, Pubkey};
@@ -7,18 +7,19 @@ use serde_json::json;
 
 use crate::{
     models::models::{AppState, DrandBeacon, PayloadWithBeacon},
-    rollup::{self, RollupInput},
+    rollup::{input::RollupInput, server::send_report},
 };
 
-pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> bool {
-    rollup_input.decoded_inspect() == "pendingdrandbeacon"
+pub fn is_querying_pending_beacon(rollup_input: &RollupInput) -> Result<bool, Box<dyn Error>> {
+    let result = rollup_input.decoded_inspect()?;
+    Ok(result == "pendingdrandbeacon")
 }
 
 pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
     let manager = app_state.input_buffer_manager.lock().await;
     let x = manager.pending_beacon_timestamp.get();
     let report = json!({ "payload": format!("{x:#x}") });
-    let _ = rollup::server::send_report(report).await.unwrap();
+    let _ = send_report(report).await.unwrap();
 }
 
 /**

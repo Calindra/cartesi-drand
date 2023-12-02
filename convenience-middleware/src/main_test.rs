@@ -129,7 +129,7 @@ mod middleware_tests {
             "status: {:?}",
             status.as_str()
         );
-        assert_eq!(resp.status(), 404);
+        assert_eq!(resp.status(), 400);
         assert_eq!(
             manager.lock().await.pending_beacon_timestamp.get(),
             timestamp + app_state.safe_seconds
@@ -169,7 +169,7 @@ mod middleware_tests {
         let resp = test::call_service(&app, req).await;
         let status = resp.status();
         assert!(status.is_client_error(), "status: {:?}", status.as_str());
-        assert_eq!(status, 404);
+        assert_eq!(status, 400);
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
@@ -352,6 +352,30 @@ mod middleware_tests {
         assert!(beacon.is_none());
     }
 
+    // #[actix_web::test]
+    // async fn test_update_key() {
+    //     env_logger::builder().is_test(true).try_init().unwrap();
+    //     check_if_dotenv_is_loaded!();
+    //     let logger = Logger::default();
+
+    //     let app_state = web::Data::new(AppState::new());
+    //     let app = App::new()
+    //         .wrap(logger)
+    //         .app_data(app_state.clone())
+    //         .service(routes::update_drand_config);
+
+    //     let drand_env = serde_json::to_string(&DrandEnv {
+    //         DRAND_PUBLIC_KEY: "0x123".to_string(),
+    //         DRAND_PERIOD: None,
+    //         DRAND_GENESIS_TIME: None,
+    //         DRAND_SAFE_SECONDS: Some(1000),
+    //     })
+    //     .unwrap();
+
+    //     let req = test::TestRequest::default()
+    //         .set_json(drand_env)
+    //         .to_http_request();
+    // }
     #[actix_web::test]
     async fn test_verify_fast() {
         const PK_HEX3: [u8; 96] = hex!("a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e");
