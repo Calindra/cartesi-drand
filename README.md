@@ -161,3 +161,58 @@ npm ci && npm start
 ```
 
 Open [http://localhost:1234/](http://localhost:1234/)
+
+## Updating Drand Configuration
+
+### Overview
+
+The `update_drand_config` endpoint allows you to update the configuration for Drand. This endpoint accepts HTTP PUT requests and expects a JSON payload containing the necessary configuration parameters.
+
+### Endpoint Details
+
+- **Endpoint URL:** `http://localhost:8080/update_drand_config`
+- **HTTP Method:** PUT
+
+### Request Payload
+
+The endpoint requires a JSON payload with the following parameters:
+
+```json
+{
+  "DRAND_PUBLIC_KEY": "a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e",
+  "DRAND_PERIOD": 3,
+  "DRAND_GENESIS_TIME": 1677685200,
+  "DRAND_SAFE_SECONDS": 5
+}
+```
+
+#### Parameters
+
+1. **DRAND_PUBLIC_KEY** *(string)*: The public key for Drand.
+2. **DRAND_GENESIS_TIME** *(integer)*: The genesis time for Drand.
+3. **DRAND_SAFE_SECONDS** *(integer)*: The safe seconds for Drand.
+4. **DRAND_PERIOD** *(integer)*: The period for Drand.
+
+### Example
+
+#### cURL
+
+```bash
+curl -X PUT http://localhost:8080/update_drand_config \
+  -H "Content-Type: application/json" \
+  -d '{
+    "DRAND_PUBLIC_KEY": "a0b862a7527fee3a731bcb59280ab6abd62d5c0b6ea03dc4ddf6612fdfc9d01f01c31542541771903475eb1ec6615f8d0df0b8b6dce385811d6dcf8cbefb8759e5e616a3dfd054c928940766d9a5b9db91e3b697e5d70a975181e007f87fca5e",
+    "DRAND_PERIOD": 3,
+    "DRAND_GENESIS_TIME": 1677685200,
+    "DRAND_SAFE_SECONDS": 5
+  }'
+```
+
+### Response
+
+The endpoint responds with an appropriate HTTP status code. A successful update will return a `200 OK` status code.
+
+### Error Handling
+
+In case of an error, the endpoint will return an appropriate HTTP status code along with an error message in the response body.
+

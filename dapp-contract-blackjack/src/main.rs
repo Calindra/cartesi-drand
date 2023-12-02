@@ -22,10 +22,10 @@ async fn start_rollup(manager: Arc<Mutex<Manager>>) {
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    dotenv().unwrap();
     env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
-    SimpleLogger::init().expect("Logger error");
+    env_logger::builder().format_timestamp(None).init();
 
     const VERSION: Option<&str> = option_env!("CARGO_PKG_VERSION");
     info!("BlackJack v{}", VERSION.unwrap_or("unknown"));

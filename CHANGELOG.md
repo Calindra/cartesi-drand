@@ -1,3 +1,7 @@
+## [0.3.2] - 2023-11-29
+### Changed
+- Fix quicknet verification
+
 ## [0.3.1] - 2023-10-18
 ### Changed
 - Fix beacon randomness validation

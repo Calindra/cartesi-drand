@@ -6,7 +6,7 @@ pub mod models {
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
-    use crate::rollup::RollupInput;
+    use crate::rollup::input::RollupInput;
 
     #[derive(serde::Deserialize, serde::Serialize)]
     #[allow(non_snake_case)]

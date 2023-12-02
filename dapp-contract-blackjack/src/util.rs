@@ -7,7 +7,10 @@ pub mod random {
 
     use log::{error, info};
 
-    use hyper::{body, Body, Client, Request, StatusCode};
+    use hyper::{
+        body::{self},
+        Body, Client, Request, StatusCode,
+    };
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
@@ -21,8 +24,7 @@ pub mod random {
 
     pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
         let client = Client::new();
-        // let https = HttpsConnector::new();
-        // let client = Client::builder().build::<_, hyper::Body>(https);
+
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
         let server_addr = server_addr.trim_end_matches("/");
 
@@ -43,9 +45,32 @@ pub mod random {
             info!("Receive random status {}", &status_response);
 
             match status_response {
+                StatusCode::BAD_REQUEST => {
+                    let get_body = |response: hyper::Response<Body>| async {
+                        let body_bytes = body::to_bytes(response.into_body()).await?;
+                        let body_str = String::from_utf8(body_bytes.to_vec())?;
+                        // let body_str = serde_json::to_string(&body_str)?;
+                        Ok::<String, Box<dyn Error>>(body_str)
+                    };
+
+                    return match get_body(response).await {
+                        Ok(body_str) => Err(format!(
+                            "Bad request status code for random number with body: {body_str}",
+                        )
+                        .into()),
+                        Err(error) => Err(format!(
+                            "Bad request status code for random number with error: {}",
+                            error.to_string()
+                        )
+                        .into()),
+                    };
+                }
                 StatusCode::NOT_FOUND => {
-                    info!("No pending random request, trying again... uri = {}", uri);
-                    time::sleep(Duration::from_secs(1)).await;
+                    return Err(
+                        format!("No pending random request, trying again... uri = {uri}",).into(),
+                    );
+                    // info!("No pending random request, trying again... uri = {}", uri);
+                    // time::sleep(Duration::from_secs(1)).await;
                 }
 
                 StatusCode::OK => {
@@ -57,8 +82,7 @@ pub mod random {
                 code => {
                     // @todo doc this for production
                     // this is to avoid loop with inspect mode
-                    info!("Unknown status code {:}", code);
-                    return Err("Unexpected status code for random number".into());
+                    return Err(format!("Unexpected status code {code} for random number").into());
                 }
             }
         }

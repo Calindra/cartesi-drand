@@ -38,8 +38,8 @@ pub mod util {
     }
 
     pub async fn load_env_from_memory(drand: DrandEnv) {
+        info!("DRAND_PUBLIC_KEY={}", &drand.DRAND_PUBLIC_KEY);
         std::env::set_var("DRAND_PUBLIC_KEY", drand.DRAND_PUBLIC_KEY);
-
         if let Some(period) = drand.DRAND_PERIOD {
             std::env::set_var("DRAND_PERIOD", period.to_string());
         }
