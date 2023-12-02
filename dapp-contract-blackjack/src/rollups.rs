@@ -374,13 +374,13 @@ pub mod rollup {
                 // Get game and make owner
                 let game = manager.drop_game(game_id)?;
 
-                let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
-
                 // TODO Change here
                 if game.players.len() < 2 {
                     manager.add_game(game);
                     return Err("Minimum number of players not reached.");
                 }
+
+                let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
 
                 // Generate table from game
                 let table = game.round_start(2, metadata.timestamp)?;
