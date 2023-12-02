@@ -112,9 +112,7 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub async fn send_report(
-        report: Value,
-    ) -> Result<&'static str, Box<dyn std::error::Error>> {
+    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
