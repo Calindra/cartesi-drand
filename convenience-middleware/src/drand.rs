@@ -28,17 +28,7 @@ pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
  *
  * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
  */
-pub fn get_drand_beacon(payload: &str) -> Option<DrandBeacon> {
-    match get_drand_beacon_fn(payload) {
-        Ok(beacon) => Some(beacon),
-        Err(err) => {
-            error!("Error getting drand beacon: {}", err.to_string());
-            None
-        }
-    }
-}
-
-fn get_drand_beacon_fn(payload: &str) -> Result<DrandBeacon, Box<dyn std::error::Error>> {
+pub fn get_drand_beacon(payload: &str) -> Result<DrandBeacon, Box<dyn std::error::Error>> {
     let key = std::env::var("DRAND_PUBLIC_KEY").expect("Public Key not found");
 
     let payload = payload.trim_start_matches("0x");
@@ -59,13 +49,15 @@ fn get_drand_beacon_fn(payload: &str) -> Result<DrandBeacon, Box<dyn std::error:
     match pk.verify(round, b"", &signature) {
         Ok(valid) => {
             if !valid {
-                warn!(
+                let msg = format!(
                     "Invalid beacon signature for round {}; signature: {}; public_key: {};",
                     round, &payload.beacon.signature, key
                 );
-                return Err("Invalid beacon signature".into());
+
+                warn!("{msg}");
+                return Err(msg.into());
             }
-            let mut beacon = payload.beacon.clone();
+            let mut beacon = payload.beacon.to_owned();
 
             // make sure that the signature is the source of randomness
             beacon.randomness = hex::encode(derive_randomness(&signature));

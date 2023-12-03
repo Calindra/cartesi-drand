@@ -75,7 +75,7 @@ pub mod routes {
         match rollup_input.request_type.as_str() {
             "advance_state" => {
                 ctx.set_inspecting(false).await;
-                if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
+                if let Ok(beacon) = get_drand_beacon(&rollup_input.data.payload) {
                     info!("Is Drand!!! {:?}", beacon);
                     ctx.keep_newest_beacon(beacon);
                 }
@@ -134,12 +134,19 @@ pub mod routes {
                 // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
                 ctx.store_input(&rollup_input).await;
 
-                if let Some(beacon) = get_drand_beacon(&rollup_input.data.payload) {
-                    info!("Is Drand!!! {:?}", beacon);
-                    ctx.keep_newest_beacon(beacon);
-                    let randomness = ctx.get_randomness_for_timestamp(query.timestamp);
-                    if let Some(randomness) = randomness {
-                        return Ok(HttpResponse::Ok().body(randomness));
+                match get_drand_beacon(&rollup_input.data.payload) {
+                    Ok(beacon) => {
+                        info!("Is Drand!!! {:?}", beacon);
+                        ctx.keep_newest_beacon(beacon);
+                        let randomness = ctx.get_randomness_for_timestamp(query.timestamp);
+                        if let Some(randomness) = randomness {
+                            return Ok(HttpResponse::Ok().body(randomness));
+                        }
+                        return Err(CheckerError::RandomnessError);
+                    }
+                    Err(e) => {
+                        error!("Error getting randomness: {}", e);
+                        return Err(CheckerError::SignatureErrorBeacon);
                     }
                 }
             }
@@ -153,6 +160,7 @@ pub mod routes {
                 } else {
                     // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
                     ctx.store_input(&rollup_input).await;
+                    return Err(CheckerError::StoreInputByPass);
                 }
             }
             &_ => {
@@ -160,6 +168,5 @@ pub mod routes {
                 return Err(CheckerError::UnknownRequestType);
             }
         };
-        Err(CheckerError::StoreInputByPass)
     }
 }
