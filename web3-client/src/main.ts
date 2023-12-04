@@ -113,6 +113,8 @@ export class CartesiClient {
   }
 
   /**
+   * Inspect the machine state and try to get the first report and parse the payload.
+   *
    * @param payload The data to be sent to the Cartesi Machine, transform to payload
    * used to request reports
    */
