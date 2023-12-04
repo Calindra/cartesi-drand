@@ -1,7 +1,7 @@
 {
   "name": "convenience-drand-provider",
   "version": "1.0.0",
-  "description": "",
+  "description": "This is a convenience drand provider for Cartesi's rollup infrastructure. It is a simple wrapper around the drand-client library, which is used to fetch randomness from the drand network.",
   "main": "src/app.ts",
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "watch": "node --watch --loader ts-node/esm --inspect ./src/app.ts",
     "test:dev": "nodemon --ext ts --exec \"npm run test\""
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["drand", "provider", "cartesi"],
+  "author": "Calindra",
   "license": "MIT",
   "dependencies": {
     "@cartesi/rollups": "^1.1.0",
@@ -31,6 +31,6 @@
     "typescript": "^5.2.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
