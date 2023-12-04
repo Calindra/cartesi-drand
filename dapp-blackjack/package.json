@@ -3,6 +3,7 @@
     "version": "0.0.1",
     "description": "",
     "main": "main.js",
+    "private": true,
     "scripts": {
         "start": "parcel src/index.html --open",
         "build": "parcel build src/index.html --public-url ./",
