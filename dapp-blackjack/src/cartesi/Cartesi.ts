@@ -1,85 +1,49 @@
-import { IInputBox__factory } from "@cartesi/rollups";
-// We'll use ethers to interact with the Ethereum network and our contract
-import { ContractTransactionResponse, ethers, Provider, Signer } from "ethers";
-import InputBox from "../deployments/InputBox.json";
-import DApp from "../deployments/dapp.json"
+import { type CartesiClient, CartesiClientBuilder } from "web3-client";
+import type { Provider, Signer } from "ethers";
+import { address as DAppAddress } from "../deployments/dapp.json";
 
-// const CARTESI_INSPECT_ENDPOINT = 'http://localhost:5005/inspect'
-// const CARTESI_INSPECT_ENDPOINT = 'https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect'
-const CARTESI_INSPECT_ENDPOINT = new URL(process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect");
-
-
-interface ResultJSON {
-    reports?: Array<{
-        payload: string
-    }>
-}
+const CARTESI_INSPECT_ENDPOINT = new URL(
+  process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect",
+);
 
 console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
+
+/**
+ * Lightweight wrapper around the CartesiClient to provide a more convenient interface.
+ */
 export class Cartesi {
-    static async sendInput(payload: Record<string, unknown>, signer: Signer, provider: Provider) {
-        try {
-            const network = await provider.getNetwork();
-            console.log(`connected to chain ${network.chainId}`);
+  private static readonly cartesiClient: CartesiClient = new CartesiClientBuilder()
+    .withEndpoint(CARTESI_INSPECT_ENDPOINT)
+    .withLogger({
+      info: console.log,
+      error: console.error,
+    })
+    .withDappAddress(DAppAddress)
+    .build();
 
-            // connect to rollups,
-            const inputContract = IInputBox__factory.connect(
-                InputBox.address,
-                signer
-            );
-            const signerAddress = await signer.getAddress();
-            console.log(`using account "${signerAddress}"`);
-
-            // use message from command line option, or from user prompt
-            console.log(`sending "${JSON.stringify(payload)}"`);
-
-            // convert string to input bytes (if it's not already bytes-like)
-            const inputBytes = ethers.toUtf8Bytes(JSON.stringify({
-                input: payload
-            }));
-
-            // send transaction
-            const dappAddress = DApp.address;// '0x142105FC8dA71191b3a13C738Ba0cF4BC33325e2'
-            const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
-            // const tx: any = await inputContract.addInput(dappAddress, inputBytes);
-            console.log(`transaction: ${tx.hash}`);
-            console.log("waiting for confirmation...");
-            const receipt = await tx.wait(1);
-            console.log(JSON.stringify(receipt))
-            // find reference to notice from transaction receipt
-            // const inputKeys = getInputKeys(receipt);
-            // console.log(
-            //     `input ${inputKeys.input_index} added`
-            // );
-        } catch (e) {
-            console.error(e);
-        }
+  /**
+   * Advance the machine state by sending an input to the machine.
+   * If the machine is not in a state that expects an input, an error will be thrown.
+   * Error already is logged by the @see {CartesiClient.advance}
+   */
+  static async sendInput(payload: Record<string, unknown>, signer?: Signer, provider?: Provider): Promise<void> {
+    try {
+      if (provider) Cartesi.cartesiClient.setProvider(provider);
+      if (signer) Cartesi.cartesiClient.setSigner(signer);
+      await Cartesi.cartesiClient.advance(payload);
+    } catch (_error) {
+      return;
     }
+  }
 
-    static hex2a(hex: string) {
-        var str = '';
-        for (var i = 0; i < hex.length; i += 2) {
-            var v = parseInt(hex.substring(i, i + 2), 16);
-            if (v) str += String.fromCharCode(v);
-        }
-        return str;
-    }
-
-
-    static async inspectWithJson<T extends Record<string, unknown>>(json: Record<string, unknown>): Promise<T | null> {
-        const jsonString = JSON.stringify({ input: json });
-        const jsonEncoded = encodeURIComponent(jsonString)
-        const url = new URL(CARTESI_INSPECT_ENDPOINT);
-        url.pathname += `/${jsonEncoded}`;
-        console.log(url.href);
-        const response = await fetch(url);
-        const data: ResultJSON = await response.json();
-        console.log(data)
-        if (!data?.reports?.length) {
-            return null
-        }
-        const payload = Cartesi.hex2a(data.reports[0].payload.replace(/^0x/, ""))
-        console.log({ payload })
-        return JSON.parse(payload)
-    }
+  /**
+   * Inspect the machine state.
+   * Try get first report and parse the payload.
+   * Error already is logged by the @see {CartesiClient.inspect}
+   */
+  static async inspectWithJson<T extends Record<string, unknown>>(
+    json: Record<string, unknown>,
+  ): Promise<T | null> {
+    return Cartesi.cartesiClient.inspect<typeof json, T>(json);
+  }
 }

@@ -1,6 +1,7 @@
 {
   "name": "cartesi-drand",
   "version": "0.0.1",
+  "private": true,
   "scripts": {
     "drand": "npm run -w convenience-drand-provider watch",
     "dapp": "npm run -w dapp-blackjack start",

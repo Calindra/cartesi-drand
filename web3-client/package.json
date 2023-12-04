@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Web3 Client to Send Input To Dapp",
   "source": "src/main.ts",
-  "main": "dist/main.js",
+  "main": "src/main.ts",
   "type": "module",
   "scripts": {
     "watch": "parcel watch",
