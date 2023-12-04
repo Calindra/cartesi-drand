@@ -22,6 +22,12 @@ pub enum CheckerError {
 
     #[display(fmt = "Store input to consume later")]
     StoreInputByPass,
+
+    #[display(fmt = "Error getting beacon signature")]
+    SignatureErrorBeacon,
+
+    #[display(fmt = "Error getting randomness")]
+    RandomnessError,
 }
 
 impl serde::Serialize for CheckerError {
@@ -47,6 +53,8 @@ impl error::ResponseError for CheckerError {
             CheckerError::ByPassInspect => hyper::StatusCode::BAD_REQUEST,
             CheckerError::UnknownRequestType => hyper::StatusCode::BAD_REQUEST,
             CheckerError::StoreInputByPass => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::SignatureErrorBeacon => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::RandomnessError => hyper::StatusCode::BAD_REQUEST,
         }
     }
 
