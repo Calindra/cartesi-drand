@@ -11,7 +11,7 @@ import {
 import { Utils } from "./utils";
 import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
-import InputBoxContract from "@cartesi/rollups/deployments/mainnet/InputBox.json";
+import { address as InputBoxContractAddress } from "@cartesi/rollups/deployments/mainnet/InputBox.json";
 
 export interface CartesiContructor {
   /**
@@ -90,7 +90,7 @@ export class CartesiClientBuilder {
 }
 
 export class CartesiClient {
-  private static inputContract: InputBox;
+  private static inputContract?: InputBox;
 
   constructor(private readonly config: CartesiContructor) {}
 
@@ -101,12 +101,23 @@ export class CartesiClient {
     return resolveAddress(this.config.dapp_address);
   }
 
+  setSigner(signer: Signer): void {
+    if(this.config.signer !== signer) {
+      CartesiClient.inputContract = undefined;
+      this.config.signer = signer;
+    }
+  }
+
+  setProvider(provider: Provider): void {
+    this.config.provider = provider;
+  }
+
   /**
    * Singleton to create contract
    */
   async getInputContract(): Promise<InputBox> {
     if (!CartesiClient.inputContract) {
-      const address = InputBoxContract.address;
+      const address = InputBoxContractAddress;
       CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
     }
     return CartesiClient.inputContract;
@@ -132,6 +143,7 @@ export class CartesiClient {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
       });
       const result: unknown = await response.json();
