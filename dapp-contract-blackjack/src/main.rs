@@ -1,15 +1,15 @@
 use std::{env, sync::Arc};
 
-mod models;
-mod rollups;
-mod util;
+mod imports;
+
+use imports::*;
 
 use dotenv::dotenv;
 use log::{error, info};
 use rollups::rollup::rollup;
 use tokio::sync::Mutex;
 
-use crate::{models::game::game::Manager, util::logger::SimpleLogger};
+use crate::models::game::prelude::Manager;
 
 // Read from rollup and send to handle
 async fn start_rollup(manager: Arc<Mutex<Manager>>) {

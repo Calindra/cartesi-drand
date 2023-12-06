@@ -7,7 +7,7 @@ pub mod rollup {
 
     use crate::{
         models::{
-            game::game::{Manager, Table},
+            game::prelude::{Manager, Table},
             player::{check_fields_create_player, player::Player},
         },
         util::{

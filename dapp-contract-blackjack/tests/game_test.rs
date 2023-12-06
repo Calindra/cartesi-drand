@@ -1,17 +1,12 @@
-#[path = "../src/main.rs"]
-mod main;
-
-#[path = "../src/models/mod.rs"]
-mod models;
-
-#[path = "../src/util.rs"]
-mod util;
+#[path = "../src/imports.rs"]
+mod imports;
+use imports::*;
 
 #[cfg(test)]
 mod game_tests {
     use std::sync::Arc;
 
-    use crate::models::{game::game::Manager, player::player::Player};
+    use crate::models::{game::prelude::Manager, player::player::Player};
 
     #[tokio::test]
     async fn get_winner_tests() {

@@ -1,34 +1,23 @@
-pub mod game {
+pub mod prelude {
     use crate::{
         models::{
-            card::card::Deck,
+            card::prelude::Deck,
             player::player::{Player, PlayerHand},
         },
         util::{json::generate_report, random::generate_id},
     };
-    use log::{info};
+    use log::info;
     use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
+    #[derive(Default)]
     pub struct Manager {
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
         pub tables: HashMap<String, Table>, // games running
         scoreboards: Vec<Scoreboard>,
         pub games_report_cache: Option<Value>,
-    }
-
-    impl Default for Manager {
-        fn default() -> Self {
-            Manager {
-                games: Vec::new(),
-                tables: HashMap::new(),
-                players: HashMap::new(),
-                scoreboards: Vec::new(),
-                games_report_cache: None,
-            }
-        }
     }
 
     impl Manager {
@@ -52,7 +41,7 @@ pub mod game {
             }
         }
 
-        pub fn generate_games_report(games: &Vec<Game>) -> Value {
+        pub fn generate_games_report(games: &[Game]) -> Value {
             let games = games
                 .iter()
                 .map(|game| {

@@ -1,5 +1,5 @@
 #[cfg(test)]
-pub mod common {
+pub mod prelude {
     use httptest::{
         all_of,
         matchers::{contains, key, request, url_decoded, Matcher},

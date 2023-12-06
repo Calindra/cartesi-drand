@@ -10,7 +10,7 @@ pub mod player {
     use serde_json::{json, Value};
     use tokio::sync::Mutex;
 
-    use crate::models::card::card::{Card, Deck, Rank};
+    use crate::models::card::prelude::{Card, Deck, Rank};
 
     use crate::util::random::generate_random_number;
 
