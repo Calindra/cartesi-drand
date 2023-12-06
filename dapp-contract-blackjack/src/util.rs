@@ -3,7 +3,7 @@ pub struct Metadata {
     pub timestamp: u64,
 }
 pub mod random {
-    use std::{env, error::Error, ops::Range, time::Duration};
+    use std::{env, error::Error, ops::Range};
 
     use log::{error, info};
 
@@ -14,7 +14,6 @@ pub mod random {
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
-    use tokio::time;
     use uuid::Uuid;
 
     pub fn generate_random_number(seed: &str, range: Range<usize>) -> usize {
@@ -219,7 +218,7 @@ pub mod pubkey {
 
         let client = Client::new();
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let server_addr = server_addr.trim_end_matches("/");
+        let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/update_drand_config", &server_addr);
 
