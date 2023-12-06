@@ -5,7 +5,7 @@ mod middleware_tests {
 
     use crate::{
         drand::get_drand_beacon,
-        models::models::{AppState, Beacon},
+        models::structs::{AppState, Beacon},
         router::routes::{self},
         utils::util::load_env_from_json,
     };

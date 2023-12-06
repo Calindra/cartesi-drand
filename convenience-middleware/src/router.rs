@@ -5,7 +5,7 @@ pub mod routes {
     use crate::{
         drand::{get_drand_beacon, is_querying_pending_beacon, send_pending_beacon_report},
         errors::CheckerError,
-        models::models::{AppState, DrandEnv, RequestRollups, Timestamp},
+        models::structs::{AppState, DrandEnv, RequestRollups, Timestamp},
         rollup::{
             input::{has_input_inside_input, RollupInput},
             server::send_finish_and_retrieve_input,

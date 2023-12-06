@@ -5,7 +5,7 @@ pub mod util {
     use serde_json::Value;
     use tokio::fs::read_to_string;
 
-    use crate::models::models::DrandEnv;
+    use crate::models::structs::DrandEnv;
     pub fn deserialize_obj(request: &str) -> Option<serde_json::Map<String, Value>> {
         let json = serde_json::from_str::<serde_json::Value>(request);
 

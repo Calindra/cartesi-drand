@@ -6,7 +6,7 @@ mod rollup;
 mod router;
 mod utils;
 
-use crate::models::models::AppState;
+use crate::models::structs::AppState;
 use crate::router::routes;
 use crate::utils::util::load_env_from_json;
 use actix_web::{middleware::Logger, web, App, HttpServer};

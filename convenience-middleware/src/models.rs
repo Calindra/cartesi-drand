@@ -1,4 +1,4 @@
-pub mod models {
+pub mod structs {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
     use log::info;
@@ -259,7 +259,7 @@ mod test {
 
     use tokio::sync::Mutex;
 
-    use super::models::{AppState, Beacon, DrandBeacon, InputBufferManager};
+    use super::structs::{AppState, Beacon, DrandBeacon, InputBufferManager};
 
     fn create_drand_beacon(round: u64) -> DrandBeacon {
         DrandBeacon {

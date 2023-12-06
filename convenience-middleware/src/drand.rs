@@ -6,7 +6,7 @@ use log::{error, warn};
 use serde_json::json;
 
 use crate::{
-    models::models::{AppState, DrandBeacon, PayloadWithBeacon},
+    models::structs::{AppState, DrandBeacon, PayloadWithBeacon},
     rollup::{input::RollupInput, server::send_report},
 };
 

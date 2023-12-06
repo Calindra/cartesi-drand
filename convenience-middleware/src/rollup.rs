@@ -56,7 +56,7 @@ pub mod server {
 }
 
 pub mod input {
-    use crate::{models::models::Item, utils::util::deserialize_obj};
+    use crate::{models::structs::Item, utils::util::deserialize_obj};
     use hyper::{Body, Response};
     use serde::{Deserialize, Serialize};
     use std::error::Error;
