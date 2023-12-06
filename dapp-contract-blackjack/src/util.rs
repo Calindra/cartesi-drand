@@ -32,58 +32,56 @@ pub mod random {
 
         info!("Calling random at {:}", &uri);
 
-        loop {
-            let request = Request::builder()
-                .method(hyper::Method::GET)
-                .uri(&uri)
-                .header("Content-Type", "application/json")
-                .body(Body::empty())?;
+        let request = Request::builder()
+            .method(hyper::Method::GET)
+            .uri(&uri)
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
 
-            let response = client.request(request).await?;
+        let response = client.request(request).await?;
 
-            let status_response = response.status();
-            info!("Receive random status {}", &status_response);
+        let status_response = response.status();
+        info!("Receive random status {}", &status_response);
 
-            match status_response {
-                StatusCode::BAD_REQUEST => {
-                    let get_body = |response: hyper::Response<Body>| async {
-                        let body_bytes = body::to_bytes(response.into_body()).await?;
-                        let body_str = String::from_utf8(body_bytes.to_vec())?;
-                        // let body_str = serde_json::to_string(&body_str)?;
-                        Ok::<String, Box<dyn Error>>(body_str)
-                    };
+        match status_response {
+            StatusCode::BAD_REQUEST => {
+                let get_body = |response: hyper::Response<Body>| async {
+                    let body_bytes = body::to_bytes(response.into_body()).await?;
+                    let body_str = String::from_utf8(body_bytes.to_vec())?;
+                    // let body_str = serde_json::to_string(&body_str)?;
+                    Ok::<String, Box<dyn Error>>(body_str)
+                };
 
-                    return match get_body(response).await {
-                        Ok(body_str) => Err(format!(
-                            "Bad request status code for random number with body: {body_str}",
-                        )
-                        .into()),
-                        Err(error) => Err(format!(
-                            "Bad request status code for random number with error: {}",
-                            error.to_string()
-                        )
-                        .into()),
-                    };
-                }
-                StatusCode::NOT_FOUND => {
-                    return Err(
-                        format!("No pending random request, trying again... uri = {uri}",).into(),
-                    );
-                    // info!("No pending random request, trying again... uri = {}", uri);
-                    // time::sleep(Duration::from_secs(1)).await;
-                }
+                return match get_body(response).await {
+                    Ok(body_str) => Err(format!(
+                        "Bad request status code for random number with body: {body_str}",
+                    )
+                    .into()),
+                    Err(error) => Err(format!(
+                        "Bad request status code for random number with error: {}",
+                        error.to_string()
+                    )
+                    .into()),
+                };
+            }
+            StatusCode::NOT_FOUND => {
+                return Err(
+                    format!("No pending random request, trying again... uri = {uri}",).into(),
+                );
+                // info!("No pending random request, trying again... uri = {}", uri);
+                // time::sleep(Duration::from_secs(1)).await;
+            }
 
-                StatusCode::OK => {
-                    let body = body::to_bytes(response).await?;
-                    let body = String::from_utf8(body.to_vec())?;
-                    return Ok(body);
-                }
+            StatusCode::OK => {
+                let body = body::to_bytes(response).await?;
+                let body = String::from_utf8(body.to_vec())?;
+                return Ok(body);
+            }
 
-                code => {
-                    // @todo doc this for production
-                    // this is to avoid loop with inspect mode
-                    return Err(format!("Unexpected status code {code} for random number").into());
-                }
+            code => {
+                // @todo doc this for production
+                // this is to avoid loop with inspect mode
+                return Err(format!("Unexpected status code {code} for random number").into());
             }
         }
     }
