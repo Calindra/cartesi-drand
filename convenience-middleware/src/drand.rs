@@ -1,7 +1,7 @@
 use std::{borrow::BorrowMut, error::Error};
 
 use actix_web::web::Data;
-use drand_verify::{derive_randomness, G2Pubkey, G2PubkeyRfc, Pubkey};
+use drand_verify::{derive_randomness, G2PubkeyRfc, Pubkey};
 use log::{error, warn};
 use serde_json::json;
 
