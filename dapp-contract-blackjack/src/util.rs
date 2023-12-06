@@ -51,22 +51,20 @@ pub mod random {
                     Ok::<String, Box<dyn Error>>(body_str)
                 };
 
-                return match get_body(response).await {
+                match get_body(response).await {
                     Ok(body_str) => Err(format!(
                         "Bad request status code for random number with body: {body_str}",
                     )
                     .into()),
                     Err(error) => Err(format!(
                         "Bad request status code for random number with error: {}",
-                        error.to_string()
+                        error
                     )
                     .into()),
-                };
+                }
             }
             StatusCode::NOT_FOUND => {
-                return Err(
-                    format!("No pending random request, trying again... uri = {uri}",).into(),
-                );
+                Err(format!("No pending random request, trying again... uri = {uri}",).into())
                 // info!("No pending random request, trying again... uri = {}", uri);
                 // time::sleep(Duration::from_secs(1)).await;
             }
@@ -74,13 +72,13 @@ pub mod random {
             StatusCode::OK => {
                 let body = body::to_bytes(response).await?;
                 let body = String::from_utf8(body.to_vec())?;
-                return Ok(body);
+                Ok(body)
             }
 
             code => {
                 // @todo doc this for production
                 // this is to avoid loop with inspect mode
-                return Err(format!("Unexpected status code {code} for random number").into());
+                Err(format!("Unexpected status code {code} for random number").into())
             }
         }
     }
