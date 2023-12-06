@@ -225,7 +225,7 @@ mod middleware_tests {
         assert!(status.is_success(), "status: {:?}", status.as_str());
         assert_eq!(status, 200);
 
-        assert_eq!(manager.lock().await.flag_to_hold.is_holding, false);
+        assert!(!manager.lock().await.flag_to_hold.is_holding);
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
