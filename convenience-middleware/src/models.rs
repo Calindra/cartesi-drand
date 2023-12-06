@@ -172,7 +172,7 @@ pub mod structs {
         }
         pub async fn consume_input(&self) -> Option<Item> {
             let mut manager = self.input_buffer_manager.lock().await;
-            return manager.consume_input();
+            manager.consume_input()
         }
         pub async fn set_inspecting(&self, value: bool) {
             let mut manager = self.input_buffer_manager.lock().await;
@@ -243,12 +243,6 @@ pub mod structs {
             let data = buffer.pop_front();
             self.request_count.set(self.request_count.get() - 1);
             data
-        }
-
-        pub fn await_beacon(&mut self) {
-            info!("Awaiting beacon");
-
-            self.flag_to_hold.hold_up();
         }
     }
 }
