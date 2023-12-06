@@ -96,9 +96,9 @@ pub mod routes {
 
         // Dispatch the input to the DApp
         if has_input_inside_input(&rollup_input) {
-            return HttpResponse::Ok().json(rollup_input);
+            HttpResponse::Ok().json(rollup_input)
         } else {
-            return HttpResponse::Accepted().finish();
+            HttpResponse::Accepted().finish()
         }
     }
 
@@ -142,11 +142,11 @@ pub mod routes {
                         if let Some(randomness) = randomness {
                             return Ok(HttpResponse::Ok().body(randomness));
                         }
-                        return Err(CheckerError::RandomnessError);
+                        Err(CheckerError::RandomnessError)
                     }
                     Err(e) => {
                         error!("Error getting randomness: {}", e);
-                        return Err(CheckerError::SignatureErrorBeacon);
+                        Err(CheckerError::SignatureErrorBeacon)
                     }
                 }
             }
@@ -156,17 +156,17 @@ pub mod routes {
                     send_pending_beacon_report(&ctx).await;
 
                     // This is a specific inspect, so we omit it from the DApp
-                    return Err(CheckerError::ByPassInspect);
+                    Err(CheckerError::ByPassInspect)
                 } else {
                     // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
                     ctx.store_input(&rollup_input).await;
-                    return Err(CheckerError::StoreInputByPass);
+                    Err(CheckerError::StoreInputByPass)
                 }
             }
             &_ => {
                 error!("Unknown request type");
-                return Err(CheckerError::UnknownRequestType);
+                Err(CheckerError::UnknownRequestType)
             }
-        };
+        }
     }
 }
