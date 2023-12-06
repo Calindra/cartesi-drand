@@ -78,7 +78,7 @@ pub mod input {
     impl RollupInput {
         pub fn decoded_inspect(&self) -> Result<String, Box<dyn Error>> {
             let payload = self.data.payload.trim_start_matches("0x");
-            let bytes: Vec<u8> = hex::decode(&payload)?;
+            let bytes: Vec<u8> = hex::decode(payload)?;
             let inspect_decoded = std::str::from_utf8(&bytes)?;
             Ok(inspect_decoded.to_string())
         }
