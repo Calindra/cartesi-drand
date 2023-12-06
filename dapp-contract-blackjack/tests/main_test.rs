@@ -8,7 +8,7 @@ use imports::*;
 mod contract_blackjack_tests {
     use crate::{
         common::prelude::{setup_change_key, setup_dont_change_key, setup_hit_random},
-        models::{game::prelude::Manager, player::player::Player},
+        models::{game::prelude::Manager, player::prelude::Player},
         rollups::rollup::handle_request_action,
         util::{env::check_if_dotenv_is_loaded, json::decode_payload, random::retrieve_seed},
     };

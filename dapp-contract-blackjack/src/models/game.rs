@@ -2,7 +2,7 @@ pub mod prelude {
     use crate::{
         models::{
             card::prelude::Deck,
-            player::player::{Player, PlayerHand},
+            player::prelude::{Player, PlayerHand},
         },
         util::{json::generate_report, random::generate_id},
     };
@@ -129,7 +129,7 @@ pub mod prelude {
         }
 
         pub fn generate_scoreboard_sync(&mut self, table: &Table) {
-            let players = table.game.players.iter().cloned().collect();
+            let players = table.game.players.to_vec();
 
             let winner = table.get_winner_sync();
             let scoreboard_id = table.id.clone();
@@ -140,7 +140,7 @@ pub mod prelude {
         }
 
         pub async fn generate_scoreboard(&mut self, table: &Table) {
-            let players = table.game.players.iter().cloned().collect();
+            let players = table.game.players.to_vec();
 
             let winner = table.get_winner().await;
             let scoreboard_id = table.id.clone();
@@ -306,12 +306,6 @@ pub mod prelude {
             &self.id
         }
 
-        pub fn new_with_manager_ref(manager: Arc<Mutex<Manager>>) -> Self {
-            let mut game = Game::default();
-            game.manager = Some(manager);
-            game
-        }
-
         // Transforms the game into a table.
         pub fn round_start(
             self,
@@ -421,15 +415,11 @@ pub mod prelude {
         }
 
         pub fn is_any_player_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
-            self.players_with_hand
-                .iter()
-                .any(|player| condition(player))
+            self.players_with_hand.iter().any(condition)
         }
 
         pub fn is_all_players_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
-            self.players_with_hand
-                .iter()
-                .all(|player| condition(player))
+            self.players_with_hand.iter().all(condition)
         }
 
         pub async fn hit_player(
@@ -593,10 +583,7 @@ pub mod prelude {
             let players = self
                 .players_with_hand
                 .iter()
-                .map(|player| {
-                    let id = player.get_player_id();
-                    id
-                })
+                .map(|player| player.get_player_id())
                 .collect::<Vec<_>>();
 
             let players = players.as_slice();

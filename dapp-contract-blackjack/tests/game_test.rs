@@ -6,7 +6,7 @@ use imports::*;
 mod game_tests {
     use std::sync::Arc;
 
-    use crate::models::{game::prelude::Manager, player::player::Player};
+    use crate::models::{game::prelude::Manager, player::prelude::Player};
 
     #[tokio::test]
     async fn get_winner_tests() {

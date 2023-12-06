@@ -8,7 +8,7 @@ pub mod rollup {
     use crate::{
         models::{
             game::prelude::{Manager, Table},
-            player::{check_fields_create_player, player::Player},
+            player::{check_fields_create_player, prelude::Player},
         },
         util::{
             json::{
@@ -79,7 +79,7 @@ pub mod rollup {
     async fn handle_body(manager: Arc<Mutex<Manager>>, body: &Value) -> Result<(), Box<dyn Error>> {
         info!("body {:}", &body);
 
-        let result = handle_request_action(&body, manager, true).await?;
+        let result = handle_request_action(body, manager, true).await?;
 
         if let Some(report) = result {
             send_report(report).await?;
@@ -231,7 +231,7 @@ pub mod rollup {
             }
             Some("new_player") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
-                let player_name = check_fields_create_player(&input)?;
+                let player_name = check_fields_create_player(input)?;
 
                 let encoded_name = bs58::encode(&player_name).into_string();
 
@@ -320,13 +320,15 @@ pub mod rollup {
                 let playing = manager
                     .tables
                     .values()
-                    .filter_map(|table| table.has_player(&address_encoded).then(|| table.get_id()))
+                    .filter(|&table| table.has_player(&address_encoded))
+                    .map(|table| table.get_id())
                     .collect::<Vec<_>>();
 
                 let joined = manager
                     .games
                     .iter()
-                    .filter_map(|game| game.has_player(&address_encoded).then(|| game.get_id()))
+                    .filter(|&game| game.has_player(&address_encoded))
+                    .map(|game| game.get_id())
                     .collect::<Vec<_>>();
 
                 let player_borrow = manager.get_player_by_id(&address_encoded)?;
@@ -507,7 +509,7 @@ pub mod rollup {
 
     async fn load_player_to_mem(
         manager: &Arc<Mutex<Manager>>,
-        address_encoded: &String,
+        address_encoded: &str,
     ) -> Result<(), &'static str> {
         let mut manager = manager.lock().await;
         let has_player_in_memory = manager.has_player(address_encoded);
@@ -521,7 +523,7 @@ pub mod rollup {
             let player_name = player.get("name").ok_or("Invalid field name")?;
             let player_name = player_name.as_str().ok_or("Invalid name")?;
 
-            let player = Player::new(address_encoded.clone(), player_name.to_string());
+            let player = Player::new(address_encoded.to_string(), player_name.to_string());
             let player = Arc::new(player);
             manager.add_player(player)?;
         }
