@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod middleware_tests {
     use hex_literal::hex;
-    use std::sync::Once;
+    use std::{error::Error, sync::Once};
 
     use crate::{
         drand::get_drand_beacon,
@@ -99,6 +99,23 @@ mod middleware_tests {
         });
 
         Logger::default()
+    }
+
+    fn generate_payload_hex<T>(json: T) -> Result<String, Box<dyn Error>>
+    where
+        T: serde::Serialize,
+    {
+        let data = serde_json::to_string(&json)?;
+        // encode lower case hexa
+        let encode = format!("0x{}", hex::encode(data));
+        Ok(encode)
+    }
+
+    fn mock_factory<T>() -> Result<T, Box<dyn Error>>
+    where
+        T: serde::Serialize,
+    {
+        todo!("mock factory")
     }
 
     #[actix_web::test]
@@ -240,8 +257,11 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_request_finish_with_input_to_respond() {
         check_if_dotenv_is_loaded!();
+
+        let payload_empty = generate_payload_hex(json!({"input":"0x00"})).unwrap();
+
         mock_rollup_server!(json_encoded(
-            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
+            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":payload_empty},"request_type":"advance_state"})
         ));
 
         let app_state = web::Data::new(AppState::new());
