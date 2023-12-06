@@ -26,7 +26,7 @@ pub mod random {
         let client = Client::new();
 
         let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let server_addr = server_addr.trim_end_matches("/");
+        let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
 
