@@ -7,16 +7,10 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
-hyper = { version = "0.14", features = [
-    "http1",
-    "runtime",
-    "client",
-    "backports",
-    "deprecated",
-] }
+hyper = { version = "0.14", features = ["backports", "deprecated"] }
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "fs"] }
 dotenv = "0.15.0"
-hex = "0.4.3"
+hex = { version = "0.4.3", features = ["serde"] }
 drand-verify = { version = "0.6.1", features = ["hex"] }
 serde = { version = "1.0.171", features = ["derive"] }
 hex-literal = "0.4.1"

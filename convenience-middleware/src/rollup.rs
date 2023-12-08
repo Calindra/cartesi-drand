@@ -61,7 +61,7 @@ pub mod input {
     use serde::{Deserialize, Serialize};
     use std::error::Error;
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInput {
         pub data: RollupInputData,
         pub request_type: String,
@@ -84,7 +84,7 @@ pub mod input {
         }
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputData {
         pub payload: String,
         pub metadata: Option<RollupInputDataMetadata>,
@@ -92,9 +92,9 @@ pub mod input {
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct RollupInputDataMetadata {
-        pub block_number: u128,
-        pub epoch_index: u128,
-        pub input_index: u128,
+        pub block_number: u8,
+        pub epoch_index: u8,
+        pub input_index: u8,
         pub msg_sender: String,
         pub timestamp: u64,
     }
