@@ -4,7 +4,7 @@ pub mod server {
     use serde_json::{json, Value};
     use std::error::Error;
 
-    use super::input::{parse_input_from_response, RollupInput};
+    use super::input::RollupInput;
 
     pub async fn send_finish(status: &str) -> Result<Response<Body>, Box<dyn Error>> {
         let server_str = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
@@ -35,7 +35,7 @@ pub mod server {
             return Err("Skip".into());
         }
 
-        let result = parse_input_from_response(response).await?;
+        let result = RollupInput::try_from_async(response).await?;
 
         Ok(result)
     }
@@ -99,13 +99,13 @@ pub mod input {
         pub timestamp: u64,
     }
 
-    pub async fn parse_input_from_response(
-        response: Response<Body>,
-    ) -> Result<RollupInput, Box<dyn Error>> {
-        let body = hyper::body::to_bytes(response).await?;
-        let utf = std::str::from_utf8(&body)?;
-        let result_deserialization = serde_json::from_str::<RollupInput>(utf)?;
-        Ok(result_deserialization)
+    impl RollupInput {
+        pub async fn try_from_async(response: Response<Body>) -> Result<Self, Box<dyn Error>> {
+            let body = hyper::body::to_bytes(response).await?;
+            let utf = std::str::from_utf8(&body)?;
+            let result_deserialization = serde_json::from_str::<RollupInput>(utf)?;
+            Ok(result_deserialization)
+        }
     }
 
     pub fn has_input_inside_input(input: &RollupInput) -> bool {
