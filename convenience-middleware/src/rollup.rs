@@ -61,10 +61,51 @@ pub mod input {
     use serde::{Deserialize, Serialize};
     use std::error::Error;
 
+    #[derive(Default, Debug)]
+    pub enum RollupState {
+        Advance,
+        Inspect,
+        #[default]
+        Unknown,
+    }
+
+    impl RollupState {
+        pub fn as_str(&self) -> &str {
+            match self {
+                RollupState::Advance => "advance_state",
+                RollupState::Inspect => "inspect_state",
+                RollupState::Unknown => "unknown",
+            }
+        }
+    }
+
+    impl<'de> Deserialize<'de> for RollupState {
+        fn deserialize<D>(deserializer: D) -> Result<RollupState, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            match s.as_str() {
+                "advance_state" => Ok(RollupState::Advance),
+                "inspect_state" => Ok(RollupState::Inspect),
+                _ => Ok(RollupState::Unknown),
+            }
+        }
+    }
+
+    impl Serialize for RollupState {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_str(self.as_str())
+        }
+    }
+
     #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInput {
         pub data: RollupInputData,
-        pub request_type: String,
+        pub request_type: RollupState,
     }
 
     impl TryFrom<Item> for RollupInput {

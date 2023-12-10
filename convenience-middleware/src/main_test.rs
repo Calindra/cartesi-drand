@@ -6,8 +6,9 @@ mod middleware_tests {
     use crate::{
         drand::get_drand_beacon,
         models::structs::{AppState, Beacon},
+        rollup::input::RollupInput,
         router::routes::{self},
-        utils::util::load_env_from_json, rollup::input::RollupInput,
+        utils::util::load_env_from_json,
     };
     use actix_web::{
         http::{self},
