@@ -7,6 +7,16 @@ pub mod util {
 
     use crate::models::structs::DrandEnv;
 
+    pub fn generate_payload_hex<T>(json: T) -> Result<String, Box<dyn Error>>
+    where
+        T: serde::Serialize,
+    {
+        let data = serde_json::to_string(&json)?;
+        // encode lower case hexa
+        let encode = format!("0x{}", hex::encode(data));
+        Ok(encode)
+    }
+
     pub fn deserialize_obj(request: &str) -> Option<serde_json::Map<String, Value>> {
         let json = serde_json::from_str::<serde_json::Value>(request);
 
