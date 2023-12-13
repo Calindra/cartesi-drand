@@ -56,9 +56,13 @@ pub mod server {
 }
 
 pub mod input {
-    use crate::{models::structs::Item, utils::util::deserialize_obj};
+    use crate::{
+        models::structs::Item,
+        utils::util::{deserialize_obj, generate_payload_hex},
+    };
     use hyper::{Body, Response};
     use serde::{Deserialize, Serialize};
+    use serde_json::json;
     use std::error::Error;
 
     #[derive(Default, Debug)]
@@ -67,6 +71,16 @@ pub mod input {
         Inspect,
         #[default]
         Unknown,
+    }
+
+    impl From<&str> for RollupState {
+        fn from(s: &str) -> Self {
+            match s {
+                "advance_state" => RollupState::Advance,
+                "inspect_state" => RollupState::Inspect,
+                _ => RollupState::Unknown,
+            }
+        }
     }
 
     impl RollupState {
@@ -85,11 +99,7 @@ pub mod input {
             D: serde::Deserializer<'de>,
         {
             let s = String::deserialize(deserializer)?;
-            match s.as_str() {
-                "advance_state" => Ok(RollupState::Advance),
-                "inspect_state" => Ok(RollupState::Inspect),
-                _ => Ok(RollupState::Unknown),
-            }
+            Ok(s.as_str().into())
         }
     }
 
@@ -108,6 +118,33 @@ pub mod input {
         pub request_type: RollupState,
     }
 
+    #[derive(Default)]
+    pub struct RollupInputBuilder(RollupInput);
+
+    impl RollupInputBuilder {
+        pub fn with_payload(mut self, payload: String) -> Self {
+            self.0.data.payload = payload;
+            self
+        }
+
+        pub fn with_metadata(mut self, metadata: RollupInputDataMetadata) -> Self {
+            self.0.data.metadata = Some(metadata);
+            self
+        }
+
+        pub fn with_request_type(mut self, request_type: RollupState) -> Self {
+            self.0.request_type = request_type;
+            self
+        }
+
+        pub fn build(self) -> RollupInput {
+            RollupInput {
+                data: self.0.data,
+                request_type: self.0.request_type,
+            }
+        }
+    }
+
     impl TryFrom<Item> for RollupInput {
         type Error = serde_json::Error;
 
@@ -123,21 +160,76 @@ pub mod input {
             let inspect_decoded = std::str::from_utf8(&bytes)?;
             Ok(inspect_decoded.to_string())
         }
+
+        pub fn builder() -> RollupInputBuilder {
+            RollupInputBuilder::default()
+        }
     }
 
-    #[derive(Serialize, Deserialize, Debug, Default)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub struct RollupInputData {
         pub payload: String,
         pub metadata: Option<RollupInputDataMetadata>,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
+    impl Default for RollupInputData {
+        fn default() -> Self {
+            let payload = generate_payload_hex(json!({"input":"0x00"})).unwrap();
+
+            Self {
+                payload,
+                metadata: Default::default(),
+            }
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputDataMetadata {
         pub block_number: u8,
         pub epoch_index: u8,
         pub input_index: u8,
         pub msg_sender: String,
         pub timestamp: u64,
+    }
+
+    impl RollupInputDataMetadata {
+        pub fn builder() -> RollupInputDataMetadataBuilder {
+            RollupInputDataMetadataBuilder::default()
+        }
+    }
+
+    #[derive(Default)]
+    pub struct RollupInputDataMetadataBuilder(RollupInputDataMetadata);
+
+    impl RollupInputDataMetadataBuilder {
+        pub fn with_block_number(mut self, block_number: u8) -> Self {
+            self.0.block_number = block_number;
+            self
+        }
+
+        pub fn with_epoch_index(mut self, epoch_index: u8) -> Self {
+            self.0.epoch_index = epoch_index;
+            self
+        }
+
+        pub fn with_input_index(mut self, input_index: u8) -> Self {
+            self.0.input_index = input_index;
+            self
+        }
+
+        pub fn with_address_sender(mut self, msg_sender: String) -> Self {
+            self.0.msg_sender = msg_sender;
+            self
+        }
+
+        pub fn with_timestamp(mut self, timestamp: u64) -> Self {
+            self.0.timestamp = timestamp;
+            self
+        }
+
+        pub fn build(self) -> RollupInputDataMetadata {
+            self.0
+        }
     }
 
     impl RollupInput {

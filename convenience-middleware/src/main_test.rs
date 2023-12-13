@@ -6,9 +6,9 @@ mod middleware_tests {
     use crate::{
         drand::get_drand_beacon,
         models::structs::{AppState, Beacon},
-        rollup::input::RollupInput,
+        rollup::input::{RollupInput, RollupInputDataMetadata},
         router::routes::{self},
-        utils::util::load_env_from_json,
+        utils::util::{generate_payload_hex, load_env_from_json},
     };
     use actix_web::{
         http::{self},
@@ -102,24 +102,35 @@ mod middleware_tests {
         Logger::default()
     }
 
-    fn generate_payload_hex<T>(json: T) -> Result<String, Box<dyn Error>>
-    where
-        T: serde::Serialize,
-    {
-        let data = serde_json::to_string(&json)?;
-        // encode lower case hexa
-        let encode = format!("0x{}", hex::encode(data));
-        Ok(encode)
-    }
-
     // ({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":payload_empty},"request_type":"advance_state"})
+    fn mock_factory(
+        payload: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, Box<dyn Error>> {
+        // random address to msg_sender
+        let addr = String::from("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+        // random timestamp
+        let timestamp = 1689949250;
 
-    fn mock_factory<T>() -> Result<T, Box<dyn Error>>
-    where
-        T: serde::Serialize,
-    {
-        let data = RollupInput::default();
-        todo!("mock factory")
+        let metadata = RollupInputDataMetadata::builder()
+            .with_block_number(241)
+            .with_address_sender(addr)
+            .with_timestamp(timestamp)
+            .build();
+
+        let mut data = RollupInput::builder()
+            .with_metadata(metadata)
+            .with_request_type("advance_state".into());
+
+        if let Some(payload) = payload {
+            let payload = generate_payload_hex(payload)?;
+            data = data.with_payload(payload);
+        }
+
+        let data = data.build();
+
+        let json = serde_json::to_value(data)?;
+        println!("mock_factory: {:?}", json);
+        Ok(json)
     }
 
     #[actix_web::test]
@@ -163,11 +174,11 @@ mod middleware_tests {
         mock_rollup_server!(status_code(202));
         let last_clock_beacon = 24;
 
-        let beacon = Beacon {
-            round: 1,
-            randomness: "to-be-a-seed".to_string(),
-            timestamp: last_clock_beacon,
-        };
+        let beacon = Beacon::builder()
+            .with_round(1)
+            .with_randomness("to-be-a-seed".to_string())
+            .with_timestamp(last_clock_beacon)
+            .build();
 
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
@@ -200,11 +211,11 @@ mod middleware_tests {
 
         let last_clock_beacon = 24;
 
-        let beacon = Beacon {
-            round: 1,
-            randomness: "to-be-a-seed".to_string(),
-            timestamp: last_clock_beacon,
-        };
+        let beacon = Beacon::builder()
+            .with_round(1)
+            .with_randomness("to-be-a-seed".to_string())
+            .with_timestamp(last_clock_beacon)
+            .build();
 
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
@@ -285,14 +296,14 @@ mod middleware_tests {
 
     #[actix_web::test]
     async fn test_request_finish_with_beacon_inside_input() {
+        let empty = mock_factory(None).unwrap();
+        let beacon = json!({"beacon":{"randomness":"7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527","round":2832127,"signature":"8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352"},"input":"0x00"});
+        let beacon = mock_factory(Some(beacon)).unwrap();
+
         check_if_dotenv_is_loaded!();
         mock_rollup_server!(responders::cycle![
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            ),
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D2C22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            )
+            json_encoded(empty),
+            json_encoded(beacon)
         ]);
 
         let logger = generate_log();
@@ -325,13 +336,13 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_request_finish_with_beacon_inside_input_scenario_2() {
         check_if_dotenv_is_loaded!();
+        let empty = mock_factory(None).unwrap();
+        let beacon = json!({"beacon":{"randomness":"7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527","round":2832127,"signature":"8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352"}});
+        let beacon = mock_factory(Some(beacon)).unwrap();
+
         mock_rollup_server!(responders::cycle![
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            ),
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D7D"},"request_type":"advance_state"})
-            )
+            json_encoded(empty),
+            json_encoded(beacon)
         ]);
 
         let app_state = web::Data::new(AppState::new());
@@ -345,7 +356,7 @@ mod middleware_tests {
 
         let mut app = test::init_service(app).await;
 
-        // // the DApp call our middleware to start something
+        // the DApp call our middleware to start something
         let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
 

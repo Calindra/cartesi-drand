@@ -36,19 +36,46 @@ pub mod structs {
         pub timestamp: u64,
     }
 
+    #[derive(Default)]
     pub struct Beacon {
         pub timestamp: u64,
         pub round: u64,
         pub randomness: String,
     }
 
+    #[derive(Default)]
+    pub struct BeaconBuilder(Beacon);
+
     impl Beacon {
-        pub fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
-            Some(Beacon {
-                timestamp,
-                round: drand_beacon.round,
-                randomness: drand_beacon.randomness.to_string(),
-            })
+        pub fn builder() -> BeaconBuilder {
+            BeaconBuilder::default()
+        }
+    }
+
+    impl BeaconBuilder {
+        pub fn with_timestamp(mut self, timestamp: u64) -> BeaconBuilder {
+            self.0.timestamp = timestamp;
+            self
+        }
+
+        pub fn with_round(mut self, round: u64) -> BeaconBuilder {
+            self.0.round = round;
+            self
+        }
+
+        pub fn with_randomness(mut self, randomness: String) -> BeaconBuilder {
+            self.0.randomness = randomness;
+            self
+        }
+
+        pub fn with_drand_beacon(mut self, drand_beacon: &DrandBeacon) -> BeaconBuilder {
+            self.0.round = drand_beacon.round;
+            self.0.randomness = drand_beacon.randomness.to_string();
+            self
+        }
+
+        pub fn build(self) -> Beacon {
+            self.0
         }
     }
 
@@ -151,18 +178,30 @@ pub mod structs {
             if let Some(current_beacon) = manager.last_beacon.take() {
                 if current_beacon.round < drand_beacon.round {
                     info!("Set new beacon");
+
+                    let beacon = Beacon::builder()
+                        .with_drand_beacon(&drand_beacon)
+                        .with_timestamp(beacon_time)
+                        .build();
+
                     manager
                         .last_beacon
-                        .set(Beacon::some_from(&drand_beacon, beacon_time));
+                        .set(Some(beacon));
                 } else {
                     info!("Keep current beacon");
                     manager.last_beacon.set(Some(current_beacon));
                 }
             } else {
                 info!("No beacon, initializing");
+
+                let beacon = Beacon::builder()
+                    .with_drand_beacon(&drand_beacon)
+                    .with_timestamp(beacon_time)
+                    .build();
+
                 manager
                     .last_beacon
-                    .set(Beacon::some_from(&drand_beacon, beacon_time));
+                    .set(Some(beacon));
             }
         }
         pub async fn store_input(&self, rollup_input: &RollupInput) {
