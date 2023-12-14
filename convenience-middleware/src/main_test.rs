@@ -346,7 +346,14 @@ mod middleware_tests {
     async fn test_request_finish_with_beacon_inside_input_scenario_2() {
         check_if_dotenv_is_loaded!();
         let empty = mock_factory(None).unwrap();
-        let beacon = json!({"beacon":{"randomness":"7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527","round":2832127,"signature":"8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352"}});
+
+        let beacon = DrandBeacon::builder()
+            .with_randomness("7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527".to_string())
+            .with_round(2832127)
+            .with_signature("8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352".to_string())
+            .build()
+            .wrap();
+
         let beacon = mock_factory(Some(beacon)).unwrap();
 
         mock_rollup_server!(responders::cycle![
