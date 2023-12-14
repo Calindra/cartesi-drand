@@ -5,7 +5,7 @@ mod middleware_tests {
 
     use crate::{
         drand::get_drand_beacon,
-        models::structs::{AppState, Beacon},
+        models::structs::{AppState, Beacon, DrandBeacon},
         rollup::input::{RollupInput, RollupInputDataMetadata},
         router::routes::{self},
         utils::util::{generate_payload_hex, load_env_from_json},
@@ -273,11 +273,9 @@ mod middleware_tests {
     async fn test_request_finish_with_input_to_respond() {
         check_if_dotenv_is_loaded!();
 
-        let payload_empty = generate_payload_hex(json!({"input":"0x00"})).unwrap();
+        let payload = mock_factory(None).unwrap();
 
-        mock_rollup_server!(json_encoded(
-            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":payload_empty},"request_type":"advance_state"})
-        ));
+        mock_rollup_server!(json_encoded(payload));
 
         let app_state = web::Data::new(AppState::new());
 
@@ -297,7 +295,18 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_request_finish_with_beacon_inside_input() {
         let empty = mock_factory(None).unwrap();
-        let beacon = json!({"beacon":{"randomness":"7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527","round":2832127,"signature":"8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352"},"input":"0x00"});
+
+        let randomness =
+            String::from("7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527");
+        let signature = String::from("8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352");
+
+        let beacon = DrandBeacon::builder()
+            .with_randomness(randomness)
+            .with_round(2832127)
+            .with_signature(signature)
+            .build()
+            .wrap();
+
         let beacon = mock_factory(Some(beacon)).unwrap();
 
         check_if_dotenv_is_loaded!();

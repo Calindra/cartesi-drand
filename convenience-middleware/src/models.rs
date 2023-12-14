@@ -3,6 +3,7 @@ pub mod structs {
 
     use log::info;
     use serde::{Deserialize, Serialize};
+    use serde_json::json;
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
@@ -84,11 +85,50 @@ pub mod structs {
         pub beacon: DrandBeacon,
     }
 
-    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[derive(Default, Serialize, Deserialize, Debug, Clone)]
     pub struct DrandBeacon {
         pub round: u64,
         pub signature: String,
         pub randomness: String,
+    }
+
+    #[derive(Default)]
+    pub struct DrandBeaconBuilder(DrandBeacon);
+
+    impl DrandBeacon {
+        pub fn builder() -> DrandBeaconBuilder {
+            DrandBeaconBuilder::default()
+        }
+
+        pub fn wrap(&self) -> serde_json::Value {
+            let payload = serde_json::to_value(self).unwrap();
+            json!(
+            {
+                "beacon": payload,
+                "input":"0x00",
+            })
+        }
+    }
+
+    impl DrandBeaconBuilder {
+        pub fn with_round(mut self, round: u64) -> DrandBeaconBuilder {
+            self.0.round = round;
+            self
+        }
+
+        pub fn with_signature(mut self, signature: String) -> DrandBeaconBuilder {
+            self.0.signature = signature;
+            self
+        }
+
+        pub fn with_randomness(mut self, randomness: String) -> DrandBeaconBuilder {
+            self.0.randomness = randomness;
+            self
+        }
+
+        pub fn build(self) -> DrandBeacon {
+            self.0
+        }
     }
 
     pub struct InputBufferManager {
@@ -184,9 +224,7 @@ pub mod structs {
                         .with_timestamp(beacon_time)
                         .build();
 
-                    manager
-                        .last_beacon
-                        .set(Some(beacon));
+                    manager.last_beacon.set(Some(beacon));
                 } else {
                     info!("Keep current beacon");
                     manager.last_beacon.set(Some(current_beacon));
@@ -199,9 +237,7 @@ pub mod structs {
                     .with_timestamp(beacon_time)
                     .build();
 
-                manager
-                    .last_beacon
-                    .set(Some(beacon));
+                manager.last_beacon.set(Some(beacon));
             }
         }
         pub async fn store_input(&self, rollup_input: &RollupInput) {
@@ -294,14 +330,6 @@ mod test {
 
     use super::structs::{AppState, Beacon, DrandBeacon, InputBufferManager};
 
-    fn create_drand_beacon(round: u64) -> DrandBeacon {
-        DrandBeacon {
-            round,
-            signature: String::from("signature"),
-            randomness: String::from("randomness"),
-        }
-    }
-
     fn create_app_state() -> AppState {
         let version: Option<&str> = option_env!("CARGO_PKG_VERSION");
         AppState {
@@ -316,7 +344,7 @@ mod test {
     #[actix_web::test]
     async fn test_app_state_init_beacon() {
         let app = create_app_state();
-        let beacon = create_drand_beacon(2);
+        let beacon = DrandBeacon::builder().with_round(2).build();
         app.keep_newest_beacon(beacon);
         let manager = app.input_buffer_manager.lock().await;
         assert_eq!(2, manager.last_beacon.take().unwrap().round);
@@ -334,7 +362,7 @@ mod test {
             }))
         }
         {
-            let beacon = create_drand_beacon(1);
+            let beacon = DrandBeacon::builder().with_round(1).build();
             app.keep_newest_beacon(beacon);
             let manager = app.input_buffer_manager.lock().await;
             assert_eq!(2, manager.last_beacon.take().unwrap().round);
@@ -353,7 +381,7 @@ mod test {
             }))
         }
         {
-            let beacon = create_drand_beacon(3);
+            let beacon = DrandBeacon::builder().with_round(3).build();
             app.keep_newest_beacon(beacon);
             let manager = app.input_buffer_manager.lock().await;
             assert_eq!(3, manager.last_beacon.take().unwrap().round);
