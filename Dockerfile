@@ -1,7 +1,7 @@
 # syntax=docker.io/docker/dockerfile:1.4
 ARG FOLDER_MIDDLEWARE=convenience-middleware
 
-FROM rust:1.73.0-bookworm as middleware
+FROM rust:1.74.1-bookworm as middleware
 
 ARG FOLDER_MIDDLEWARE
 
@@ -32,7 +32,7 @@ RUN \
   --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
   cargo build --release --target=riscv64gc-unknown-linux-gnu
 
-FROM rust:1.73.0-bookworm as dapp-contract
+FROM rust:1.74.1-bookworm as dapp-contract
 
 RUN <<EOF
 rm -f /etc/apt/apt.conf.d/docker-clean
@@ -62,15 +62,15 @@ ARG FOLDER_MIDDLEWARE
 LABEL io.sunodo.sdk_version=0.2.0
 LABEL io.cartesi.rollups.ram_size=128Mi
 
-ARG MACHINE_EMULATOR_TOOLS_VERSION=0.12.0
+ARG MACHINE_EMULATOR_TOOLS_VERSION=0.14.0
 
 RUN <<EOF
 apt-get update
 apt-get install -y --no-install-recommends \
     busybox-static=1:1.30.1-7ubuntu3 \
     ca-certificates=20230311ubuntu0.22.04.1 \
-    curl=7.81.0-1ubuntu1.14 \
-    vim=2:8.2.3995-1ubuntu2.13 \
+    curl=7.81.0-1ubuntu1.15 \
+    vim=2:8.2.3995-1ubuntu2.15 \
     jq=1.6-2.1ubuntu3
 curl -fsSL https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.tar.gz \
   | tar -C / --overwrite -xvzf -
