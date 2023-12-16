@@ -1,7 +1,7 @@
 # syntax=docker.io/docker/dockerfile:1.4
 ARG FOLDER_MIDDLEWARE=convenience-middleware
 
-FROM rust:1.72.0-bookworm as middleware
+FROM rust:1.74.1-bookworm as middleware
 
 ARG FOLDER_MIDDLEWARE
 
@@ -32,7 +32,7 @@ RUN \
   --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
   cargo build --release --target=riscv64gc-unknown-linux-gnu
 
-FROM rust:1.72.0-bookworm as dapp-contract
+FROM rust:1.74.1-bookworm as dapp-contract
 
 RUN <<EOF
 rm -f /etc/apt/apt.conf.d/docker-clean
