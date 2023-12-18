@@ -108,7 +108,7 @@ mod middleware_tests {
         payload: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, Box<dyn Error>> {
         // random address to msg_sender
-        let addr = String::from("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+        let addr = uint!("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
         // random timestamp
         let timestamp = uint!("1689949250");
 

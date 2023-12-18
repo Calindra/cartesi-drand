@@ -194,7 +194,8 @@ pub mod input {
         pub epoch_index: BigIntLike,
         #[serde(with = "ethnum::serde::prefixed")]
         pub input_index: BigIntLike,
-        pub msg_sender: String,
+        #[serde(with = "ethnum::serde::prefixed")]
+        pub msg_sender: BigIntLike,
         #[serde(with = "ethnum::serde::prefixed")]
         pub timestamp: BigIntLike,
     }
@@ -224,7 +225,7 @@ pub mod input {
             self
         }
 
-        pub fn with_address_sender(mut self, msg_sender: String) -> Self {
+        pub fn with_address_sender(mut self, msg_sender: BigIntLike) -> Self {
             self.0.msg_sender = msg_sender;
             self
         }
