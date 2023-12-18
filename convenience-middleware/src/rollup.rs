@@ -185,7 +185,7 @@ pub mod input {
 
     #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputDataMetadata {
-        pub block_number: u8,
+        pub block_number: u128,
         pub epoch_index: u8,
         pub input_index: u8,
         pub msg_sender: String,
@@ -202,7 +202,7 @@ pub mod input {
     pub struct RollupInputDataMetadataBuilder(RollupInputDataMetadata);
 
     impl RollupInputDataMetadataBuilder {
-        pub fn with_block_number(mut self, block_number: u8) -> Self {
+        pub fn with_block_number(mut self, block_number: u128) -> Self {
             self.0.block_number = block_number;
             self
         }
