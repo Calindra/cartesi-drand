@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod middleware_tests {
+    use ethnum::uint;
     use hex_literal::hex;
     use std::{error::Error, sync::Once};
 
@@ -109,10 +110,10 @@ mod middleware_tests {
         // random address to msg_sender
         let addr = String::from("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
         // random timestamp
-        let timestamp = 1689949250;
+        let timestamp = uint!("1689949250");
 
         let metadata = RollupInputDataMetadata::builder()
-            .with_block_number(241)
+            .with_block_number(uint!("241"))
             .with_address_sender(addr)
             .with_timestamp(timestamp)
             .build();

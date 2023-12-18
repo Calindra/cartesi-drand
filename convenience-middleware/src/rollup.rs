@@ -60,6 +60,7 @@ pub mod input {
         models::structs::Item,
         utils::util::{deserialize_obj, generate_payload_hex},
     };
+    use ethnum::u256;
     use hyper::{Body, Response};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -183,13 +184,19 @@ pub mod input {
         }
     }
 
+    type BigIntLike = u256;
+
     #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputDataMetadata {
-        pub block_number: u128,
-        pub epoch_index: u8,
-        pub input_index: u8,
+        #[serde(with = "ethnum::serde::prefixed")]
+        pub block_number: BigIntLike,
+        #[serde(with = "ethnum::serde::prefixed")]
+        pub epoch_index: BigIntLike,
+        #[serde(with = "ethnum::serde::prefixed")]
+        pub input_index: BigIntLike,
         pub msg_sender: String,
-        pub timestamp: u64,
+        #[serde(with = "ethnum::serde::prefixed")]
+        pub timestamp: BigIntLike,
     }
 
     impl RollupInputDataMetadata {
@@ -202,17 +209,17 @@ pub mod input {
     pub struct RollupInputDataMetadataBuilder(RollupInputDataMetadata);
 
     impl RollupInputDataMetadataBuilder {
-        pub fn with_block_number(mut self, block_number: u128) -> Self {
+        pub fn with_block_number(mut self, block_number: BigIntLike) -> Self {
             self.0.block_number = block_number;
             self
         }
 
-        pub fn with_epoch_index(mut self, epoch_index: u8) -> Self {
+        pub fn with_epoch_index(mut self, epoch_index: BigIntLike) -> Self {
             self.0.epoch_index = epoch_index;
             self
         }
 
-        pub fn with_input_index(mut self, input_index: u8) -> Self {
+        pub fn with_input_index(mut self, input_index: BigIntLike) -> Self {
             self.0.input_index = input_index;
             self
         }
@@ -222,7 +229,7 @@ pub mod input {
             self
         }
 
-        pub fn with_timestamp(mut self, timestamp: u64) -> Self {
+        pub fn with_timestamp(mut self, timestamp: BigIntLike) -> Self {
             self.0.timestamp = timestamp;
             self
         }

@@ -28,6 +28,7 @@ derive_more = { version = "0.99.17", no-default-features = true, features = [
     "error",
     "display",
 ] }
+ethnum = { version = "1.5.0", no-default-features = true, features = ["serde"] }
 
 [dev-dependencies]
 httptest = "0.15.4"
