@@ -1,6 +1,6 @@
 mod common;
 
-#[path = "../src/imports.rs"]
+#[path = "../src/mod.rs"]
 mod imports;
 use imports::*;
 

@@ -1,5 +1,6 @@
 use std::{env, sync::Arc};
 
+#[path = "./mod.rs"]
 mod imports;
 
 use imports::*;
