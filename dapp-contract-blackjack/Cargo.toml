@@ -5,7 +5,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-dotenv = "0.15.0"
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
 hyper = { version = "0.14", features = [
     "http1",
     "runtime",

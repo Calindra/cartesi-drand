@@ -1,6 +1,7 @@
 pub mod structs {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
+    use dotenvy::var;
     use log::info;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -152,15 +153,15 @@ pub mod structs {
     impl AppState {
         pub fn new() -> AppState {
             let manager = InputBufferManager::default();
-            let drand_period = std::env::var("DRAND_PERIOD")
+            let drand_period = var("DRAND_PERIOD")
                 .expect("Missing env DRAND_PERIOD")
                 .parse::<u64>()
                 .unwrap();
-            let drand_genesis_time = std::env::var("DRAND_GENESIS_TIME")
+            let drand_genesis_time = var("DRAND_GENESIS_TIME")
                 .expect("Missing env DRAND_GENESIS_TIME")
                 .parse::<u64>()
                 .unwrap();
-            let safe_seconds = std::env::var("DRAND_SAFE_SECONDS")
+            let safe_seconds = var("DRAND_SAFE_SECONDS")
                 .expect("Missing env DRAND_SAFE_SECONDS")
                 .parse::<u64>()
                 .unwrap();

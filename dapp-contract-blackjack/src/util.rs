@@ -5,6 +5,7 @@ pub struct Metadata {
 pub mod random {
     use std::{env, error::Error, ops::Range};
 
+    use dotenvy::var;
     use log::{error, info};
 
     use hyper::{
@@ -24,7 +25,7 @@ pub mod random {
     pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
         let client = Client::new();
 
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
         let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
@@ -183,6 +184,7 @@ pub mod json {
 pub mod pubkey {
     use std::{env, error::Error};
 
+    use dotenvy::var;
     use hyper::{Body, Client, Method, Request};
     use log::{error, info};
 
@@ -215,7 +217,7 @@ pub mod pubkey {
         let body = serde_json::to_string(drand_env)?;
 
         let client = Client::new();
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
         let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/update_drand_config", &server_addr);
@@ -246,7 +248,7 @@ pub mod env {
     #[allow(unused_macros)]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
-            let is_env_loaded = dotenv::dotenv().ok().is_some();
+            let is_env_loaded = dotenvy::dotenv().ok().is_some();
             assert!(is_env_loaded);
             is_env_loaded
         }};

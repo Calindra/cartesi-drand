@@ -1,4 +1,5 @@
 pub mod rollup {
+    use dotenvy::var;
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use log::{error, info, warn};
     use serde_json::{from_str, json, Value};
@@ -24,7 +25,7 @@ pub mod rollup {
         info!("Starting loop...");
 
         let client = Client::new();
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
 
         let mut status = "accept";
         loop {
@@ -113,7 +114,7 @@ pub mod rollup {
     }
 
     pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
+        let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -126,7 +127,7 @@ pub mod rollup {
     }
 
     pub async fn send_notice(notice: Value) -> Result<(), Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
+        let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -194,7 +195,7 @@ pub mod rollup {
                 let address_owner = metadata.address.trim_start_matches("0x").to_lowercase();
 
                 let address_owner_game =
-                    env::var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
+                    var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
 
                 let address_owner_game = address_owner_game.trim_start_matches("0x").to_lowercase();
 

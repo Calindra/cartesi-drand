@@ -18,7 +18,7 @@ mod middleware_tests {
         web::{self},
         App,
     };
-    use dotenv::dotenv;
+    use dotenvy::dotenv;
     use drand_verify::{G2Pubkey, G2PubkeyRfc, Pubkey as _};
     use http::Method;
     use httptest::{
@@ -31,10 +31,8 @@ mod middleware_tests {
     #[macro_export]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
-            let is_env_loaded = dotenv().ok().is_some();
-            assert!(is_env_loaded);
+            dotenv().unwrap();
             load_env_from_json().await.unwrap();
-            is_env_loaded
         }};
     }
 

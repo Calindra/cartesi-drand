@@ -1,4 +1,5 @@
 pub mod server {
+    use dotenvy::var;
     use hyper::{Body, Response};
     use log::info;
     use serde_json::{json, Value};
@@ -7,7 +8,7 @@ pub mod server {
     use super::input::RollupInput;
 
     pub async fn send_finish(status: &str) -> Result<Response<Body>, Box<dyn Error>> {
-        let server_str = std::env::var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
+        let server_str = var("ROLLUP_HTTP_SERVER_URL").expect("Env is not set");
         info!("Sending finish to {}", &server_str);
         let client = hyper::Client::new();
         let response = json!({"status" : status});
@@ -42,7 +43,7 @@ pub mod server {
 
     pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
         let server_addr =
-            std::env::var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
+            var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)

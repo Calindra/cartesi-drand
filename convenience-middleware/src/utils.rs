@@ -1,6 +1,7 @@
 pub mod util {
     use std::{error::Error, path::Path};
 
+    use dotenvy::var;
     use log::info;
     use serde_json::Value;
     use tokio::fs::read_to_string;
@@ -28,7 +29,7 @@ pub mod util {
 
     fn var_string_to_u64(str: &str) -> u64 {
         let err_msg = format!("Var {} is not defined", str);
-        let value = std::env::var(str).expect(&err_msg);
+        let value = var(str).expect(&err_msg);
         let err_msg = format!("Var {} cannot parse", str);
         value.parse::<u64>().expect(&err_msg)
     }
@@ -37,7 +38,7 @@ pub mod util {
         let path = Path::new("drand.config.json");
 
         let drand_env = DrandEnv {
-            DRAND_PUBLIC_KEY: std::env::var("DRAND_PUBLIC_KEY").unwrap(),
+            DRAND_PUBLIC_KEY: var("DRAND_PUBLIC_KEY").unwrap(),
             DRAND_PERIOD: Some(var_string_to_u64("DRAND_PERIOD")),
             DRAND_GENESIS_TIME: Some(var_string_to_u64("DRAND_GENESIS_TIME")),
             DRAND_SAFE_SECONDS: Some(var_string_to_u64("DRAND_SAFE_SECONDS")),
