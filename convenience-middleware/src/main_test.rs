@@ -105,11 +105,11 @@ mod middleware_tests {
     fn mock_factory(
         payload: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, Box<dyn Error>> {
-        let empty_str = "0x7b22696e707574223a2230783030227d";
+        let empty_str = String::from("0x7b22696e707574223a2230783030227d");
 
         let payload = payload
             .map(|p| generate_payload_hex(p).unwrap())
-            .unwrap_or(empty_str.to_owned());
+            .unwrap_or(empty_str);
 
         let json = json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload": payload},"request_type":"advance_state"});
 
