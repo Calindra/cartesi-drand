@@ -1,5 +1,5 @@
 {
-  "name": "web3-client",
+  "name": "@calindra/web3-client",
   "version": "0.0.1",
   "description": "Web3 Client to Send Input To Dapp",
   "source": "src/main.ts",
@@ -26,5 +26,8 @@
   "dependencies": {
     "@cartesi/rollups": "^1.1.0",
     "ethers": "^6.8.1"
+  },
+  "directories": {
+    "test": "tests"
   }
 }
