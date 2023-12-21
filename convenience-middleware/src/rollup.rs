@@ -185,20 +185,25 @@ pub mod input {
         }
     }
 
-    type BigIntLike = u256;
+    type BigIntLike = u128;
 
     #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputDataMetadata {
-        #[serde(with = "ethnum::serde::prefixed")]
-        pub block_number: BigIntLike,
-        #[serde(with = "ethnum::serde::prefixed")]
-        pub epoch_index: BigIntLike,
-        #[serde(with = "ethnum::serde::prefixed")]
-        pub input_index: BigIntLike,
-        #[serde(with = "ethnum::serde::prefixed")]
-        pub msg_sender: BigIntLike,
-        #[serde(with = "ethnum::serde::prefixed")]
-        pub timestamp: BigIntLike,
+        // #[serde(with = "ethnum::serde::prefixed")]
+        // pub block_number: BigIntLike,
+        // #[serde(with = "ethnum::serde::prefixed")]
+        // pub epoch_index: BigIntLike,
+        // #[serde(with = "ethnum::serde::prefixed")]
+        // pub input_index: BigIntLike,
+        // #[serde(with = "ethnum::serde::prefixed")]
+        // pub msg_sender: BigIntLike,
+        // #[serde(with = "ethnum::serde::prefixed")]
+        // pub timestamp: BigIntLike,
+        pub block_number: u128,
+        pub epoch_index: u128,
+        pub input_index: u128,
+        pub msg_sender: String,
+        pub timestamp: u64,
     }
 
     impl RollupInputDataMetadata {
@@ -226,12 +231,12 @@ pub mod input {
             self
         }
 
-        pub fn with_address_sender(mut self, msg_sender: BigIntLike) -> Self {
+        pub fn with_address_sender(mut self, msg_sender: String) -> Self {
             self.0.msg_sender = msg_sender;
             self
         }
 
-        pub fn with_timestamp(mut self, timestamp: BigIntLike) -> Self {
+        pub fn with_timestamp(mut self, timestamp: u64) -> Self {
             self.0.timestamp = timestamp;
             self
         }
