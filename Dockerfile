@@ -69,8 +69,8 @@ apt-get update
 apt-get install -y --no-install-recommends \
     busybox-static=1:1.30.1-7ubuntu3 \
     ca-certificates=20230311ubuntu0.22.04.1 \
-    curl=7.81.0-1ubuntu1.14 \
-    vim=2:8.2.3995-1ubuntu2.13 \
+    curl=7.81.0-1ubuntu1.15 \
+    vim=2:8.2.3995-1ubuntu2.15 \
     jq=1.6-2.1ubuntu3
 curl -fsSL https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.tar.gz \
   | tar -C / --overwrite -xvzf -
