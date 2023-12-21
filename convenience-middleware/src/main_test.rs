@@ -105,30 +105,15 @@ mod middleware_tests {
     fn mock_factory(
         payload: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, Box<dyn Error>> {
-        // random address to msg_sender
-        let addr = String::from("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
-        // random timestamp
-        let timestamp = 1689949250;
+        let empty_str = "0x7b22696e707574223a2230783030227d";
 
-        let metadata = RollupInputDataMetadata::builder()
-            .with_block_number(241)
-            .with_address_sender(addr)
-            .with_timestamp(timestamp)
-            .build();
+        let payload = payload
+            .map(|p| generate_payload_hex(p).unwrap())
+            .unwrap_or(empty_str.to_owned());
 
-        let mut data = RollupInput::builder()
-            .with_metadata(metadata)
-            .with_request_type("advance_state".into());
+        let json = json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload": payload},"request_type":"advance_state"});
 
-        if let Some(payload) = payload {
-            let payload = generate_payload_hex(payload)?;
-            data = data.with_payload(payload);
-        }
-
-        let data = data.build();
-
-        let json = serde_json::to_value(data)?;
-        println!("mock_factory: {:?}", json);
+        println!("mock_factory: {}", json);
         Ok(json)
     }
 
