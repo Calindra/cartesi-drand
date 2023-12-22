@@ -132,7 +132,7 @@ mod contract_blackjack_tests {
             println!("{:}", &response);
 
             let response = response["payload"].as_str().unwrap();
-            let response = decode_payload(response).unwrap();
+            let response = decode_payload::<serde_json::Value>(response).unwrap();
             let response = response["games"].as_array().unwrap();
             response.to_owned()
         };
@@ -225,7 +225,7 @@ mod contract_blackjack_tests {
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
 
-        if let Err(err) = response {
+        if let Err(ref err) = response {
             eprintln!("{:}", err);
         }
 

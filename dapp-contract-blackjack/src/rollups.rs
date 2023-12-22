@@ -113,7 +113,7 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
+    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn Error>> {
         let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
@@ -126,7 +126,7 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub async fn send_notice(notice: Value) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn send_notice(notice: Value) -> Result<(), Box<dyn Error>> {
         let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
@@ -140,12 +140,13 @@ pub mod rollup {
         Ok(())
     }
 
-    pub fn get_payload_from_root(root: &Value) -> Option<Value> {
-        let root = root.as_object()?;
-        let root = root.get("data")?.as_object()?;
-        let payload = root.get("payload")?.as_str()?;
-        let payload = decode_payload(payload)?;
-        Some(payload)
+    pub fn get_payload_from_root<T>(root: &Value) -> Result<T, Box<dyn Error>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let payload = root["data"]["payload"].as_str().ok_or("Invalid payload")?;
+        let payload = decode_payload::<T>(payload)?;
+        Ok(payload)
     }
 
     pub fn get_from_payload_action(payload: &Value) -> Option<String> {
@@ -181,11 +182,10 @@ pub mod rollup {
         root: &Value,
         manager: Arc<Mutex<Manager>>,
         write_hd_mode: bool,
-    ) -> Result<Option<Value>, &'static str> {
+    ) -> Result<Option<Value>, Box<dyn Error>> {
         info!("Handling request action with root {}", root.to_string());
 
-
-        let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
+        let payload = get_payload_from_root(root)?;
         let action = get_from_payload_action(&payload);
 
         info!("Action: {:}", action.as_deref().unwrap_or("None"));
@@ -203,7 +203,7 @@ pub mod rollup {
                 let address_owner_game = address_owner_game.trim_start_matches("0x").to_lowercase();
 
                 if address_owner != address_owner_game {
-                    return Err("Invalid owner");
+                    return Err("Invalid owner".into());
                 }
 
                 // Parsing JSON
@@ -230,7 +230,7 @@ pub mod rollup {
                 let response = call_update_key(&request_env).await;
 
                 if response.is_err() {
-                    return Err("Could not update drand config");
+                    return Err("Could not update drand config".into());
                 }
             }
             Some("new_player") => {
@@ -381,7 +381,7 @@ pub mod rollup {
                 // TODO Change here
                 if game.players.len() < 2 {
                     manager.add_game(game);
-                    return Err("Minimum number of players not reached.");
+                    return Err("Minimum number of players not reached.".into());
                 }
 
                 let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();

@@ -108,15 +108,18 @@ pub mod json {
 
     use super::Metadata;
 
-    pub fn decode_payload(payload: &str) -> Option<Value> {
+    pub fn decode_payload<T>(payload: &str) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let payload = payload.trim_start_matches("0x");
 
-        let payload = hex::decode(payload).ok()?;
-        let payload = String::from_utf8(payload).ok()?;
+        let payload = hex::decode(payload)?;
+        let payload = String::from_utf8(payload)?;
 
-        let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
+        let payload = serde_json::from_str::<T>(payload.as_str())?;
 
-        Some(payload)
+        Ok(payload)
     }
 
     pub fn generate_report(payload: Value) -> Value {

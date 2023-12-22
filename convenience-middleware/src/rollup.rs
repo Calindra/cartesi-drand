@@ -61,7 +61,6 @@ pub mod input {
         models::structs::Item,
         utils::util::{deserialize_obj, generate_payload_hex},
     };
-    use ethnum::u256;
     use hyper::{Body, Response};
     use serde::{Deserialize, Serialize};
     use serde_json::json;
