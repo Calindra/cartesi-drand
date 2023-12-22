@@ -440,4 +440,35 @@ mod middleware_tests {
         let result = pk.verify(round, b"", &signature).unwrap();
         assert!(result);
     }
+
+    // #[actix_web::test]
+    async fn test_u256() {
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+        struct Test {
+            #[serde(with = "ethnum::serde::prefixed")]
+            input: ethnum::u256,
+        }
+
+        impl PartialEq<serde_json::Value> for Test {
+            fn eq(&self, other: &serde_json::Value) -> bool {
+                match serde_json::from_value::<Test>(other.clone()) {
+                    Ok(other) => *self == other,
+                    Err(_) => false,
+                }
+            }
+        }
+
+        let payload = json!({"input": "0x123"});
+        let payload_encoded = generate_payload_hex(payload.clone()).unwrap();
+
+        println!("payload_encoded: {}", payload_encoded);
+
+        // let rollupinput = serde_json::from_value::<Test>(payload.clone()).unwrap();
+        let rollupinput = serde_json::from_str::<Test>(&payload_encoded).unwrap();
+        let rollupinput_str = serde_json::to_string(&rollupinput).unwrap();
+
+        assert_eq!(rollupinput, payload);
+
+        println!("rollupinput: {:?}, {}", rollupinput, rollupinput_str);
+    }
 }
