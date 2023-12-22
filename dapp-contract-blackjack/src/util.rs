@@ -3,7 +3,7 @@ pub struct Metadata {
     pub timestamp: u64,
 }
 pub mod random {
-    use std::{env, error::Error, ops::Range};
+    use std::{error::Error, ops::Range};
 
     use dotenvy::var;
     use log::{error, info};
@@ -182,7 +182,7 @@ pub mod json {
 }
 
 pub mod pubkey {
-    use std::{env, error::Error};
+    use std::error::Error;
 
     use dotenvy::var;
     use hyper::{Body, Client, Method, Request};

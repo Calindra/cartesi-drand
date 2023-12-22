@@ -3,7 +3,7 @@ pub mod rollup {
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use log::{error, info, warn};
     use serde_json::{from_str, json, Value};
-    use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
+    use std::{error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::Mutex;
 
     use crate::{
@@ -182,6 +182,9 @@ pub mod rollup {
         manager: Arc<Mutex<Manager>>,
         write_hd_mode: bool,
     ) -> Result<Option<Value>, &'static str> {
+        info!("Handling request action with root {}", root.to_string());
+
+
         let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
         let action = get_from_payload_action(&payload);
 
