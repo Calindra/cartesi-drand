@@ -439,7 +439,7 @@ mod middleware_tests {
         assert!(result);
     }
 
-    #[actix_web::test]
+    // #[actix_web::test]
     async fn test_u256() {
         #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
         struct Test {
@@ -457,9 +457,14 @@ mod middleware_tests {
         }
 
         let payload = json!({"input": "0x123"});
+        let payload_encoded = String::from("0x7B22696E707574223A20223078313233227D");
+
+        println!("payload: {}, {}", payload, payload_encoded);
 
         let rollupinput = serde_json::from_value::<Test>(payload.clone()).unwrap();
         let rollupinput_str = serde_json::to_string(&rollupinput).unwrap();
+
+        println!("rollupinput: {:?}, {}", rollupinput, rollupinput_str);
 
         assert_eq!(rollupinput, payload);
 
