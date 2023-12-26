@@ -37,4 +37,4 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --release --target riscv64gc-unknown-linux-gnu --verbose -p convenience-middleware
+          args: --release --target riscv64gc-unknown-linux-gnu --verbose -p cartesi-drand
