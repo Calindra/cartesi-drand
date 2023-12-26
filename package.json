@@ -9,7 +9,6 @@
   "author": "Calindra",
   "license": "MIT",
   "workspaces": [
-    "convenience-drand-provider",
-    "web3-client"
+    "convenience-drand-provider"
   ]
 }
