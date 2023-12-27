@@ -3,8 +3,9 @@ pub struct Metadata {
     pub timestamp: u64,
 }
 pub mod random {
-    use std::{env, error::Error, ops::Range, time::Duration};
+    use std::{error::Error, ops::Range};
 
+    use dotenvy::var;
     use log::{error, info};
 
     use hyper::{
@@ -14,7 +15,6 @@ pub mod random {
     use rand::prelude::*;
     use rand_pcg::Pcg64;
     use rand_seeder::Seeder;
-    use tokio::time;
     use uuid::Uuid;
 
     pub fn generate_random_number(seed: &str, range: Range<usize>) -> usize {
@@ -25,65 +25,61 @@ pub mod random {
     pub async fn call_seed(timestamp: u64) -> Result<String, Box<dyn Error>> {
         let client = Client::new();
 
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let server_addr = server_addr.trim_end_matches("/");
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/random?timestamp={}", &server_addr, timestamp);
 
         info!("Calling random at {:}", &uri);
 
-        loop {
-            let request = Request::builder()
-                .method(hyper::Method::GET)
-                .uri(&uri)
-                .header("Content-Type", "application/json")
-                .body(Body::empty())?;
+        let request = Request::builder()
+            .method(hyper::Method::GET)
+            .uri(&uri)
+            .header("Content-Type", "application/json")
+            .body(Body::empty())?;
 
-            let response = client.request(request).await?;
+        let response = client.request(request).await?;
 
-            let status_response = response.status();
-            info!("Receive random status {}", &status_response);
+        let status_response = response.status();
+        info!("Receive random status {}", &status_response);
 
-            match status_response {
-                StatusCode::BAD_REQUEST => {
-                    let get_body = |response: hyper::Response<Body>| async {
-                        let body_bytes = body::to_bytes(response.into_body()).await?;
-                        let body_str = String::from_utf8(body_bytes.to_vec())?;
-                        // let body_str = serde_json::to_string(&body_str)?;
-                        Ok::<String, Box<dyn Error>>(body_str)
-                    };
+        match status_response {
+            StatusCode::BAD_REQUEST => {
+                let get_body = |response: hyper::Response<Body>| async {
+                    let body_bytes = body::to_bytes(response.into_body()).await?;
+                    let body_str = String::from_utf8(body_bytes.to_vec())?;
+                    // let body_str = serde_json::to_string(&body_str)?;
+                    Ok::<String, Box<dyn Error>>(body_str)
+                };
 
-                    return match get_body(response).await {
-                        Ok(body_str) => Err(format!(
-                            "Bad request status code for random number with body: {body_str}",
-                        )
-                        .into()),
-                        Err(error) => Err(format!(
-                            "Bad request status code for random number with error: {}",
-                            error.to_string()
-                        )
-                        .into()),
-                    };
+                match get_body(response).await {
+                    Ok(body_str) => Err(format!(
+                        "Bad request status code for random number with body: {body_str}",
+                    )
+                    .into()),
+                    Err(error) => Err(format!(
+                        "Bad request status code for random number with error: {}",
+                        error
+                    )
+                    .into()),
                 }
-                StatusCode::NOT_FOUND => {
-                    return Err(
-                        format!("No pending random request, trying again... uri = {uri}",).into(),
-                    );
-                    // info!("No pending random request, trying again... uri = {}", uri);
-                    // time::sleep(Duration::from_secs(1)).await;
-                }
+            }
+            StatusCode::NOT_FOUND => {
+                Err(format!("No pending random request, trying again... uri = {uri}",).into())
+                // info!("No pending random request, trying again... uri = {}", uri);
+                // time::sleep(Duration::from_secs(1)).await;
+            }
 
-                StatusCode::OK => {
-                    let body = body::to_bytes(response).await?;
-                    let body = String::from_utf8(body.to_vec())?;
-                    return Ok(body);
-                }
+            StatusCode::OK => {
+                let body = body::to_bytes(response).await?;
+                let body = String::from_utf8(body.to_vec())?;
+                Ok(body)
+            }
 
-                code => {
-                    // @todo doc this for production
-                    // this is to avoid loop with inspect mode
-                    return Err(format!("Unexpected status code {code} for random number").into());
-                }
+            code => {
+                // @todo doc this for production
+                // this is to avoid loop with inspect mode
+                Err(format!("Unexpected status code {code} for random number").into())
             }
         }
     }
@@ -112,15 +108,18 @@ pub mod json {
 
     use super::Metadata;
 
-    pub fn decode_payload(payload: &str) -> Option<Value> {
+    pub fn decode_payload<T>(payload: &str) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let payload = payload.trim_start_matches("0x");
 
-        let payload = hex::decode(payload).ok()?;
-        let payload = String::from_utf8(payload).ok()?;
+        let payload = hex::decode(payload)?;
+        let payload = String::from_utf8(payload)?;
 
-        let payload = serde_json::from_str::<Value>(payload.as_str()).ok()?;
+        let payload = serde_json::from_str::<T>(payload.as_str())?;
 
-        Some(payload)
+        Ok(payload)
     }
 
     pub fn generate_report(payload: Value) -> Value {
@@ -186,8 +185,9 @@ pub mod json {
 }
 
 pub mod pubkey {
-    use std::{env, error::Error};
+    use std::error::Error;
 
+    use dotenvy::var;
     use hyper::{Body, Client, Method, Request};
     use log::{error, info};
 
@@ -220,8 +220,8 @@ pub mod pubkey {
         let body = serde_json::to_string(drand_env)?;
 
         let client = Client::new();
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
-        let server_addr = server_addr.trim_end_matches("/");
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = server_addr.trim_end_matches('/');
 
         let uri = format!("{}/update_drand_config", &server_addr);
 
@@ -251,7 +251,7 @@ pub mod env {
     #[allow(unused_macros)]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
-            let is_env_loaded = dotenv::dotenv().ok().is_some();
+            let is_env_loaded = dotenvy::dotenv().ok().is_some();
             assert!(is_env_loaded);
             is_env_loaded
         }};

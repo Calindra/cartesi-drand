@@ -1,12 +1,13 @@
 use std::{borrow::BorrowMut, error::Error};
 
 use actix_web::web::Data;
-use drand_verify::{derive_randomness, G2Pubkey, G2PubkeyRfc, Pubkey};
+use dotenvy::var;
+use drand_verify::{derive_randomness, G2PubkeyRfc, Pubkey};
 use log::{error, warn};
 use serde_json::json;
 
 use crate::{
-    models::models::{AppState, DrandBeacon, PayloadWithBeacon},
+    models::structs::{AppState, DrandBeacon, PayloadWithBeacon},
     rollup::{input::RollupInput, server::send_report},
 };
 
@@ -29,7 +30,7 @@ pub async fn send_pending_beacon_report(app_state: &Data<AppState>) {
  * {"beacon":{"round":3828300,"randomness":"7ff726d290836da706126ada89f7e99295c672d6768ec8e035fd3de5f3f35cd9","signature":"ab85c071a4addb83589d0ecf5e2389f7054e4c34e0cbca65c11abc30761f29a0d338d0d307e6ebcb03d86f781bc202ee"}}
  */
 pub fn get_drand_beacon(payload: &str) -> Result<DrandBeacon, Box<dyn std::error::Error>> {
-    let key = std::env::var("DRAND_PUBLIC_KEY").expect("Public Key not found");
+    let key = var("DRAND_PUBLIC_KEY").expect("Public Key not found");
 
     let payload = payload.trim_start_matches("0x");
     let payload = hex::decode(payload)?;

@@ -1,8 +1,10 @@
-pub mod models {
+pub mod structs {
     use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
 
+    use dotenvy::var;
     use log::info;
     use serde::{Deserialize, Serialize};
+    use serde_json::json;
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
 
@@ -36,19 +38,46 @@ pub mod models {
         pub timestamp: u64,
     }
 
+    #[derive(Default)]
     pub struct Beacon {
         pub timestamp: u64,
         pub round: u64,
         pub randomness: String,
     }
 
+    #[derive(Default)]
+    pub struct BeaconBuilder(Beacon);
+
     impl Beacon {
-        pub fn some_from(drand_beacon: &DrandBeacon, timestamp: u64) -> Option<Beacon> {
-            Some(Beacon {
-                timestamp,
-                round: drand_beacon.round,
-                randomness: drand_beacon.randomness.to_string(),
-            })
+        pub fn builder() -> BeaconBuilder {
+            BeaconBuilder::default()
+        }
+    }
+
+    impl BeaconBuilder {
+        pub fn with_timestamp(mut self, timestamp: u64) -> BeaconBuilder {
+            self.0.timestamp = timestamp;
+            self
+        }
+
+        pub fn with_round(mut self, round: u64) -> BeaconBuilder {
+            self.0.round = round;
+            self
+        }
+
+        pub fn with_randomness(mut self, randomness: String) -> BeaconBuilder {
+            self.0.randomness = randomness;
+            self
+        }
+
+        pub fn with_drand_beacon(mut self, drand_beacon: &DrandBeacon) -> BeaconBuilder {
+            self.0.round = drand_beacon.round;
+            self.0.randomness = drand_beacon.randomness.to_string();
+            self
+        }
+
+        pub fn build(self) -> Beacon {
+            self.0
         }
     }
 
@@ -57,11 +86,50 @@ pub mod models {
         pub beacon: DrandBeacon,
     }
 
-    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[derive(Default, Serialize, Deserialize, Debug, Clone)]
     pub struct DrandBeacon {
         pub round: u64,
         pub signature: String,
         pub randomness: String,
+    }
+
+    #[derive(Default)]
+    pub struct DrandBeaconBuilder(DrandBeacon);
+
+    impl DrandBeacon {
+        pub fn builder() -> DrandBeaconBuilder {
+            DrandBeaconBuilder::default()
+        }
+
+        pub fn wrap(&self) -> serde_json::Value {
+            let payload = serde_json::to_value(self).unwrap();
+            json!(
+            {
+                "beacon": payload,
+                "input":"0x00",
+            })
+        }
+    }
+
+    impl DrandBeaconBuilder {
+        pub fn with_round(mut self, round: u64) -> DrandBeaconBuilder {
+            self.0.round = round;
+            self
+        }
+
+        pub fn with_signature(mut self, signature: String) -> DrandBeaconBuilder {
+            self.0.signature = signature;
+            self
+        }
+
+        pub fn with_randomness(mut self, randomness: String) -> DrandBeaconBuilder {
+            self.0.randomness = randomness;
+            self
+        }
+
+        pub fn build(self) -> DrandBeacon {
+            self.0
+        }
     }
 
     pub struct InputBufferManager {
@@ -85,15 +153,15 @@ pub mod models {
     impl AppState {
         pub fn new() -> AppState {
             let manager = InputBufferManager::default();
-            let drand_period = std::env::var("DRAND_PERIOD")
+            let drand_period = var("DRAND_PERIOD")
                 .expect("Missing env DRAND_PERIOD")
                 .parse::<u64>()
                 .unwrap();
-            let drand_genesis_time = std::env::var("DRAND_GENESIS_TIME")
+            let drand_genesis_time = var("DRAND_GENESIS_TIME")
                 .expect("Missing env DRAND_GENESIS_TIME")
                 .parse::<u64>()
                 .unwrap();
-            let safe_seconds = std::env::var("DRAND_SAFE_SECONDS")
+            let safe_seconds = var("DRAND_SAFE_SECONDS")
                 .expect("Missing env DRAND_SAFE_SECONDS")
                 .parse::<u64>()
                 .unwrap();
@@ -151,18 +219,26 @@ pub mod models {
             if let Some(current_beacon) = manager.last_beacon.take() {
                 if current_beacon.round < drand_beacon.round {
                     info!("Set new beacon");
-                    manager
-                        .last_beacon
-                        .set(Beacon::some_from(&drand_beacon, beacon_time));
+
+                    let beacon = Beacon::builder()
+                        .with_drand_beacon(&drand_beacon)
+                        .with_timestamp(beacon_time)
+                        .build();
+
+                    manager.last_beacon.set(Some(beacon));
                 } else {
                     info!("Keep current beacon");
                     manager.last_beacon.set(Some(current_beacon));
                 }
             } else {
                 info!("No beacon, initializing");
-                manager
-                    .last_beacon
-                    .set(Beacon::some_from(&drand_beacon, beacon_time));
+
+                let beacon = Beacon::builder()
+                    .with_drand_beacon(&drand_beacon)
+                    .with_timestamp(beacon_time)
+                    .build();
+
+                manager.last_beacon.set(Some(beacon));
             }
         }
         pub async fn store_input(&self, rollup_input: &RollupInput) {
@@ -172,7 +248,7 @@ pub mod models {
         }
         pub async fn consume_input(&self) -> Option<Item> {
             let mut manager = self.input_buffer_manager.lock().await;
-            return manager.consume_input();
+            manager.consume_input()
         }
         pub async fn set_inspecting(&self, value: bool) {
             let mut manager = self.input_buffer_manager.lock().await;
@@ -244,12 +320,6 @@ pub mod models {
             self.request_count.set(self.request_count.get() - 1);
             data
         }
-
-        pub fn await_beacon(&mut self) {
-            info!("Awaiting beacon");
-
-            self.flag_to_hold.hold_up();
-        }
     }
 }
 
@@ -259,15 +329,7 @@ mod test {
 
     use tokio::sync::Mutex;
 
-    use super::models::{AppState, Beacon, DrandBeacon, InputBufferManager};
-
-    fn create_drand_beacon(round: u64) -> DrandBeacon {
-        DrandBeacon {
-            round,
-            signature: String::from("signature"),
-            randomness: String::from("randomness"),
-        }
-    }
+    use super::structs::{AppState, Beacon, DrandBeacon, InputBufferManager};
 
     fn create_app_state() -> AppState {
         let version: Option<&str> = option_env!("CARGO_PKG_VERSION");
@@ -283,7 +345,7 @@ mod test {
     #[actix_web::test]
     async fn test_app_state_init_beacon() {
         let app = create_app_state();
-        let beacon = create_drand_beacon(2);
+        let beacon = DrandBeacon::builder().with_round(2).build();
         app.keep_newest_beacon(beacon);
         let manager = app.input_buffer_manager.lock().await;
         assert_eq!(2, manager.last_beacon.take().unwrap().round);
@@ -301,7 +363,7 @@ mod test {
             }))
         }
         {
-            let beacon = create_drand_beacon(1);
+            let beacon = DrandBeacon::builder().with_round(1).build();
             app.keep_newest_beacon(beacon);
             let manager = app.input_buffer_manager.lock().await;
             assert_eq!(2, manager.last_beacon.take().unwrap().round);
@@ -320,7 +382,7 @@ mod test {
             }))
         }
         {
-            let beacon = create_drand_beacon(3);
+            let beacon = DrandBeacon::builder().with_round(3).build();
             app.keep_newest_beacon(beacon);
             let manager = app.input_buffer_manager.lock().await;
             assert_eq!(3, manager.last_beacon.take().unwrap().round);

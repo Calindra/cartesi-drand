@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-pub mod player {
+pub mod prelude {
     use std::{
         fmt::{self, Display},
         sync::Arc,
@@ -10,7 +10,7 @@ pub mod player {
     use serde_json::{json, Value};
     use tokio::sync::Mutex;
 
-    use crate::models::card::card::{Card, Deck, Rank};
+    use crate::models::card::prelude::{Card, Deck, Rank};
 
     use crate::util::random::generate_random_number;
 
@@ -30,9 +30,7 @@ pub mod player {
     impl Display for Hand {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "[")?;
-            let _ = self.0.iter().fold(Ok(()), |result, el| {
-                result.and_then(|_| write!(f, " {},", &el))
-            });
+            self.0.iter().try_for_each(|el| write!(f, " {},", &el))?;
             write!(f, " ]")
         }
     }
@@ -132,7 +130,7 @@ pub mod player {
         }
 
         pub fn get_round(&self) -> u8 {
-            self.round.clone()
+            self.round
         }
 
         pub fn get_player_id(&self) -> String {
@@ -173,8 +171,8 @@ pub mod player {
                 }
 
                 let nth = generate_random_number(seed, 0..size);
-                let card = deck.cards.remove(nth);
-                card
+
+                deck.cards.remove(nth)
             };
 
             let card_point = card.show_point();

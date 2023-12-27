@@ -6,16 +6,14 @@ mod rollup;
 mod router;
 mod utils;
 
-use crate::models::models::AppState;
+use crate::models::structs::AppState;
 use crate::router::routes;
 use crate::utils::util::load_env_from_json;
 use actix_web::{middleware::Logger, web, App, HttpServer};
-use dotenv::dotenv;
 use log::info;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().unwrap();
     load_env_from_json().await.unwrap();
 
     let env = env_logger::Env::default().default_filter_or("info");

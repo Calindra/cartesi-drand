@@ -13,7 +13,7 @@ import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
 import { address as InputBoxContractAddress } from "@cartesi/rollups/deployments/mainnet/InputBox.json";
 
-export interface CartesiContructor {
+export interface CartesiConstructor {
   /**
    * The endpoint of the Cartesi Rollups server
    */
@@ -92,7 +92,7 @@ export class CartesiClientBuilder {
 export class CartesiClient {
   private static inputContract?: InputBox;
 
-  constructor(private readonly config: CartesiContructor) {}
+  constructor(private readonly config: CartesiConstructor) {}
 
   /**
    * Convert AddressLike, type used by ethers to string
@@ -174,7 +174,7 @@ export class CartesiClient {
       const { provider, signer } = this.config;
       logger.info("getting network", provider);
       const network = await provider.getNetwork();
-      logger.info("getting siggner address", signer);
+      logger.info("getting signer address", signer);
       const signerAddress = await signer.getAddress();
 
       logger.info(`connected to chain ${network.chainId}`);

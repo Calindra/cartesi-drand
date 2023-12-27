@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build
       working-directory: ./convenience-middleware/
       run: cargo build --verbose
@@ -25,7 +25,7 @@ jobs:
     name: RiscV Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install OpenSSL
         run: sudo apt-get install openssl libssl-dev
       - uses: actions-rs/toolchain@v1
@@ -36,6 +36,5 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           use-cross: true
-          working-directory: ./convenience-middleware/
           command: build
-          args: --release --target riscv64gc-unknown-linux-gnu
+          args: --release --target riscv64gc-unknown-linux-gnu --verbose -p cartesi-drand

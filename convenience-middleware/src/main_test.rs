@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod middleware_tests {
     use hex_literal::hex;
-    use std::sync::Once;
+    use std::{error::Error, sync::Once};
 
     use crate::{
         drand::get_drand_beacon,
-        models::models::{AppState, Beacon},
+        models::structs::{AppState, Beacon, DrandBeacon},
         router::routes::{self},
-        utils::util::load_env_from_json,
+        utils::util::{generate_payload_hex, load_env_from_json},
     };
     use actix_web::{
         http::{self},
@@ -16,7 +16,7 @@ mod middleware_tests {
         web::{self},
         App,
     };
-    use dotenv::dotenv;
+    use dotenvy::dotenv;
     use drand_verify::{G2Pubkey, G2PubkeyRfc, Pubkey as _};
     use http::Method;
     use httptest::{
@@ -29,10 +29,8 @@ mod middleware_tests {
     #[macro_export]
     macro_rules! check_if_dotenv_is_loaded {
         () => {{
-            let is_env_loaded = dotenv().ok().is_some();
-            assert!(is_env_loaded);
+            dotenv().unwrap();
             load_env_from_json().await.unwrap();
-            is_env_loaded
         }};
     }
 
@@ -101,6 +99,22 @@ mod middleware_tests {
         Logger::default()
     }
 
+    // ({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":payload_empty},"request_type":"advance_state"})
+    fn mock_factory(
+        payload: Option<serde_json::Value>,
+    ) -> Result<serde_json::Value, Box<dyn Error>> {
+        let empty_str = String::from("0x7b22696e707574223a2230783030227d");
+
+        let payload = payload
+            .map(|p| generate_payload_hex(p).unwrap())
+            .unwrap_or(empty_str);
+
+        let json = json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload": payload},"request_type":"advance_state"});
+
+        println!("mock_factory: {}", json);
+        Ok(json)
+    }
+
     #[actix_web::test]
     async fn request_random_without_beacon() {
         check_if_dotenv_is_loaded!();
@@ -142,11 +156,11 @@ mod middleware_tests {
         mock_rollup_server!(status_code(202));
         let last_clock_beacon = 24;
 
-        let beacon = Beacon {
-            round: 1,
-            randomness: "to-be-a-seed".to_string(),
-            timestamp: last_clock_beacon,
-        };
+        let beacon = Beacon::builder()
+            .with_round(1)
+            .with_randomness("to-be-a-seed".to_string())
+            .with_timestamp(last_clock_beacon)
+            .build();
 
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
@@ -179,11 +193,11 @@ mod middleware_tests {
 
         let last_clock_beacon = 24;
 
-        let beacon = Beacon {
-            round: 1,
-            randomness: "to-be-a-seed".to_string(),
-            timestamp: last_clock_beacon,
-        };
+        let beacon = Beacon::builder()
+            .with_round(1)
+            .with_randomness("to-be-a-seed".to_string())
+            .with_timestamp(last_clock_beacon)
+            .build();
 
         let app_state = web::Data::new(AppState::new());
         let manager = app_state.input_buffer_manager.clone();
@@ -208,7 +222,7 @@ mod middleware_tests {
         assert!(status.is_success(), "status: {:?}", status.as_str());
         assert_eq!(status, 200);
 
-        assert_eq!(manager.lock().await.flag_to_hold.is_holding, false);
+        assert!(!manager.lock().await.flag_to_hold.is_holding);
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
@@ -240,9 +254,10 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_request_finish_with_input_to_respond() {
         check_if_dotenv_is_loaded!();
-        mock_rollup_server!(json_encoded(
-            json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
-        ));
+
+        let payload = mock_factory(None).unwrap();
+
+        mock_rollup_server!(json_encoded(payload));
 
         let app_state = web::Data::new(AppState::new());
 
@@ -261,14 +276,25 @@ mod middleware_tests {
 
     #[actix_web::test]
     async fn test_request_finish_with_beacon_inside_input() {
+        let empty = mock_factory(None).unwrap();
+
+        let randomness =
+            String::from("7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527");
+        let signature = String::from("8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352");
+
+        let beacon = DrandBeacon::builder()
+            .with_randomness(randomness)
+            .with_round(2832127)
+            .with_signature(signature)
+            .build()
+            .wrap();
+
+        let beacon = mock_factory(Some(beacon)).unwrap();
+
         check_if_dotenv_is_loaded!();
         mock_rollup_server!(responders::cycle![
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            ),
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D2C22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            )
+            json_encoded(empty),
+            json_encoded(beacon)
         ]);
 
         let logger = generate_log();
@@ -301,13 +327,20 @@ mod middleware_tests {
     #[actix_web::test]
     async fn test_request_finish_with_beacon_inside_input_scenario_2() {
         check_if_dotenv_is_loaded!();
+        let empty = mock_factory(None).unwrap();
+
+        let beacon = DrandBeacon::builder()
+            .with_randomness("7ade997ac926a8cada6835a4a16dfb2d31e639c7ac4ea4b508d5d3829496b527".to_string())
+            .with_round(2832127)
+            .with_signature("8f4c029827e0c1d6f5db875c1927bc79cb15188e046de5ad627cb7d1efce87b1f3de99a045b770632333a41af3abf352".to_string())
+            .build()
+            .wrap();
+
+        let beacon = mock_factory(Some(beacon)).unwrap();
+
         mock_rollup_server!(responders::cycle![
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22696E707574223A2230783030227D"},"request_type":"advance_state"})
-            ),
-            json_encoded(
-                json!({"data":{"metadata":{"block_number":241,"epoch_index":0,"input_index":0,"msg_sender":"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266","timestamp":1689949250},"payload":"0x7B22626561636F6E223A7B2272616E646F6D6E657373223A2237616465393937616339323661386361646136383335613461313664666232643331653633396337616334656134623530386435643338323934393662353237222C22726F756E64223A323833323132372C227369676E6174757265223A22386634633032393832376530633164366635646238373563313932376263373963623135313838653034366465356164363237636237643165666365383762316633646539396130343562373730363332333333613431616633616266333532227D7D"},"request_type":"advance_state"})
-            )
+            json_encoded(empty),
+            json_encoded(beacon)
         ]);
 
         let app_state = web::Data::new(AppState::new());
@@ -321,7 +354,7 @@ mod middleware_tests {
 
         let mut app = test::init_service(app).await;
 
-        // // the DApp call our middleware to start something
+        // the DApp call our middleware to start something
         let req = call_finish!(&mut app);
         assert_eq!(req["request_type"], "advance_state");
 
@@ -339,16 +372,22 @@ mod middleware_tests {
     async fn test_get_drand_beacon() {
         generate_log();
         check_if_dotenv_is_loaded!();
-        let payload = "0x7b22626561636f6e223a7b22726f756e64223a323739373337332c2272616e646f6d6e657373223a2261383438323038386331353964376135633961353463663539396336383666656262656630306439376430633436306466656533636438306666333731646439222c227369676e6174757265223a22383537333235623964346439653831623332666639386630646136666332633661663032623130323037656631343864326433396238326237373135396437363661396564663861363861373933313335383930613764666136363136366137227d7d";
-        let beacon = get_drand_beacon(payload).ok();
+        let payload = generate_payload_hex(
+            json!({"beacon":{"round":2797373,"randomness":"a8482088c159d7a5c9a54cf599c686febbef00d97d0c460dfee3cd80ff371dd9","signature":"857325b9d4d9e81b32ff98f0da6fc2c6af02b10207ef148d2d39b82b77159d766a9edf8a68a793135890a7dfa66166a7"}}),
+        ).unwrap();
+        let beacon = get_drand_beacon(&payload).ok();
         assert!(beacon.is_some());
 
-        let payload = "0x7b22626561636f6e223a7b22726f756e64223a343038383031322c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a22623735613031613436386634396162646533623563383163303731336438313938343564313133626235613636626433613537366665343062313039323732373164396432356331633162626636366237336537623363326236333939363438227d7d";
-        let beacon = get_drand_beacon(payload).ok();
+        let payload = generate_payload_hex(
+            json!({"beacon":{"round":4088012,"randomness":"9f020c15bbee97470e2cebe5f600b66cccf600b6c01491755ffaef893ea73009","signature":"b75a01a468f49abde3b5c81c0713d819845d113bb5a66bd3a576fe40b10927271d9d25c1c1bbf66b73e7b3c2b6399648"}}),
+        ).unwrap();
+        let beacon = get_drand_beacon(&payload).ok();
         assert!(beacon.is_none());
 
-        let payload = "7b22626561636f6e223a7b22726f756e64223a343038383031312c2272616e646f6d6e657373223a2239663032306331356262656539373437306532636562653566363030623636636363663630306236633031343931373535666661656638393365613733303039222c227369676e6174757265223a2262373561303161343638663439616264653362356338316330373133643831393834356431313362623561363662643361353736666534306231303932373237316439643235633163316262663636623733653762336332623633393936343833333333227d7d";
-        let beacon = get_drand_beacon(payload).ok();
+        let payload = generate_payload_hex(
+            json!({"beacon":{"round":4088011,"randomness":"9f020c15bbee97470e2cebe5f600b66cccf600b6c01491755ffaef893ea73009","signature":"b75a01a468f49abde3b5c81c0713d819845d113bb5a66bd3a576fe40b10927271d9d25c1c1bbf66b73e7b3c2b63996483333"}}),
+        ).unwrap();
+        let beacon = get_drand_beacon(&payload).ok();
         assert!(beacon.is_none());
     }
 
@@ -398,5 +437,37 @@ mod middleware_tests {
         let round: u64 = 2798644;
         let result = pk.verify(round, b"", &signature).unwrap();
         assert!(result);
+    }
+
+    // #[actix_web::test]
+    async fn test_u256() {
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+        struct Test {
+            #[serde(with = "ethnum::serde::prefixed")]
+            input: ethnum::u256,
+        }
+
+        impl PartialEq<serde_json::Value> for Test {
+            fn eq(&self, other: &serde_json::Value) -> bool {
+                match serde_json::from_value::<Test>(other.clone()) {
+                    Ok(other) => *self == other,
+                    Err(_) => false,
+                }
+            }
+        }
+
+        let payload = json!({"input": "0x123"});
+        let payload_encoded = String::from("0x7B22696E707574223A20223078313233227D");
+
+        println!("payload: {}, {}", payload, payload_encoded);
+
+        let rollupinput = serde_json::from_value::<Test>(payload.clone()).unwrap();
+        let rollupinput_str = serde_json::to_string(&rollupinput).unwrap();
+
+        println!("rollupinput: {:?}, {}", rollupinput, rollupinput_str);
+
+        assert_eq!(rollupinput, payload);
+
+        println!("rollupinput: {:?}, {}", rollupinput, rollupinput_str);
     }
 }

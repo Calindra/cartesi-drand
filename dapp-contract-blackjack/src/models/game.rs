@@ -1,34 +1,23 @@
-pub mod game {
+pub mod prelude {
     use crate::{
         models::{
-            card::card::Deck,
-            player::player::{Player, PlayerHand},
+            card::prelude::Deck,
+            player::prelude::{Player, PlayerHand},
         },
         util::{json::generate_report, random::generate_id},
     };
-    use log::{info};
+    use log::info;
     use serde_json::{json, Value};
     use std::{collections::HashMap, sync::Arc};
     use tokio::sync::Mutex;
 
+    #[derive(Default)]
     pub struct Manager {
         pub games: Vec<Game>, // games to be started. A player can join this game
         pub players: HashMap<String, Arc<Player>>,
         pub tables: HashMap<String, Table>, // games running
         scoreboards: Vec<Scoreboard>,
         pub games_report_cache: Option<Value>,
-    }
-
-    impl Default for Manager {
-        fn default() -> Self {
-            Manager {
-                games: Vec::new(),
-                tables: HashMap::new(),
-                players: HashMap::new(),
-                scoreboards: Vec::new(),
-                games_report_cache: None,
-            }
-        }
     }
 
     impl Manager {
@@ -52,7 +41,7 @@ pub mod game {
             }
         }
 
-        pub fn generate_games_report(games: &Vec<Game>) -> Value {
+        pub fn generate_games_report(games: &[Game]) -> Value {
             let games = games
                 .iter()
                 .map(|game| {
@@ -140,7 +129,7 @@ pub mod game {
         }
 
         pub fn generate_scoreboard_sync(&mut self, table: &Table) {
-            let players = table.game.players.iter().cloned().collect();
+            let players = table.game.players.to_vec();
 
             let winner = table.get_winner_sync();
             let scoreboard_id = table.id.clone();
@@ -151,7 +140,7 @@ pub mod game {
         }
 
         pub async fn generate_scoreboard(&mut self, table: &Table) {
-            let players = table.game.players.iter().cloned().collect();
+            let players = table.game.players.to_vec();
 
             let winner = table.get_winner().await;
             let scoreboard_id = table.id.clone();
@@ -317,12 +306,6 @@ pub mod game {
             &self.id
         }
 
-        pub fn new_with_manager_ref(manager: Arc<Mutex<Manager>>) -> Self {
-            let mut game = Game::default();
-            game.manager = Some(manager);
-            game
-        }
-
         // Transforms the game into a table.
         pub fn round_start(
             self,
@@ -432,15 +415,11 @@ pub mod game {
         }
 
         pub fn is_any_player_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
-            self.players_with_hand
-                .iter()
-                .any(|player| condition(player))
+            self.players_with_hand.iter().any(condition)
         }
 
         pub fn is_all_players_has_condition(&self, condition: fn(&PlayerHand) -> bool) -> bool {
-            self.players_with_hand
-                .iter()
-                .all(|player| condition(player))
+            self.players_with_hand.iter().all(condition)
         }
 
         pub async fn hit_player(
@@ -604,10 +583,7 @@ pub mod game {
             let players = self
                 .players_with_hand
                 .iter()
-                .map(|player| {
-                    let id = player.get_player_id();
-                    id
-                })
+                .map(|player| player.get_player_id())
                 .collect::<Vec<_>>();
 
             let players = players.as_slice();

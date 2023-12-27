@@ -1,18 +1,14 @@
 mod common;
-#[path = "../src/main.rs"]
-mod main;
-#[path = "../src/models/mod.rs"]
-mod models;
-#[path = "../src/rollups.rs"]
-mod rollups;
-#[path = "../src/util.rs"]
-mod util;
+
+#[path = "../src/mod.rs"]
+mod imports;
+use imports::*;
 
 #[cfg(test)]
 mod contract_blackjack_tests {
     use crate::{
-        common::common::{setup_change_key, setup_hit_random, setup_dont_change_key},
-        models::{game::game::Manager, player::player::Player},
+        common::prelude::{setup_change_key, setup_dont_change_key, setup_hit_random},
+        models::{game::prelude::Manager, player::prelude::Player},
         rollups::rollup::handle_request_action,
         util::{env::check_if_dotenv_is_loaded, json::decode_payload, random::retrieve_seed},
     };
@@ -136,7 +132,7 @@ mod contract_blackjack_tests {
             println!("{:}", &response);
 
             let response = response["payload"].as_str().unwrap();
-            let response = decode_payload(response).unwrap();
+            let response = decode_payload::<serde_json::Value>(response).unwrap();
             let response = response["games"].as_array().unwrap();
             response.to_owned()
         };
@@ -229,7 +225,7 @@ mod contract_blackjack_tests {
         // Call function used to see what action need for
         let response = handle_request_action(&data, manager.clone(), false).await;
 
-        if let Err(err) = response {
+        if let Err(ref err) = response {
             eprintln!("{:}", err);
         }
 
@@ -332,16 +328,13 @@ mod contract_blackjack_tests {
 
         while table.any_player_can_hit() {
             for player_id in players.iter() {
-                let points = table.get_points(&player_id).unwrap();
+                let points = table.get_points(player_id).unwrap();
 
                 if points <= 11 {
                     let seed = retrieve_seed(timestamp).await.unwrap();
-                    table
-                        .hit_player(&player_id, timestamp, &seed)
-                        .await
-                        .unwrap();
+                    table.hit_player(player_id, timestamp, &seed).await.unwrap();
                 } else {
-                    table.stand_player(&player_id, timestamp).unwrap();
+                    table.stand_player(player_id, timestamp).unwrap();
                 }
 
                 println!("{:}", &player_id);
@@ -350,7 +343,7 @@ mod contract_blackjack_tests {
 
         let is_any_more_than_21 = table.is_any_player_has_condition(|player| player.points > 21);
 
-        assert_eq!(is_any_more_than_21, false);
+        assert!(!is_any_more_than_21);
     }
 
     #[tokio::test]
@@ -421,10 +414,7 @@ mod contract_blackjack_tests {
                 let points = table.get_points(player_id).unwrap();
                 if points <= 11 {
                     let seed = retrieve_seed(timestamp).await.unwrap();
-                    table
-                        .hit_player(&player_id, timestamp, &seed)
-                        .await
-                        .unwrap();
+                    table.hit_player(player_id, timestamp, &seed).await.unwrap();
                 } else {
                     table.stand_player(player_id, timestamp).unwrap();
                 }
@@ -497,7 +487,7 @@ mod contract_blackjack_tests {
                     let size = table.deck.lock().await.cards.len();
                     assert_eq!(size.rem(52), (52 - i) % 52);
 
-                    i = i + 1;
+                    i += 1;
                 } else {
                     table.stand_player(&player_id, timestamp).unwrap();
                 }

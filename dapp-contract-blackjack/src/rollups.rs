@@ -1,14 +1,15 @@
 pub mod rollup {
+    use dotenvy::var;
     use hyper::{body::to_bytes, header, Body, Client, Method, Request, StatusCode};
     use log::{error, info, warn};
     use serde_json::{from_str, json, Value};
-    use std::{env, error::Error, str::from_utf8, sync::Arc, time::Duration};
+    use std::{error::Error, str::from_utf8, sync::Arc, time::Duration};
     use tokio::sync::Mutex;
 
     use crate::{
         models::{
-            game::game::{Manager, Table},
-            player::{check_fields_create_player, player::Player},
+            game::prelude::{Manager, Table},
+            player::{check_fields_create_player, prelude::Player},
         },
         util::{
             json::{
@@ -24,7 +25,7 @@ pub mod rollup {
         info!("Starting loop...");
 
         let client = Client::new();
-        let server_addr = env::var("MIDDLEWARE_HTTP_SERVER_URL")?;
+        let server_addr = var("MIDDLEWARE_HTTP_SERVER_URL")?;
 
         let mut status = "accept";
         loop {
@@ -79,7 +80,7 @@ pub mod rollup {
     async fn handle_body(manager: Arc<Mutex<Manager>>, body: &Value) -> Result<(), Box<dyn Error>> {
         info!("body {:}", &body);
 
-        let result = handle_request_action(&body, manager, true).await?;
+        let result = handle_request_action(body, manager, true).await?;
 
         if let Some(report) = result {
             send_report(report).await?;
@@ -112,8 +113,8 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
+    pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn Error>> {
+        let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -125,8 +126,8 @@ pub mod rollup {
         Ok("accept")
     }
 
-    pub async fn send_notice(notice: Value) -> Result<(), Box<dyn std::error::Error>> {
-        let server_addr = std::env::var("ROLLUP_HTTP_SERVER_URL")?;
+    pub async fn send_notice(notice: Value) -> Result<(), Box<dyn Error>> {
+        let server_addr = var("ROLLUP_HTTP_SERVER_URL")?;
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -139,12 +140,13 @@ pub mod rollup {
         Ok(())
     }
 
-    pub fn get_payload_from_root(root: &Value) -> Option<Value> {
-        let root = root.as_object()?;
-        let root = root.get("data")?.as_object()?;
-        let payload = root.get("payload")?.as_str()?;
-        let payload = decode_payload(payload)?;
-        Some(payload)
+    pub fn get_payload_from_root<T>(root: &Value) -> Result<T, Box<dyn Error>>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let payload = root["data"]["payload"].as_str().ok_or("Invalid payload")?;
+        let payload = decode_payload::<T>(payload)?;
+        Ok(payload)
     }
 
     pub fn get_from_payload_action(payload: &Value) -> Option<String> {
@@ -180,8 +182,10 @@ pub mod rollup {
         root: &Value,
         manager: Arc<Mutex<Manager>>,
         write_hd_mode: bool,
-    ) -> Result<Option<Value>, &'static str> {
-        let payload = get_payload_from_root(root).ok_or("Invalid payload")?;
+    ) -> Result<Option<Value>, Box<dyn Error>> {
+        info!("Handling request action with root {}", root.to_string());
+
+        let payload = get_payload_from_root(root)?;
         let action = get_from_payload_action(&payload);
 
         info!("Action: {:}", action.as_deref().unwrap_or("None"));
@@ -194,12 +198,12 @@ pub mod rollup {
                 let address_owner = metadata.address.trim_start_matches("0x").to_lowercase();
 
                 let address_owner_game =
-                    env::var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
+                    var("ADDRESS_OWNER_GAME").or(Err("Address owner game not defined"))?;
 
                 let address_owner_game = address_owner_game.trim_start_matches("0x").to_lowercase();
 
                 if address_owner != address_owner_game {
-                    return Err("Invalid owner");
+                    return Err("Invalid owner".into());
                 }
 
                 // Parsing JSON
@@ -226,12 +230,12 @@ pub mod rollup {
                 let response = call_update_key(&request_env).await;
 
                 if response.is_err() {
-                    return Err("Could not update drand config");
+                    return Err("Could not update drand config".into());
                 }
             }
             Some("new_player") => {
                 let input = payload.get("input").ok_or("Invalid field input")?;
-                let player_name = check_fields_create_player(&input)?;
+                let player_name = check_fields_create_player(input)?;
 
                 let encoded_name = bs58::encode(&player_name).into_string();
 
@@ -320,13 +324,15 @@ pub mod rollup {
                 let playing = manager
                     .tables
                     .values()
-                    .filter_map(|table| table.has_player(&address_encoded).then(|| table.get_id()))
+                    .filter(|&table| table.has_player(&address_encoded))
+                    .map(|table| table.get_id())
                     .collect::<Vec<_>>();
 
                 let joined = manager
                     .games
                     .iter()
-                    .filter_map(|game| game.has_player(&address_encoded).then(|| game.get_id()))
+                    .filter(|&game| game.has_player(&address_encoded))
+                    .map(|game| game.get_id())
                     .collect::<Vec<_>>();
 
                 let player_borrow = manager.get_player_by_id(&address_encoded)?;
@@ -375,7 +381,7 @@ pub mod rollup {
                 // TODO Change here
                 if game.players.len() < 2 {
                     manager.add_game(game);
-                    return Err("Minimum number of players not reached.");
+                    return Err("Minimum number of players not reached.".into());
                 }
 
                 let players = game.players.iter().map(|p| p.get_id()).collect::<Vec<_>>();
@@ -507,7 +513,7 @@ pub mod rollup {
 
     async fn load_player_to_mem(
         manager: &Arc<Mutex<Manager>>,
-        address_encoded: &String,
+        address_encoded: &str,
     ) -> Result<(), &'static str> {
         let mut manager = manager.lock().await;
         let has_player_in_memory = manager.has_player(address_encoded);
@@ -521,7 +527,7 @@ pub mod rollup {
             let player_name = player.get("name").ok_or("Invalid field name")?;
             let player_name = player_name.as_str().ok_or("Invalid name")?;
 
-            let player = Player::new(address_encoded.clone(), player_name.to_string());
+            let player = Player::new(address_encoded.to_string(), player_name.to_string());
             let player = Arc::new(player);
             manager.add_player(player)?;
         }

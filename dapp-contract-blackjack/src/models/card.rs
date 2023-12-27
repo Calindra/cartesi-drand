@@ -1,4 +1,4 @@
-pub mod card {
+pub mod prelude {
     use std::fmt::Display;
 
     use log::error;
@@ -128,7 +128,7 @@ pub mod card {
 
     impl Deck {
         pub fn new_with_capacity(nth: usize) -> Result<Self, &'static str> {
-            if nth < 1 || nth > 8 {
+            if !(1..=8).contains(&nth) {
                 error!("Invalid number of decks.");
                 Err("Invalid number of decks.")?;
             }

@@ -5,7 +5,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-dotenv = "0.15.0"
+dotenvy = "0.15.7"
+dotenvy_macro = "0.15.7"
 hyper = { version = "0.14", features = [
     "http1",
     "runtime",
@@ -22,7 +23,6 @@ serde = { version = "1.0.171", features = ["derive", "rc"] }
 bs58 = "0.5.0"
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 hex = { version = "0.4.3", features = ["serde"] }
-async-trait = "0.1.73"
 log = { version = "0.4.20", features = ["std", "serde"] }
 env_logger = "0.10.1"
 

@@ -1,15 +1,16 @@
-use std::{env, sync::Arc};
+use std::sync::Arc;
 
-mod models;
-mod rollups;
-mod util;
+#[path = "./mod.rs"]
+mod imports;
 
-use dotenv::dotenv;
+use imports::*;
+
+use dotenvy::{dotenv, var};
 use log::{error, info};
 use rollups::rollup::rollup;
 use tokio::sync::Mutex;
 
-use crate::{models::game::game::Manager, util::logger::SimpleLogger};
+use crate::models::game::prelude::Manager;
 
 // Read from rollup and send to handle
 async fn start_rollup(manager: Arc<Mutex<Manager>>) {
@@ -23,7 +24,7 @@ async fn start_rollup(manager: Arc<Mutex<Manager>>) {
 #[tokio::main]
 async fn main() {
     dotenv().unwrap();
-    env::var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
+    var("MIDDLEWARE_HTTP_SERVER_URL").expect("Middleware http server must be set");
 
     env_logger::builder().format_timestamp(None).init();
 

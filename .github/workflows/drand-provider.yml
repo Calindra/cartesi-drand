@@ -12,10 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+    - name: Build Drand Provider
       working-directory: ./
       run: npm ci
-    - name: Run tests
+    - name: Build Web3 Client
+      working-directory: ./web3-client
+      run: npm ci
+    - name: Build Dapp
+      working-directory: ./dapp-blackjack
+      run: npm ci
+    - name: Run tests Drand Provider
       working-directory: ./
       run: npm run test --forceExit
+    - name: Run tests Web3 Client
+      working-directory: ./web3-client
+      run: npm run test --forceExit
+    # - name: Run tests Dapp
+    #   working-directory: ./dapp-blackjack
+    #   run: npm run test --forceExit
