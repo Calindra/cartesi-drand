@@ -7,6 +7,8 @@
   "scripts": {
     "test": "jest -i --colors --detectOpenHandles --logHeapUsage",
     "dev": "ts-node ./src/app.ts",
+    "start": "node ./dist/app.js",
+    "build": "rm -rf ./dist && tsc",
     "watch": "node --watch --loader ts-node/esm --inspect ./src/app.ts",
     "test:dev": "nodemon --ext ts --exec \"npm run test\""
   },

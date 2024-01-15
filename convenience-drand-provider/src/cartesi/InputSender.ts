@@ -1,14 +1,14 @@
 import {
     Args,
     rollups,
-} from "./rollups.ts";
+} from "./rollups";
 import { ContractTransactionResponse, ethers } from "ethers";
 
 import {
     connect
-} from "./connect.ts";
+} from "./connect";
 import { IInputBox } from "@cartesi/rollups";
-import { InputSenderConfig } from "../configs.ts";
+import { InputSenderConfig } from "../configs";
 
 export default class InputSender {
 

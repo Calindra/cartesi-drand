@@ -6,7 +6,7 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "outDir": "./dist", // Redirect output structure to the directory.
-        // "rootDir": "./src", // Specify the root directory of input files. Use to control the output directory structure with --outDir
+        "rootDir": "./src", // Specify the root directory of input files. Use to control the output directory structure with --outDir
         "forceConsistentCasingInFileNames": true,
         "types": ["jest"], // "reflect-metadata",
         "resolveJsonModule": true,
@@ -14,13 +14,13 @@
         "moduleResolution": "node",
         "experimentalDecorators": true, // Enables experimental support for ES7 decorators.
         "emitDecoratorMetadata": true, // Enables experimental support for emitting type metadata for decorators.
-        "useUnknownInCatchVariables": true,
-        "noEmit": true,
-        "allowImportingTsExtensions": true
+        "useUnknownInCatchVariables": true
+        // "noEmit": true,
+        // "allowImportingTsExtensions": true
     },
     "ts-node": {
         "esm": true
     },
     "$schema": "https://json.schemastore.org/tsconfig",
-    "exclude": ["test", "scripts"]
+    "exclude": ["test", "scripts", "jest.config.ts"]
 }

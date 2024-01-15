@@ -1,6 +1,6 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
 import Axios, { AxiosInstance } from "axios";
-import InputSender from "./cartesi/InputSender.ts";
+import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
 

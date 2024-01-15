@@ -1,4 +1,4 @@
-import { DrandProvider } from "./DrandProvider.ts";
+import { DrandProvider } from "./DrandProvider";
 import "dotenv/config";
 
 new DrandProvider().run();
