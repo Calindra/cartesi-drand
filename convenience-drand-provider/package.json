@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "This is a convenience drand provider for Cartesi's rollup infrastructure. It is a simple wrapper around the drand-client library, which is used to fetch randomness from the drand network.",
   "main": "src/app.ts",
+  "type": "commonjs",
   "scripts": {
     "test": "jest -i --colors --detectOpenHandles --logHeapUsage",
     "dev": "ts-node ./src/app.ts",
     "watch": "ts-node-dev --inspect -- ./src/app.ts",
-    "watch:old": "node  --watch --loader ts-node/esm --inspect ./src/app.ts",
     "test:dev": "nodemon --ext ts --exec \"npm run test\"",
     "build": "tsc -b --clean && tsc"
   },
