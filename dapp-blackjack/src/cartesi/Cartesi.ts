@@ -3,7 +3,7 @@ import type { Provider, Signer } from "ethers";
 import { address as DAppAddress } from "../deployments/dapp.json";
 
 const CARTESI_INSPECT_ENDPOINT = new URL(
-  process.env.CARTESI_INSPECT_ENDPOINT ?? "https://5005-cartesi-rollupsexamples-mk3ozp0tglt.ws-us104.gitpod.io/inspect",
+  process.env.CARTESI_INSPECT_ENDPOINT ?? "https://localhost:8080/inspect",
 );
 
 console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);

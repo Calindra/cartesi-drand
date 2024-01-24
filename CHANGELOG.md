@@ -1,3 +1,7 @@
+## [0.3.3] - 2024-01-24
+### Changed
+- Bump node engine compatibility to >=20.0.0
+
 ## [0.3.2] - 2023-11-29
 ### Changed
 - Fix quicknet verification
