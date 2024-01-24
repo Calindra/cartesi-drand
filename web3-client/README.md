@@ -72,3 +72,7 @@ Example: Getting the player
 const payload = { "action": "show_player", "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" };
 const player = await cartesiClient.inspect(payload);
 ```
+
+## Future Work
+
+- REST interface
