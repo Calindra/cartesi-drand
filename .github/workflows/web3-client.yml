@@ -4,7 +4,6 @@ on:
     branches: ["main"]
     paths:
       - web3-client/**/*
-      - .github/web3-client.yml
   # pull_request:
   #   branches: ["main"]
   # release:
@@ -14,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: web3-client
+        # with:
+        #   path: web3-client
 
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v4
