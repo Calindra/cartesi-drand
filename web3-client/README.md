@@ -75,4 +75,4 @@ const player = await cartesiClient.inspect(payload);
 
 ## Future Work
 
-- REST client interface
+- REST client interface.

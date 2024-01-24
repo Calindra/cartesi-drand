@@ -22,9 +22,11 @@ jobs:
           node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
           cache: "npm"
-      - run: npm ci
-      - run: npm run build
-      - run: npm run test
-      - run: npm publish
+      - run: |
+          cd web3-client
+          npm ci
+          npm run build
+          npm run test
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
