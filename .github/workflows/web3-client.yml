@@ -1,11 +1,14 @@
 name: Publish web3-client
 on:
-  # push:
-  #   branches: ["main"]
+  push:
+    branches: ["main"]
+    paths:
+      - web3-client/**/*
+      - .github/web3-client.yml
   # pull_request:
   #   branches: ["main"]
-  release:
-    types: [published]
+  # release:
+  #   types: [published]
 jobs:
   build:
     runs-on: ubuntu-latest
