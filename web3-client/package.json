@@ -1,7 +1,7 @@
 {
   "name": "@calindra/web3-client",
   "version": "0.1.0",
-  "description": "Web3 Client to Send Input To Dapp",
+  "description": "Web3 Client to Send Input to dApp",
   "source": "src/main.ts",
   "main": "src/main.js",
   "type": "module",
