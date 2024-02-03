@@ -26,6 +26,7 @@ export interface CartesiConstructor {
   wallet?: Wallet;
   provider: Provider;
   logger: Log;
+  inputBoxAddress: string;
 }
 
 export class CartesiClientBuilder {
@@ -35,12 +36,14 @@ export class CartesiClientBuilder {
   private wallet?: Wallet;
   private provider: Provider;
   private logger: Log;
+  private inputBoxAddress: string;
 
   constructor() {
     this.endpoint = new URL("http://localhost:8545");
     this.dappAddress = "";
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
     this.signer = new ethers.VoidSigner("0x", this.provider);
+    this.inputBoxAddress = InputBoxContractAddress
     this.logger = {
       info: console.log,
       error: console.error,
@@ -54,6 +57,11 @@ export class CartesiClientBuilder {
 
   withDappAddress(address: AddressLike): CartesiClientBuilder {
     this.dappAddress = address;
+    return this;
+  }
+
+  withInputBoxAddress(address: string): CartesiClientBuilder {
+    this.inputBoxAddress = address;
     return this;
   }
 
@@ -85,6 +93,7 @@ export class CartesiClientBuilder {
       wallet: this.wallet,
       provider: this.provider,
       logger: this.logger,
+      inputBoxAddress: this.inputBoxAddress,
     });
   }
 }
@@ -92,13 +101,17 @@ export class CartesiClientBuilder {
 export class CartesiClient {
   private static inputContract?: InputBox;
 
-  constructor(private readonly config: CartesiConstructor) {}
+  constructor(readonly config: CartesiConstructor) {}
 
   /**
    * Convert AddressLike, type used by ethers to string
    */
   async getDappAddress(): Promise<string> {
-    return resolveAddress(this.config.dapp_address);
+    try {
+      return resolveAddress(this.config.dapp_address);
+    } catch(e) {
+      return this.config.dapp_address as string;
+    }
   }
 
   setSigner(signer: Signer): void {
@@ -117,7 +130,8 @@ export class CartesiClient {
    */
   async getInputContract(): Promise<InputBox> {
     if (!CartesiClient.inputContract) {
-      const address = InputBoxContractAddress;
+      // const address = InputBoxContractAddress;
+      const address = this.config.inputBoxAddress;
       CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
     }
     return CartesiClient.inputContract;
