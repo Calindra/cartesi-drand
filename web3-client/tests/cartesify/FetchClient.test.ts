@@ -1,11 +1,11 @@
 import { expect, it, describe, beforeAll } from "@jest/globals";
-import { fetch as cFetch, setup } from "../../src/cartesify/FetchLikeClient";
+import { fetch as cartesifyFetch, setup } from "../../src/cartesify/FetchLikeClient";
 import { CartesiClientBuilder } from "../../src/main";
 import { ethers } from "ethers";
 
 describe("fetch", () => {
-    const tFetch = cFetch
-    // const tFetch = fetch
+    const fetch2test = cartesifyFetch
+    // const fetch2test = fetch
 
     beforeAll(() => {
         const endpoint = new URL("http://localhost:8080/inspect");
@@ -21,14 +21,14 @@ describe("fetch", () => {
         setup(cartesiClient)
     })
 
-    it("should works with GET", async () => {
-        const response = await tFetch("http://127.0.0.1:8383/health")
+    it("should work with GET", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/health")
         const json = await response.json();
         expect(json.some).toEqual('response')
     })
 
-    it("should works with POST", async () => {
-        const response = await tFetch("http://127.0.0.1:8383/echo", {
+    it("should work with POST", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/echo", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -37,5 +37,37 @@ describe("fetch", () => {
         })
         const json = await response.json();
         expect(json).toEqual({ myPost: { any: "body" } })
+    }, 30000)
+
+    it("should work with PUT", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/update", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ any: 'body' })
+        })
+        const json = await response.json();
+        expect(json).toEqual({ updateBody: { any: "body" } })
+    }, 30000)
+
+    it("should work with PATCH", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/patch", {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ any: 'body' })
+        })
+        const json = await response.json();
+        expect(json).toEqual({ patchBody: { any: "body" } })
+    }, 30000)
+
+    it("should work with DELETE", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/delete?foo=bar", {
+            method: "DELETE",
+        })
+        const json = await response.json();
+        expect(json).toEqual({ query: { foo: "bar" } })
     }, 30000)
 })
