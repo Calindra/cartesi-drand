@@ -31,6 +31,7 @@ export interface CartesiConstructor {
 
 export class CartesiClientBuilder {
   private endpoint: URL;
+  private networkRPC: URL;
   private dappAddress: AddressLike;
   private signer: Signer;
   private wallet?: Wallet;
@@ -39,7 +40,8 @@ export class CartesiClientBuilder {
   private inputBoxAddress: string;
 
   constructor() {
-    this.endpoint = new URL("http://localhost:8545");
+    this.endpoint = new URL("http://localhost:8080");
+    this.networkRPC = new URL("http://localhost:8545");
     this.dappAddress = "";
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
     this.signer = new ethers.VoidSigner("0x", this.provider);
