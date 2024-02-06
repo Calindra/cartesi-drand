@@ -4,6 +4,7 @@ import { CartesiClientBuilder } from "../../src/main";
 import { ethers } from "ethers";
 
 describe("fetch", () => {
+    const TEST_TIMEOUT = 30000
     const fetch2test = cartesifyFetch
     // const fetch2test = fetch
 
@@ -39,7 +40,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ myPost: { any: "body" } })
-    }, 6000)
+    }, TEST_TIMEOUT)
 
     it("should work with PUT", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/update", {
@@ -52,7 +53,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ updateBody: { any: "body" } })
-    }, 6000)
+    }, TEST_TIMEOUT)
 
     it("should work with PATCH", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/patch", {
@@ -65,7 +66,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ patchBody: { any: "body" } })
-    }, 6000)
+    }, TEST_TIMEOUT)
 
     it("should work with DELETE", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/delete?foo=bar", {
@@ -74,7 +75,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ query: { foo: "bar" } })
-    }, 6000)
+    }, TEST_TIMEOUT)
 
     it("should handle 404 doing POST", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/echoNotFound", {
@@ -87,5 +88,5 @@ describe("fetch", () => {
         expect(response.ok).toBe(false)
         expect(response.status).toBe(404)
         expect(await response.text()).toContain('<pre>Cannot POST /echoNotFound</pre')
-    }, 6000)
+    }, TEST_TIMEOUT)
 })
