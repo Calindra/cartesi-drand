@@ -49,19 +49,11 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
         const tx = await inputContract.addInput(dappAddress, inputBytes) as ContractTransactionResponse;
         await tx.wait(1);
         const resp = (await wPromise.promise) as any
-        const res = new Response(resp.success.text)
-        res.ok = resp.success.ok
-        res.status = resp.success.status
+        const res = new Response(resp.success)
         return res
     } catch (e) {
-        logger.error(e);
-        if (e instanceof Error) {
-            throw e;
-        }
-        const res = new Response('')
-        res.ok = false
-        res.status = (e as any).status
-        return res
+        console.error(`Error ${url}`, e)
+        throw e
     }
 }
 
@@ -92,15 +84,13 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
             },
         });
         const result: unknown = await response.json();
-        
+
         if (Utils.isObject(result) && "reports" in result && Utils.isArrayNonNullable(result.reports)) {
             const firstReport = result.reports.at(0);
             if (Utils.isObject(firstReport) && "payload" in firstReport && typeof firstReport.payload === "string") {
                 const payload = Utils.hex2str(firstReport.payload.replace(/^0x/, ""));
                 const resp = JSON.parse(payload)
-                const response = new Response(resp.success.text)
-                response.ok = true
-                response.status = resp.success.status
+                const response = new Response(resp.success)
                 return response
             }
         }
@@ -120,7 +110,17 @@ class Response {
 
     ok: boolean = false
     status: number = 0
-    constructor(private rawData: string) {
+    type: string = ""
+    headers = new Map<string, string>()
+    private rawData: string
+    constructor(params: any) {
+        this.ok = params.ok
+        this.status = params.status
+        this.type = params.type
+        this.rawData = params.text
+        if (params.headers) {
+            this.headers = new Map(params.headers)
+        }
     }
 
     async json() {

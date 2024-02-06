@@ -66,6 +66,8 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ patchBody: { any: "body" } })
+        expect(response.type).toBe("basic")
+        expect(response.headers.get('content-type')).toContain('application/json')
     }, TEST_TIMEOUT)
 
     it("should work with DELETE", async () => {
@@ -75,6 +77,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ query: { foo: "bar" } })
+        expect(response.type).toBe("basic")
     }, TEST_TIMEOUT)
 
     it("should handle 404 doing POST", async () => {
@@ -88,5 +91,19 @@ describe("fetch", () => {
         expect(response.ok).toBe(false)
         expect(response.status).toBe(404)
         expect(await response.text()).toContain('<pre>Cannot POST /echoNotFound</pre')
+        expect(response.type).toBe("basic")
+    }, TEST_TIMEOUT)
+
+    it("should handle 'TypeError: fetch failed'", async () => {
+        const error = await fetch2test("http://127.0.0.1:12345/wrongPort", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ any: 'body' })
+        }).catch(e => e)
+
+        expect(error.constructor.name).toBe("TypeError")
+        expect(error.message).toBe("fetch failed")
     }, TEST_TIMEOUT)
 })

@@ -63,7 +63,12 @@ export class InputAddedListener {
                             if (successOrError.success) {
                                 wPromise.resolve!(successOrError)
                             } else {
-                                wPromise.reject!(successOrError.error)
+                                if (successOrError.error?.constructorName === "TypeError") {
+                                    const typeError = new TypeError(successOrError.error.message)
+                                    wPromise.reject!(typeError)
+                                } else {
+                                    wPromise.reject!(successOrError.error)
+                                }
                             }
                             break;
                         }
