@@ -23,6 +23,7 @@ describe("fetch", () => {
 
     it("should work with GET", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/health")
+        expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json.some).toEqual('response')
     })
@@ -35,6 +36,7 @@ describe("fetch", () => {
             },
             body: JSON.stringify({ any: 'body' })
         })
+        expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ myPost: { any: "body" } })
     }, 30000)
@@ -47,6 +49,7 @@ describe("fetch", () => {
             },
             body: JSON.stringify({ any: 'body' })
         })
+        expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ updateBody: { any: "body" } })
     }, 30000)
@@ -59,6 +62,7 @@ describe("fetch", () => {
             },
             body: JSON.stringify({ any: 'body' })
         })
+        expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ patchBody: { any: "body" } })
     }, 30000)
@@ -67,7 +71,20 @@ describe("fetch", () => {
         const response = await fetch2test("http://127.0.0.1:8383/delete?foo=bar", {
             method: "DELETE",
         })
+        expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ query: { foo: "bar" } })
+    }, 30000)
+
+    it("should handle 404 doing POST", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/echoNotFound", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ any: 'body' })
+        })
+        expect(response.ok).toBe(false)
+        expect(response.status).toBe(404)
     }, 30000)
 })

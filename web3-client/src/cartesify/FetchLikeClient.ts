@@ -51,13 +51,18 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
         const tx = await inputContract.addInput(dappAddress, inputBytes) as ContractTransactionResponse;
         await tx.wait(1);
         const resp = await wPromise.promise
-        return new Response(JSON.stringify({ success: { data: resp.data } }))
+        const res = new Response(JSON.stringify({ success: { data: resp.data } }))
+        res.ok = true
+        return res
     } catch (e) {
         logger.error(e);
         if (e instanceof Error) {
             throw e;
         }
-        throw new Error("Error on advance");
+        const res = new Response('')
+        res.ok = false
+        res.status = (e as any).status
+        return res
     }
 }
 
@@ -93,7 +98,9 @@ async function doGet(url: string, options?: FetchOptions) {
             const firstReport = result.reports.at(0);
             if (Utils.isObject(firstReport) && "payload" in firstReport && typeof firstReport.payload === "string") {
                 const payload = Utils.hex2str(firstReport.payload.replace(/^0x/, ""));
-                return new Response(payload)
+                const response = new Response(payload)
+                response.ok = true
+                return response
             }
         }
     } catch (e) {
@@ -110,8 +117,9 @@ export { _fetch as fetch }
 
 class Response {
 
+    ok: boolean = false
+    status: number = 0
     constructor(private rawData: string) {
-
     }
 
     async json() {
