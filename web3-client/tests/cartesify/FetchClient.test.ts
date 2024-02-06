@@ -39,7 +39,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ myPost: { any: "body" } })
-    }, 30000)
+    }, 6000)
 
     it("should work with PUT", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/update", {
@@ -52,7 +52,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ updateBody: { any: "body" } })
-    }, 30000)
+    }, 6000)
 
     it("should work with PATCH", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/patch", {
@@ -65,7 +65,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ patchBody: { any: "body" } })
-    }, 30000)
+    }, 6000)
 
     it("should work with DELETE", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/delete?foo=bar", {
@@ -74,7 +74,7 @@ describe("fetch", () => {
         expect(response.ok).toBe(true)
         const json = await response.json();
         expect(json).toEqual({ query: { foo: "bar" } })
-    }, 30000)
+    }, 6000)
 
     it("should handle 404 doing POST", async () => {
         const response = await fetch2test("http://127.0.0.1:8383/echoNotFound", {
@@ -86,5 +86,6 @@ describe("fetch", () => {
         })
         expect(response.ok).toBe(false)
         expect(response.status).toBe(404)
-    }, 30000)
+        expect(await response.text()).toContain('<pre>Cannot POST /echoNotFound</pre')
+    }, 6000)
 })

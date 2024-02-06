@@ -2,7 +2,7 @@ import { ContractTransactionResponse, ethers } from "ethers";
 import { CartesiClient } from "../main";
 import { Utils } from "../utils";
 import { AxiosWrappedPromise } from "./AxiosWrappedPromise";
-import { AxiosLikeClient } from "./AxiosLikeClient";
+import { InputAddedListener } from "./InputAddedListener";
 
 interface FetchOptions {
     method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
@@ -14,11 +14,11 @@ let cartesiClient: CartesiClient
 
 async function _fetch(url: string, options?: FetchOptions) {
     if (options?.method === 'GET' || options?.method === undefined) {
-        return doGet(url, options)
+        return doRequestWithInspect(url, options)
     } else if (options?.method === 'POST' || options?.method === 'PUT' || options?.method === 'PATCH' || options?.method === 'DELETE') {
         return doRequestWithAdvance(url, options)
     }
-    throw new Error("Function not implemented.");
+    throw new Error(`Method ${options?.method} not implemented.`);
 }
 
 async function doRequestWithAdvance(url: string, options?: FetchOptions) {
@@ -27,20 +27,18 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
     }
     const { logger } = cartesiClient.config;
     try {
-        new AxiosLikeClient(cartesiClient).addListener()
+        new InputAddedListener(cartesiClient).addListener()
         const inputContract = await cartesiClient.getInputContract();
-        const data = options?.body
         const requestId = `${Date.now()}:${Math.random()}`
-        const wPromise = AxiosLikeClient.requests[requestId] = new AxiosWrappedPromise()
+        const wPromise = InputAddedListener.requests[requestId] = new AxiosWrappedPromise()
         // convert string to input bytes (if it's not already bytes-like)
         const inputBytes = ethers.toUtf8Bytes(
             JSON.stringify({
                 requestId,
                 cartesify: {
-                    axios: {
-                        data: data ? JSON.parse(data) : undefined,
+                    fetch: {
                         url,
-                        method: options?.method
+                        options,
                     },
                 },
             })
@@ -50,9 +48,10 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
         // send transaction
         const tx = await inputContract.addInput(dappAddress, inputBytes) as ContractTransactionResponse;
         await tx.wait(1);
-        const resp = await wPromise.promise
-        const res = new Response(JSON.stringify({ success: { data: resp.data } }))
-        res.ok = true
+        const resp = (await wPromise.promise) as any
+        const res = new Response(resp.success.text)
+        res.ok = resp.success.ok
+        res.status = resp.success.status
         return res
     } catch (e) {
         logger.error(e);
@@ -66,7 +65,7 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
     }
 }
 
-async function doGet(url: string, options?: FetchOptions) {
+async function doRequestWithInspect(url: string, options?: FetchOptions) {
     if (!cartesiClient) {
         throw new Error('You need to configure the Cartesi client')
     }
@@ -76,7 +75,7 @@ async function doGet(url: string, options?: FetchOptions) {
     try {
         const inputJSON = JSON.stringify({
             cartesify: {
-                axios: {
+                fetch: {
                     url,
                     method: "GET"
                 },
@@ -93,13 +92,15 @@ async function doGet(url: string, options?: FetchOptions) {
             },
         });
         const result: unknown = await response.json();
-
+        
         if (Utils.isObject(result) && "reports" in result && Utils.isArrayNonNullable(result.reports)) {
             const firstReport = result.reports.at(0);
             if (Utils.isObject(firstReport) && "payload" in firstReport && typeof firstReport.payload === "string") {
                 const payload = Utils.hex2str(firstReport.payload.replace(/^0x/, ""));
-                const response = new Response(payload)
+                const resp = JSON.parse(payload)
+                const response = new Response(resp.success.text)
                 response.ok = true
+                response.status = resp.success.status
                 return response
             }
         }
@@ -123,8 +124,11 @@ class Response {
     }
 
     async json() {
-        const resp = JSON.parse(this.rawData)
-        return resp.success.data
+        return JSON.parse(this.rawData)
+    }
+
+    async text() {
+        return this.rawData
     }
 }
 
