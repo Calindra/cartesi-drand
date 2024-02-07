@@ -128,5 +128,17 @@ describe("fetch", () => {
         expect(json.headers['x-epoch_index']).toMatch(/^[0-9]+$/)
         expect(json.headers['x-input_index']).toMatch(/^[0-9]+$/)
         expect(json.headers['x-timestamp']).toMatch(/^[0-9]+$/)
-    })
+    }, TEST_TIMEOUT)
+
+    it("should send the headers doing GET", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/echo/headers", {
+            method: "GET",
+            headers: {
+                "x-my-header": "some-value",
+            }
+        })
+        expect(response.ok).toBe(true)
+        const json = await response.json();
+        expect(json.headers['x-my-header']).toEqual('some-value')
+    }, TEST_TIMEOUT)
 })

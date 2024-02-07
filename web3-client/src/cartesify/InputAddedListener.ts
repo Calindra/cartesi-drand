@@ -74,15 +74,14 @@ export class InputAddedListener {
                         }
                         await new Promise((resolve) => setTimeout(resolve, 1000))
                     } catch (e) {
-                        console.error(e)
+                        logger.error(e)
                     }
                 }
             } catch (e) {
-                console.error(e)
+                logger.error(e)
             } finally {
                 logger.info(`InputAdded: ${Date.now() - start}ms; attempts = ${attempt}`)
             }
         })
     }
-
 }

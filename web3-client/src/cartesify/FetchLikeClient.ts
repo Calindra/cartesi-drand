@@ -69,7 +69,7 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
             cartesify: {
                 fetch: {
                     url,
-                    method: "GET"
+                    options
                 },
             },
         });
