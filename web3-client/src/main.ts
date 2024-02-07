@@ -18,6 +18,12 @@ export interface CartesiConstructor {
    * The endpoint of the Cartesi Rollups server
    */
   endpoint: URL;
+
+  /**
+   * The endpoint of the Cartesi graphQL
+   */
+  endpointGraphQL: URL
+
   /**
    * AddressLike, type used by ethers to string
    */
@@ -31,7 +37,7 @@ export interface CartesiConstructor {
 
 export class CartesiClientBuilder {
   private endpoint: URL;
-  private networkRPC: URL;
+  private endpointGraphQL: URL;
   private dappAddress: AddressLike;
   private signer: Signer;
   private wallet?: Wallet;
@@ -41,7 +47,7 @@ export class CartesiClientBuilder {
 
   constructor() {
     this.endpoint = new URL("http://localhost:8080");
-    this.networkRPC = new URL("http://localhost:8545");
+    this.endpointGraphQL = new URL("http://localhost:8080/graphql")
     this.dappAddress = "";
     this.provider = ethers.getDefaultProvider(this.endpoint.href);
     this.signer = new ethers.VoidSigner("0x", this.provider);
@@ -54,6 +60,11 @@ export class CartesiClientBuilder {
 
   withEndpoint(endpoint: URL | string): CartesiClientBuilder {
     this.endpoint = new URL(endpoint);
+    return this;
+  }
+
+  withEndpointGraphQL(endpoint: URL | string): CartesiClientBuilder {
+    this.endpointGraphQL = new URL(endpoint);
     return this;
   }
 
@@ -96,6 +107,7 @@ export class CartesiClientBuilder {
       provider: this.provider,
       logger: this.logger,
       inputBoxAddress: this.inputBoxAddress,
+      endpointGraphQL: this.endpointGraphQL,
     });
   }
 }

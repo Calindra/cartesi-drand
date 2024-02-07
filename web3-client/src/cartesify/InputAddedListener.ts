@@ -1,14 +1,26 @@
 import { CartesiClient } from "../main";
 import { Utils } from "../utils";
 import { AxiosWrappedPromise } from "./AxiosWrappedPromise";
+import debug from "debug";
 
+/**
+ * to see the logs run on terminal:
+ * ```
+ * export DEBUG=cartesify:*
+ * ```
+ */ 
+const debugs = debug('cartesify:InputAddedListener')
+
+let listenerAdded = false
 
 export class InputAddedListener {
-    static listenerAdded = false
+    
     static requests: Record<string, AxiosWrappedPromise> = {}
 
-    constructor(private cartesiClient: CartesiClient) {
+    endpointGraphQL: URL
 
+    constructor(private cartesiClient: CartesiClient) {
+        this.endpointGraphQL = cartesiClient.config.endpointGraphQL
     }
 
     async addListener() {
@@ -17,11 +29,10 @@ export class InputAddedListener {
         if (!cartesiClient) {
             throw new Error('You need to configure the Cartesi client')
         }
-        if (InputAddedListener.listenerAdded) {
+        if (listenerAdded) {
             return
         }
-        InputAddedListener.listenerAdded = true
-        const { logger } = cartesiClient.config;
+        listenerAdded = true
         const contract = await cartesiClient.getInputContract()
         contract.on("InputAdded", async (_dapp, inboxInputIndex, _sender, input) => {
             const start = Date.now()
@@ -36,7 +47,7 @@ export class InputAddedListener {
                 while (attempt < MAX_RETRY) {
                     try {
                         attempt++;
-                        const req = await fetch("http://localhost:8080/graphql", {
+                        const req = await fetch(this.endpointGraphQL, {
                             "headers": {
                                 "accept": "*/*",
                                 "accept-language": "en-US,en;q=0.9,pt;q=0.8",
@@ -48,7 +59,7 @@ export class InputAddedListener {
                                 "sec-fetch-mode": "cors",
                                 "sec-fetch-site": "same-origin"
                             },
-                            "referrer": "http://localhost:8080/graphql",
+                            "referrer": `${this.endpointGraphQL.toString()}`,
                             "referrerPolicy": "strict-origin-when-cross-origin",
                             "body": `{\"operationName\":null,\"variables\":{},\"query\":\"{\\n  input(index: ${inboxInputIndex}) {\\n    reports(first: 10) {\\n      edges {\\n        node {\\n          payload\\n        }\\n      }\\n    }\\n  }\\n}\\n\"}`,
                             "method": "POST",
@@ -74,13 +85,13 @@ export class InputAddedListener {
                         }
                         await new Promise((resolve) => setTimeout(resolve, 1000))
                     } catch (e) {
-                        logger.error(e)
+                        debugs(e)
                     }
                 }
             } catch (e) {
-                logger.error(e)
+                debugs(e)
             } finally {
-                logger.info(`InputAdded: ${Date.now() - start}ms; attempts = ${attempt}`)
+                debugs(`InputAdded: ${Date.now() - start}ms; attempts = ${attempt}`)
             }
         })
     }
