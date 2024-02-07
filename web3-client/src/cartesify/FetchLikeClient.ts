@@ -52,7 +52,7 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
         const res = new Response(resp.success)
         return res
     } catch (e) {
-        console.error(`Error ${url}`, e)
+        logger.error(`Error ${options?.method ?? 'GET'} ${url}`, e)
         throw e
     }
 }
@@ -89,15 +89,25 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
             const firstReport = result.reports.at(0);
             if (Utils.isObject(firstReport) && "payload" in firstReport && typeof firstReport.payload === "string") {
                 const payload = Utils.hex2str(firstReport.payload.replace(/^0x/, ""));
-                const resp = JSON.parse(payload)
-                const response = new Response(resp.success)
-                return response
+                const successOrError = JSON.parse(payload)
+                if (successOrError.success) {
+                    const response = new Response(successOrError.success)
+                    return response
+                } else if (successOrError.error) {
+                    if (successOrError.error?.constructorName === "TypeError") {
+                        throw new TypeError(successOrError.error.message)
+                    } else {
+                        throw successOrError.error
+                    }
+                }
             }
         }
+        throw new Error(`Wrong inspect response format.`)
     } catch (e) {
         logger.error(e);
+        throw e;
     }
-    return new Response('')
+    
 }
 
 export function setup(cClient: CartesiClient) {

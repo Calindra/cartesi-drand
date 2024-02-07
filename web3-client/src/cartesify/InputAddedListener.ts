@@ -24,6 +24,8 @@ export class InputAddedListener {
         const { logger } = cartesiClient.config;
         const contract = await cartesiClient.getInputContract()
         contract.on("InputAdded", async (_dapp, inboxInputIndex, _sender, input) => {
+            const start = Date.now()
+            let attempt = 0;
             try {
                 const str = Utils.hex2str(input.replace(/0x/, ''))
                 const payload = JSON.parse(str)
@@ -31,11 +33,9 @@ export class InputAddedListener {
                 if (!wPromise) {
                     return
                 }
-                let i = 0;
-                while (i < MAX_RETRY) {
+                while (attempt < MAX_RETRY) {
                     try {
-                        i++;
-                        logger.info(`attempt ${i}...`)
+                        attempt++;
                         const req = await fetch("http://localhost:8080/graphql", {
                             "headers": {
                                 "accept": "*/*",
@@ -79,6 +79,8 @@ export class InputAddedListener {
                 }
             } catch (e) {
                 console.error(e)
+            } finally {
+                logger.info(`InputAdded: ${Date.now() - start}ms; attempts = ${attempt}`)
             }
         })
     }

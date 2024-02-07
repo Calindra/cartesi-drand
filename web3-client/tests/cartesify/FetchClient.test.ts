@@ -94,7 +94,7 @@ describe("fetch", () => {
         expect(response.type).toBe("basic")
     }, TEST_TIMEOUT)
 
-    it("should handle 'TypeError: fetch failed'", async () => {
+    it("should handle 'TypeError: fetch failed' doing POST. Connection refused", async () => {
         const error = await fetch2test("http://127.0.0.1:12345/wrongPort", {
             method: "POST",
             headers: {
@@ -106,4 +106,27 @@ describe("fetch", () => {
         expect(error.constructor.name).toBe("TypeError")
         expect(error.message).toBe("fetch failed")
     }, TEST_TIMEOUT)
+
+    it("should handle 'TypeError: fetch failed' doing GET. Connection refused", async () => {
+        const error = await fetch2test("http://127.0.0.1:12345/wrongPort").catch(e => e)
+        expect(error.constructor.name).toBe("TypeError")
+        expect(error.message).toBe("fetch failed")
+    }, TEST_TIMEOUT)
+
+    it("should send the msg_sender as x-msg_sender within the headers. Also send other metadata with 'x-' prefix", async () => {
+        const response = await fetch2test("http://127.0.0.1:8383/echo/headers", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ any: 'body' })
+        })
+        expect(response.ok).toBe(true)
+        const json = await response.json();
+        expect(json.headers['x-msg_sender']).toEqual('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266')
+        expect(json.headers['x-block_number']).toMatch(/^[0-9]+$/)
+        expect(json.headers['x-epoch_index']).toMatch(/^[0-9]+$/)
+        expect(json.headers['x-input_index']).toMatch(/^[0-9]+$/)
+        expect(json.headers['x-timestamp']).toMatch(/^[0-9]+$/)
+    })
 })
