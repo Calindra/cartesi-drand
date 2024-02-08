@@ -14,4 +14,9 @@ export class Utils {
   static hex2str(hex: string) {
     return Hex.hex2a(hex)
   }
+
+  static hex2str2json(hex: string) {
+    const str = Utils.hex2str(hex.replace(/^0x/, ''))
+    return JSON.parse(str)
+  }
 }

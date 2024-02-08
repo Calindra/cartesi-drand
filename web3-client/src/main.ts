@@ -12,6 +12,9 @@ import { Utils } from "./utils";
 import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
 import { address as InputBoxContractAddress } from "@cartesi/rollups/deployments/mainnet/InputBox.json";
+import { Cartesify } from "./cartesify/Cartesify";
+
+export { Utils, Cartesify }
 
 export interface CartesiConstructor {
   /**

@@ -86,13 +86,12 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
         const result: unknown = await response.json();
 
         if (Utils.isObject(result) && "reports" in result && Utils.isArrayNonNullable(result.reports)) {
-            const firstReport = result.reports.at(0);
-            if (Utils.isObject(firstReport) && "payload" in firstReport && typeof firstReport.payload === "string") {
-                const payload = Utils.hex2str(firstReport.payload.replace(/^0x/, ""));
+            const lastReport = result.reports[result.reports.length - 1]
+            if (Utils.isObject(lastReport) && "payload" in lastReport && typeof lastReport.payload === "string") {
+                const payload = Utils.hex2str(lastReport.payload.replace(/^0x/, ""));
                 const successOrError = JSON.parse(payload)
                 if (successOrError.success) {
-                    const response = new Response(successOrError.success)
-                    return response
+                    return new Response(successOrError.success)
                 } else if (successOrError.error) {
                     if (successOrError.error?.constructorName === "TypeError") {
                         throw new TypeError(successOrError.error.message)
@@ -107,7 +106,7 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
         logger.error(e);
         throw e;
     }
-    
+
 }
 
 export function setup(cClient: CartesiClient) {
