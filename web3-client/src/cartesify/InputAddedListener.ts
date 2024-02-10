@@ -1,6 +1,6 @@
 import { CartesiClient } from "../main";
 import { Utils } from "../utils";
-import { AxiosWrappedPromise } from "./AxiosWrappedPromise";
+import { WrappedPromise } from "./WrappedPromise";
 import debug from "debug";
 
 /**
@@ -45,7 +45,7 @@ const defaultOptions: RequestInit = {
 
 export class InputAddedListener {
 
-    static requests: Record<string, AxiosWrappedPromise> = {}
+    static requests: Record<string, WrappedPromise> = {}
 
     endpointGraphQL: URL
     maxRetry = 30
@@ -75,7 +75,7 @@ export class InputAddedListener {
         }
     }
 
-    resolveOrRejectPromise(wPromise: AxiosWrappedPromise, lastReport: any) {
+    resolveOrRejectPromise(wPromise: WrappedPromise, lastReport: any) {
         if (lastReport.success) {
             wPromise.resolve!(lastReport)
         } else if (lastReport.error?.constructorName === "TypeError") {

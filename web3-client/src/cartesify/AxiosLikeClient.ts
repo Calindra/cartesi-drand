@@ -1,7 +1,7 @@
 import { ContractTransactionResponse, ethers } from "ethers";
 import { CartesiClient } from "../main";
 import { Utils } from "../utils";
-import { AxiosWrappedPromise } from "./AxiosWrappedPromise";
+import { WrappedPromise } from "./WrappedPromise";
 
 interface AxiosBuilder {
     baseURL?: string
@@ -9,7 +9,7 @@ interface AxiosBuilder {
 }
 
 export class AxiosLikeClient {
-    static requests: Record<string, AxiosWrappedPromise> = {}
+    static requests: Record<string, WrappedPromise> = {}
 
     static listenerAdded = false
     baseURL?: string
@@ -51,7 +51,7 @@ export class AxiosLikeClient {
             logger.info(`sending "${JSON.stringify(data)}"`);
 
             const requestId = `${Date.now()}:${Math.random()}`
-            const wPromise = AxiosLikeClient.requests[requestId] = new AxiosWrappedPromise()
+            const wPromise = AxiosLikeClient.requests[requestId] = new WrappedPromise()
             // convert string to input bytes (if it's not already bytes-like)
             const inputBytes = ethers.toUtf8Bytes(
                 JSON.stringify({

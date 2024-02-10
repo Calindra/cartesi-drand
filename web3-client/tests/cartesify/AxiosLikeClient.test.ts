@@ -20,7 +20,7 @@ describe("AxiosLikeClient", () => {
         cartesiClient.setSigner(walletWithProvider)
 
         const axios = AxiosLikeClient.create({ cartesiClient, baseURL: 'http://127.0.0.1:8383' })
-        const res = await axios.post('/hit', { amount: 123 })
+        const res = await axios.post('/hit', { amount: 123 }) as any
         console.log(res)
         expect(res.data).toBeDefined()
     }, 30000)

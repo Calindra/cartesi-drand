@@ -1,7 +1,7 @@
 import { ContractTransactionResponse, ethers } from "ethers";
 import { CartesiClient } from "../main";
 import { Utils } from "../utils";
-import { AxiosWrappedPromise } from "./AxiosWrappedPromise";
+import { WrappedPromise } from "./WrappedPromise";
 import { InputAddedListener } from "./InputAddedListener";
 
 interface FetchOptions {
@@ -30,7 +30,7 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
         new InputAddedListener(cartesiClient).addListener()
         const inputContract = await cartesiClient.getInputContract();
         const requestId = `${Date.now()}:${Math.random()}`
-        const wPromise = InputAddedListener.requests[requestId] = new AxiosWrappedPromise()
+        const wPromise = InputAddedListener.requests[requestId] = new WrappedPromise()
         // convert string to input bytes (if it's not already bytes-like)
         const inputBytes = ethers.toUtf8Bytes(
             JSON.stringify({
