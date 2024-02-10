@@ -1,7 +1,7 @@
 import { AddressLike, Provider, Signer } from "ethers";
 import { CartesiClient, CartesiClientBuilder } from "../main";
 import { AxiosLikeClient } from "./AxiosLikeClient";
-import { fetch as _fetch, setup as fetchSetup } from "./FetchLikeClient";
+import { FetchFun, fetch as _fetch } from "./FetchLikeClient";
 
 interface SetupOptions {
     endpoints: {
@@ -21,7 +21,7 @@ export class Cartesify {
         this.axios = new AxiosLikeClient(cartesiClient)
     }
 
-    static setup(options: SetupOptions) {
+    static createFetch(options: SetupOptions): FetchFun {
         const builder = new CartesiClientBuilder()
             .withDappAddress(options.dappAddress)
             .withEndpoint(options.endpoints.inspect)
@@ -33,8 +33,8 @@ export class Cartesify {
         if (options.signer) {
             cartesiClient.setSigner(options.signer)
         }
-        fetchSetup(cartesiClient)
+        return (input: string | URL | globalThis.Request, init?: RequestInit) => {
+            return _fetch(input, { ...init, cartesiClient })
+        }
     }
-
-    static fetch = _fetch
 }

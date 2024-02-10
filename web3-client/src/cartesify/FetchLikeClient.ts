@@ -4,15 +4,16 @@ import { Utils } from "../utils";
 import { WrappedPromise } from "./WrappedPromise";
 import { InputAddedListener } from "./InputAddedListener";
 
-interface FetchOptions {
-    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
-    body?: string
-    headers?: Record<string, string>
+interface FetchOptions extends RequestInit {
+    cartesiClient?: CartesiClient
 }
 
-let cartesiClient: CartesiClient
+export type FetchFun = (
+    input: string | URL | globalThis.Request,
+    init?: RequestInit,
+) => Promise<Response>;
 
-async function _fetch(url: string, options?: FetchOptions) {
+async function _fetch(url: string | URL | globalThis.Request, options?: FetchOptions) {
     if (options?.method === 'GET' || options?.method === undefined) {
         return doRequestWithInspect(url, options)
     } else if (options?.method === 'POST' || options?.method === 'PUT' || options?.method === 'PATCH' || options?.method === 'DELETE') {
@@ -21,10 +22,11 @@ async function _fetch(url: string, options?: FetchOptions) {
     throw new Error(`Method ${options?.method} not implemented.`);
 }
 
-async function doRequestWithAdvance(url: string, options?: FetchOptions) {
-    if (!cartesiClient) {
+async function doRequestWithAdvance(url: string | URL | globalThis.Request, options?: FetchOptions) {
+    if (!options?.cartesiClient) {
         throw new Error('You need to configure the Cartesi client')
     }
+    const cartesiClient = options.cartesiClient
     const { logger } = cartesiClient.config;
     try {
         new InputAddedListener(cartesiClient).addListener()
@@ -57,11 +59,11 @@ async function doRequestWithAdvance(url: string, options?: FetchOptions) {
     }
 }
 
-async function doRequestWithInspect(url: string, options?: FetchOptions) {
-    if (!cartesiClient) {
+async function doRequestWithInspect(url: string | URL | globalThis.Request, options?: FetchOptions) {
+    if (!options?.cartesiClient) {
         throw new Error('You need to configure the Cartesi client')
     }
-    const that = cartesiClient as any;
+    const that = options.cartesiClient as any;
     const { logger } = that.config;
 
     try {
@@ -107,10 +109,6 @@ async function doRequestWithInspect(url: string, options?: FetchOptions) {
         throw e;
     }
 
-}
-
-export function setup(cClient: CartesiClient) {
-    cartesiClient = cClient
 }
 
 export { _fetch as fetch }

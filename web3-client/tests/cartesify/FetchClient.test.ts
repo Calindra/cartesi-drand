@@ -1,17 +1,18 @@
 import { expect, it, describe, beforeAll } from "@jest/globals";
 import { Cartesify } from "../../src/main";
 import { ethers } from "ethers";
+import { FetchFun } from "../../src/cartesify/FetchLikeClient";
 
 describe("fetch", () => {
     const TEST_TIMEOUT = 30000
     // const fetch2test = fetch
-    const fetch2test = Cartesify.fetch
+    let fetch2test: FetchFun
 
     beforeAll(() => {
         const provider = ethers.getDefaultProvider("http://localhost:8545");
         const privateKey = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'
         let signer = new ethers.Wallet(privateKey, provider);
-        Cartesify.setup({
+        fetch2test = Cartesify.createFetch({
             dappAddress: '0x70ac08179605AF2D9e75782b8DEcDD3c22aA4D0C',
             endpoints: {
                 graphQL: new URL("http://localhost:8080/graphql"),
