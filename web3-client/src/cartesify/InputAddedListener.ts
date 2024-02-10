@@ -43,20 +43,52 @@ const defaultOptions: RequestInit = {
     "credentials": "omit",
 }
 
-
-
 export class InputAddedListener {
 
     static requests: Record<string, AxiosWrappedPromise> = {}
 
     endpointGraphQL: URL
+    maxRetry = 30
 
     constructor(private cartesiClient: CartesiClient) {
         this.endpointGraphQL = cartesiClient.config.endpointGraphQL
     }
 
+    async queryGraphQL(query: string, variables: Record<string, string>) {
+        const req = await fetch(this.endpointGraphQL, {
+            ...defaultOptions,
+            referrer: `${this.endpointGraphQL.toString()}`,
+            body: JSON.stringify({
+                query,
+                operationName: null,
+                variables
+            }),
+        });
+        return await req.json()
+    }
+
+    getLastReportAsJSON(json: any) {
+        if (json.data?.input.reports.edges.length > 0) {
+            const lastEdge = json.data.input.reports.edges.length - 1
+            const hex = json.data.input.reports.edges[lastEdge].node.payload
+            return Utils.hex2str2json(hex)
+        }
+    }
+
+    resolveOrRejectPromise(wPromise: AxiosWrappedPromise, lastReport: any) {
+        if (lastReport.success) {
+            wPromise.resolve!(lastReport)
+        } else if (lastReport.error?.constructorName === "TypeError") {
+            const typeError = new TypeError(lastReport.error.message)
+            wPromise.reject!(typeError)
+        } else if (lastReport.error) {
+            wPromise.reject!(lastReport.error)
+        } else {
+            wPromise.reject!(new Error(`Unexpected cartesify response format from backend ${JSON.stringify(lastReport)}`))
+        }
+    }
+
     async addListener() {
-        const MAX_RETRY = 30
         const cartesiClient = this.cartesiClient;
         if (!cartesiClient) {
             throw new Error('You need to configure the Cartesi client')
@@ -75,43 +107,25 @@ export class InputAddedListener {
                 if (!wPromise) {
                     return
                 }
-                while (attempt < MAX_RETRY) {
+                while (attempt < this.maxRetry) {
                     try {
                         attempt++;
                         if (attempt > 1) {
                             debugs(`waiting 1s to do the ${attempt} attempt.`)
                             await new Promise((resolve) => setTimeout(resolve, 1000))
                         }
-                        const req = await fetch(this.endpointGraphQL, {
-                            ...defaultOptions,
-                            referrer: `${this.endpointGraphQL.toString()}`,
-                            body: JSON.stringify({
-                                query,
-                                operationName: null,
-                                variables: { index: inboxInputIndex.toString() }
-                            }),
-                        });
-                        const json = await req.json()
-                        if (json.data?.input.reports.edges.length > 0) {
-                            const lastEdge = json.data.input.reports.edges.length - 1
-                            const hex = json.data.input.reports.edges[lastEdge].node.payload
-                            const successOrError = Utils.hex2str2json(hex)
-                            if (successOrError.success) {
-                                wPromise.resolve!(successOrError)
-                            } else {
-                                if (successOrError.error?.constructorName === "TypeError") {
-                                    const typeError = new TypeError(successOrError.error.message)
-                                    wPromise.reject!(typeError)
-                                } else {
-                                    wPromise.reject!(successOrError.error)
-                                }
-                            }
-                            break;
+                        const variables = { index: inboxInputIndex.toString() }
+                        const gqlResponse = await this.queryGraphQL(query, variables)
+                        const lastReport = this.getLastReportAsJSON(gqlResponse)
+                        if (/^cartesify:/.test(lastReport?.command)) {
+                            this.resolveOrRejectPromise(wPromise, lastReport)
+                            return // exit loop and function
                         }
                     } catch (e) {
                         debugs('%O', e)
                     }
                 }
+                wPromise.reject!(new Error(`Timeout after ${this.maxRetry} attempts`))
             } catch (e) {
                 debugs(e)
             } finally {
