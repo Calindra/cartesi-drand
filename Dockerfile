@@ -1,9 +1,10 @@
 # syntax=docker.io/docker/dockerfile:1.4
 ARG FOLDER_MIDDLEWARE=convenience-middleware
 
-FROM rust:1.74.1-bookworm as middleware
+FROM rust:1.78.0-bookworm as middleware
 
 ARG FOLDER_MIDDLEWARE
+ARG DEBIAN_FRONTEND=noninteractive
 
 # https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/reference.md#example-cache-apt-packages
 RUN <<EOF
@@ -32,8 +33,9 @@ RUN \
   --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
   cargo build --release --target=riscv64gc-unknown-linux-gnu
 
-FROM rust:1.74.1-bookworm as dapp-contract
+FROM rust:1.78.0-bookworm as dapp-contract
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 rm -f /etc/apt/apt.conf.d/docker-clean
 echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
@@ -62,6 +64,7 @@ ARG FOLDER_MIDDLEWARE
 LABEL io.sunodo.sdk_version=0.2.0
 LABEL io.cartesi.rollups.ram_size=128Mi
 
+ARG DEBIAN_FRONTEND=noninteractive
 ARG MACHINE_EMULATOR_TOOLS_VERSION=0.12.0
 
 RUN <<EOF
