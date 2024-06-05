@@ -19,7 +19,7 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 
 ### From source
 
-1. Install rust with for least 1.70.0 with rollup. <https://www.rust-lang.org/tools/install>
+1. Install rust with rustup. <https://www.rust-lang.org/tools/install>
 2. Install node and install packages
 3. Build rust and npm packages
 
