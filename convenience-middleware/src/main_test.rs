@@ -222,7 +222,7 @@ mod middleware_tests {
         assert!(status.is_success(), "status: {:?}", status.as_str());
         assert_eq!(status, 200);
 
-        assert!(!manager.lock().await.flag_to_hold.is_holding);
+        assert!(!manager.lock().await.flag_to_hold.is_holding());
         assert!(manager.lock().await.last_beacon.get_mut().is_some());
     }
 
@@ -439,7 +439,8 @@ mod middleware_tests {
         assert!(result);
     }
 
-    // #[actix_web::test]
+    #[ignore]
+    #[actix_web::test]
     async fn test_u256() {
         #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
         struct Test {

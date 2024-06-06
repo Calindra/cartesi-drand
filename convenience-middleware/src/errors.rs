@@ -28,6 +28,9 @@ pub enum CheckerError {
 
     #[display(fmt = "Error getting randomness")]
     RandomnessError,
+
+    #[display(fmt = "Error storing input")]
+    StoreInputError
 }
 
 impl serde::Serialize for CheckerError {
@@ -55,6 +58,7 @@ impl error::ResponseError for CheckerError {
             CheckerError::StoreInputByPass => hyper::StatusCode::BAD_REQUEST,
             CheckerError::SignatureErrorBeacon => hyper::StatusCode::BAD_REQUEST,
             CheckerError::RandomnessError => hyper::StatusCode::BAD_REQUEST,
+            CheckerError::StoreInputError => hyper::StatusCode::BAD_REQUEST,
         }
     }
 

@@ -42,8 +42,7 @@ pub mod server {
     }
 
     pub async fn send_report(report: Value) -> Result<&'static str, Box<dyn std::error::Error>> {
-        let server_addr =
-            var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
+        let server_addr = var("ROLLUP_HTTP_SERVER_URL").expect("ROLLUP_HTTP_SERVER_URL is not set");
         let client = hyper::Client::new();
         let req = hyper::Request::builder()
             .method(hyper::Method::POST)
@@ -162,8 +161,21 @@ pub mod input {
             Ok(inspect_decoded.to_string())
         }
 
+        pub async fn try_from_async(response: Response<Body>) -> Result<Self, Box<dyn Error>> {
+            let body = hyper::body::to_bytes(response).await?;
+            let utf = std::str::from_utf8(&body)?;
+            let result_deserialization = serde_json::from_str::<RollupInput>(utf)?;
+            Ok(result_deserialization)
+        }
+
         pub fn builder() -> RollupInputBuilder {
             RollupInputBuilder::default()
+        }
+
+        pub fn get_item(&self) -> Result<Item, Box<dyn Error>> {
+            serde_json::to_string(self)
+                .map(|request| Item { request })
+                .map_err(|err| err.into())
         }
     }
 
@@ -188,19 +200,9 @@ pub mod input {
 
     #[derive(Serialize, Deserialize, Debug, Default)]
     pub struct RollupInputDataMetadata {
-        // #[serde(with = "ethnum::serde::prefixed")]
-        // pub block_number: BigIntLike,
-        // #[serde(with = "ethnum::serde::prefixed")]
-        // pub epoch_index: BigIntLike,
-        // #[serde(with = "ethnum::serde::prefixed")]
-        // pub input_index: BigIntLike,
-        // #[serde(with = "ethnum::serde::prefixed")]
-        // pub msg_sender: BigIntLike,
-        // #[serde(with = "ethnum::serde::prefixed")]
-        // pub timestamp: BigIntLike,
-        pub block_number: u128,
-        pub epoch_index: u128,
-        pub input_index: u128,
+        pub block_number: BigIntLike,
+        pub epoch_index: BigIntLike,
+        pub input_index: BigIntLike,
         pub msg_sender: String,
         pub timestamp: u64,
     }
@@ -242,15 +244,6 @@ pub mod input {
 
         pub fn build(self) -> RollupInputDataMetadata {
             self.0
-        }
-    }
-
-    impl RollupInput {
-        pub async fn try_from_async(response: Response<Body>) -> Result<Self, Box<dyn Error>> {
-            let body = hyper::body::to_bytes(response).await?;
-            let utf = std::str::from_utf8(&body)?;
-            let result_deserialization = serde_json::from_str::<RollupInput>(utf)?;
-            Ok(result_deserialization)
         }
     }
 
