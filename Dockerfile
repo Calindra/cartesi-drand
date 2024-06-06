@@ -61,11 +61,14 @@ RUN \
 FROM --platform=linux/riscv64 riscv64/ubuntu:22.04
 
 ARG FOLDER_MIDDLEWARE
-LABEL io.sunodo.sdk_version=0.2.0
+
+# Flags: https://github.com/cartesi/cli/blob/65fb9fd557f93d6624cf86a7b9b3d3f8277423e0/apps/cli/src/commands/build.ts#L26-L33
+LABEL io.cartesi.sdk_version=0.6.2
 LABEL io.cartesi.rollups.ram_size=128Mi
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG MACHINE_EMULATOR_TOOLS_VERSION=0.12.0
+# Releases: https://github.com/cartesi/machine-emulator-tools/releases
+ARG MACHINE_EMULATOR_TOOLS_VERSION=0.15.0
 
 RUN <<EOF
 apt-get update
