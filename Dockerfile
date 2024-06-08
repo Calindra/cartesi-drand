@@ -43,13 +43,13 @@ WORKDIR /opt/cartesi/dapp
 
 COPY dapp-contract-blackjack dapp-contract-blackjack
 WORKDIR /opt/cartesi/dapp/dapp-contract-blackjack
-RUN cargo build --profile release --release --target=riscv64gc-unknown-linux-gnu
+RUN cargo build --release
 
 WORKDIR /opt/cartesi/dapp
 
 COPY convenience-middleware convenience-middleware
 WORKDIR /opt/cartesi/dapp/convenience-middleware
-RUN cargo build --profile release --release --target=riscv64gc-unknown-linux-gnu
+RUN cargo build --release
 
 WORKDIR /opt/cartesi/dapp
 
