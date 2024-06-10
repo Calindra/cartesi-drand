@@ -4,7 +4,7 @@ FROM ubuntu:22.04 as builder
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.72.0
+    RUST_VERSION=1.78.0
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
@@ -88,8 +88,7 @@ WORKDIR /opt/cartesi/dapp
 COPY --from=builder /opt/cartesi/dapp/dapp-contract-blackjack/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
 COPY --from=builder /opt/cartesi/dapp/convenience-middleware/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
 COPY convenience-middleware/drand.config.json ./convenience-middleware/
-COPY convenience-middleware/.env .
-COPY --chown=dapp:root dapp-start.sh .
+COPY dapp-start.sh convenience-middleware/drand.config.json convenience-middleware/.env ./
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
