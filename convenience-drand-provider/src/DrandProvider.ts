@@ -65,7 +65,7 @@ export class DrandProvider {
 
             if (Axios.isAxiosError(error)) {
                 console.error(
-                    "No connection to cartesi machine", error
+                    "No connection to cartesi machine", error.toJSON()
                 );
             } else {
                 console.error('Error on pending drand beacon', error);
