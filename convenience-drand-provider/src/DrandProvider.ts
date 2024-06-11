@@ -31,7 +31,7 @@ export class DrandProvider {
 
     inputSenderConfig: InputSenderConfig = {
         /** @todo change to dotenv */
-        dappAddress: "0x70ac08179605AF2D9e75782b8DEcDD3c22aA4D0C",
+        dappAddress: "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
         mnemonic: 'test test test test test test test test test test test junk',
         rpc: new URL(process.env.RPC_ENDPOINT ?? 'http://localhost:8545').href,
         accountIndex: 0,
@@ -65,10 +65,10 @@ export class DrandProvider {
 
             if (Axios.isAxiosError(error)) {
                 console.error(
-                    "No connection to cartesi machine", error.toJSON()
+                    `${new Date().toISOString()}: No connection to cartesi machine`, error.code, error.message
                 );
             } else {
-                console.error('Error on pending drand beacon', error);
+                console.error(`${new Date().toISOString()}: Error on pending drand beacon`, error);
             }
 
         }
