@@ -1,10 +1,13 @@
 import { type CartesiClient, CartesiClientBuilder } from "web3-client";
 import type { Provider, Signer } from "ethers";
-import { address as DAppAddress } from "../deployments/dapp.json";
+
+// sunodo v0.11.2
+const CARTESI_APPLICATION_ADDRESS = "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e"
 
 const CARTESI_INSPECT_ENDPOINT = new URL(
   process.env.CARTESI_INSPECT_ENDPOINT ?? "https://localhost:8080/inspect",
 );
+
 
 console.debug("ENDPOINT", CARTESI_INSPECT_ENDPOINT);
 
@@ -18,7 +21,7 @@ export class Cartesi {
       info: console.log,
       error: console.error,
     })
-    .withDappAddress(DAppAddress)
+    .withDappAddress(CARTESI_APPLICATION_ADDRESS)
     .build();
 
   /**
@@ -28,8 +31,8 @@ export class Cartesi {
    */
   static async sendInput(payload: Record<string, unknown>, signer?: Signer, provider?: Provider): Promise<void> {
     try {
-      if (provider) Cartesi.cartesiClient.setProvider(provider);
-      if (signer) Cartesi.cartesiClient.setSigner(signer);
+      if (provider) Cartesi.cartesiClient.setProvider(provider as any);
+      if (signer) Cartesi.cartesiClient.setSigner(signer as any);
       await Cartesi.cartesiClient.advance(payload);
     } catch (_error) {
       return;
