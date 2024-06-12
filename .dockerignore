@@ -13,4 +13,4 @@
 *.pdb
 
 .cartesi
-
+**/.cargo/config.toml

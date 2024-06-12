@@ -1,3 +1,10 @@
+## [0.4.0] - 2024-06-12
+### Changed
+- Update from sunodo to cartesi cli
+- Update contracts
+- Some tweaks
+
+
 ## [0.3.3] - 2024-01-24
 ### Changed
 - Bump node engine compatibility to >=20.0.0
@@ -20,7 +27,7 @@
 
 ## [0.2.8] - 2023-10-04
 ### Changed
-- More improvements in game 
+- More improvements in game
 
 ## [0.2.7] - 2023-08-23
 ### Changed

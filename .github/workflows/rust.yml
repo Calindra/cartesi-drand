@@ -10,16 +10,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # build:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Build
-  #     working-directory: ./convenience-middleware/
-  #     run: cargo build --verbose
-  #   - name: Run tests
-  #     working-directory: ./convenience-middleware/
-  #     run: cargo test --verbose
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      working-directory: ./convenience-middleware/
+      run: cargo build --verbose
+    - name: Run tests
+      working-directory: ./convenience-middleware/
+      run: cargo test --verbose
 
   riscv:
     name: RiscV Build

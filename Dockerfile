@@ -42,18 +42,18 @@ RUN rustup target add riscv64gc-unknown-linux-gnu
 WORKDIR /opt/cartesi/dapp
 
 COPY dapp-contract-blackjack dapp-contract-blackjack
+COPY dapp-contract-blackjack/.cargo/config.docker.toml dapp-contract-blackjack/.cargo/config.toml
 WORKDIR /opt/cartesi/dapp/dapp-contract-blackjack
 RUN cargo build --release
 
 WORKDIR /opt/cartesi/dapp
 
 COPY convenience-middleware convenience-middleware
+COPY convenience-middleware/.cargo/config.docker.toml convenience-middleware/.cargo/config.toml
 WORKDIR /opt/cartesi/dapp/convenience-middleware
 RUN cargo build --release
 
 WORKDIR /opt/cartesi/dapp
-
-RUN pwd && ls -lR */target/
 
 # COPY Cargo.toml .
 # RUN cargo build --release --workspace --target=riscv64gc-unknown-linux-gnu
