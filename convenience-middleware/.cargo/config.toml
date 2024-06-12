@@ -1,4 +1,4 @@
-[profile.release]
+[build]
 target = "riscv64gc-unknown-linux-gnu"
 
 [target.riscv64gc-unknown-linux-gnu]

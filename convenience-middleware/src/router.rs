@@ -27,18 +27,16 @@ pub mod routes {
 
         let drand = body.into_inner();
 
-        load_env_from_memory(drand).await;
-
         let result = write_env_to_json().await;
 
-        // maybe can generate a error on write json but
-        // already change the env in memory
         if let Err(e) = result {
             error!("Error updating drand config: {}", e);
             return Err(CheckerError::InvalidDrandConfig {
                 cause: e.to_string(),
             });
         }
+
+        load_env_from_memory(drand).await;
 
         Ok(HttpResponse::NoContent().finish())
     }
@@ -132,7 +130,12 @@ pub mod routes {
             "advance_state" => {
                 ctx.set_inspecting(false).await;
                 // Store the input in the buffer, so that it can be accessed from the /finish endpoint.
-                ctx.store_input(&rollup_input).await;
+                let err = ctx.store_input(&rollup_input).await;
+
+                if let Err(e) = err {
+                    error!("Error storing input: {}", e);
+                    return Err(CheckerError::StoreInputError);
+                }
 
                 match get_drand_beacon(&rollup_input.data.payload) {
                     Ok(beacon) => {

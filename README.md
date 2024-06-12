@@ -12,24 +12,29 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 [Drand](https://drand.love/) is a distributed randomness beacon daemon written in Golang. Linked drand nodes collectively produce publicly verifiable, unbiased and unpredictable random values at fixed intervals using bilinear pairings and threshold cryptography. Drand is used by various projects such as [Filecoin](https://filecoin.io/), The League of Entropy and Heliax.
 
 ## System requirements
-- Rust ^1.7.0
 
+- Rust ^1.78.0
 
 ## Building middleware
+
 ### From source
-1. Install rust with for least 1.70.0 with rollup. https://www.rust-lang.org/tools/install
+
+1. Install rust with rustup. <https://www.rust-lang.org/tools/install>
 2. Install node and install packages
 3. Build rust and npm packages
 
 ## Building Dapp contract
-### Host mode
+
+### Local mode
+
 Self container middleware:
-You can use sunodo to compile using Docker.
-Install sunodo follow this steps: https://docs.sunodo.io/guide/introduction/installing
+You can use cartesi CLI to compile using Docker.
+Install cartesi CLI follow this steps: <https://docs.cartesi.io/cartesi-rollups/1.3/quickstart/>
 
 ### Prod mode
+
 Consult this for more info:
-https://docs.sunodo.io/guide/deploying/deploying-application
+<https://docs.sunodo.io/guide/deploying/deploying-application>
 
 ```mermaid
 sequenceDiagram
@@ -105,24 +110,27 @@ The DApp’s owner can run an instance of the Convenience API to provide this ra
 The middleware provides 2 endpoints
 
 **/finish**
-Replace the Rollup's finish endpoint with this one. Example: http://localhost:8080/finish
+Replace the Rollup's finish endpoint with this one. Example: <http://localhost:8080/finish>
 
 **/random?timestamp=[timestamp]**
-Call this one to get a seed from Drand. Example: http://localhost:8080/random?timestamp=1692129529
+Call this one to get a seed from Drand. Example: <http://localhost:8080/random?timestamp=1692129529>
 It will return 404 when the seed isn't available.
-
 
 ## How to run
 
 ### Production mode
-With sunodo instance:
+
+With cartesi instance:
+
 ```shell
-sunodo build
-sunodo run
+cartesi build
+cartesi run
 ```
 
 ### Host mode
+
 Start the middleware:
+
 ```shell
 cd convenience-middleware/
 cargo run
@@ -131,12 +139,14 @@ cargo run
 ### Drand Provider
 
 Start the drand-provider:
+
 ```shell
 cd convenience-drand-provider/
 npm ci && npm run dev
 ```
 
 Run this smoke test:
+
 ```shell
 export TIMESTAMP=`date +%s`
 curl http://localhost:8080/random?timestamp=${TIMESTAMP}
@@ -149,12 +159,14 @@ curl http://localhost:8080/random?timestamp=${TIMESTAMP}
 ## Game Example
 
 Run the rollups:
-```
-sunodo build
-sunodo run
+
+```shell
+cartesi build
+cartesi run
 ```
 
 To run the blackjack frontend:
+
 ```shell
 cd dapp-blackjack
 npm ci && npm start
@@ -215,4 +227,3 @@ The endpoint responds with an appropriate HTTP status code. A successful update 
 ### Error Handling
 
 In case of an error, the endpoint will return an appropriate HTTP status code along with an error message in the response body.
-

@@ -1,9 +1,10 @@
 pub mod structs {
-    use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, sync::Arc};
+    use std::{borrow::BorrowMut, cell::Cell, collections::VecDeque, error::Error, sync::Arc};
 
     use dotenvy::var;
     use log::info;
     use serde::{Deserialize, Serialize};
+    #[cfg(test)]
     use serde_json::json;
     use sha3::{Digest, Sha3_256};
     use tokio::sync::Mutex;
@@ -30,7 +31,7 @@ pub mod structs {
     }
 
     pub struct Flag {
-        pub is_holding: bool,
+        is_holding: bool,
     }
 
     #[derive(Deserialize)]
@@ -60,11 +61,13 @@ pub mod structs {
             self
         }
 
+        #[cfg(test)]
         pub fn with_round(mut self, round: u64) -> BeaconBuilder {
             self.0.round = round;
             self
         }
 
+        #[cfg(test)]
         pub fn with_randomness(mut self, randomness: String) -> BeaconBuilder {
             self.0.randomness = randomness;
             self
@@ -93,9 +96,11 @@ pub mod structs {
         pub randomness: String,
     }
 
+    #[cfg(test)]
     #[derive(Default)]
     pub struct DrandBeaconBuilder(DrandBeacon);
 
+    #[cfg(test)]
     impl DrandBeacon {
         pub fn builder() -> DrandBeaconBuilder {
             DrandBeaconBuilder::default()
@@ -111,6 +116,7 @@ pub mod structs {
         }
     }
 
+    #[cfg(test)]
     impl DrandBeaconBuilder {
         pub fn with_round(mut self, round: u64) -> DrandBeaconBuilder {
             self.0.round = round;
@@ -166,12 +172,13 @@ pub mod structs {
                 .parse::<u64>()
                 .unwrap();
             let version: Option<&str> = option_env!("CARGO_PKG_VERSION");
+            let version = version.unwrap_or("unknown").to_string();
             AppState {
                 input_buffer_manager: Arc::new(Mutex::new(manager)),
                 drand_period,
                 drand_genesis_time,
                 safe_seconds,
-                version: version.unwrap_or("unknown").to_string(),
+                version,
             }
         }
         pub fn get_randomness_for_timestamp(&self, query_timestamp: u64) -> Option<String> {
@@ -241,10 +248,16 @@ pub mod structs {
                 manager.last_beacon.set(Some(beacon));
             }
         }
-        pub async fn store_input(&self, rollup_input: &RollupInput) {
+        pub async fn store_input(&self, rollup_input: &RollupInput) -> Result<(), Box<dyn Error>> {
             let mut manager = self.input_buffer_manager.lock().await;
-            let request = serde_json::to_string(rollup_input).unwrap();
-            manager.messages.push_back(Item { request });
+            let item = rollup_input.get_item();
+            match item {
+                Ok(item) => {
+                    manager.messages.push_back(item);
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            }
         }
         pub async fn consume_input(&self) -> Option<Item> {
             let mut manager = self.input_buffer_manager.lock().await;
@@ -272,12 +285,18 @@ pub mod structs {
             Flag { is_holding: false }
         }
 
-        pub fn hold_up(&mut self) {
-            self.is_holding = true;
-        }
+        // TODO: Check if this is necessary
+        // pub fn hold_up(&mut self) {
+        //     self.is_holding = true;
+        // }
 
         pub fn release(&mut self) {
             self.is_holding = false;
+        }
+
+        #[cfg(test)]
+        pub fn is_holding(&self) -> bool {
+            self.is_holding.to_owned()
         }
     }
 

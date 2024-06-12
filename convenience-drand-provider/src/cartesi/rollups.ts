@@ -22,17 +22,18 @@ import {
 } from "@cartesi/rollups";
 import { Argv } from "yargs";
 import { networks } from "./networks";
-import { Deployment, Contract } from "./abi";
+import { Deployment } from "./abi";
 import {
     readAddressFromFile,
-    readAllContractsFromDir
 } from "./utils"
+import localhost from "@sunodo/devnet/export/abi/localhost.json"
 
 export interface Args {
-    dapp: string;
+    dapp?: string;
     address?: string;
     addressFile?: string;
     deploymentFile?: string;
+    payload: string;
 }
 
 interface Contracts {
@@ -68,6 +69,10 @@ export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
         .option("deploymentFile", {
             describe: "JSON file with deployment of rollups contracts",
             type: "string",
+        }).option("payload", {
+            describe: "Payload to send to DApp",
+            type: "string",
+            default: "0xdeadbeef",
         });
 };
 
@@ -89,7 +94,7 @@ const readDApp = (
 };
 
 
-const readDeployment = (chainId: number, args: Args): Deployment => {
+const readDeployment = async (chainId: number, args: Args): Promise<Deployment> => {
     if (args.deploymentFile) {
         const deployment = require(args.deploymentFile);
         if (!deployment) {
@@ -105,13 +110,9 @@ const readDeployment = (chainId: number, args: Args): Deployment => {
         }
 
         if (network.name === "localhost") {
-
-            const contracts: Record<string, Contract> =
-                readAllContractsFromDir("../deployments/localhost",
-                    "../common-contracts/deployments/localhost");
-
-            const deployment = { chainId: chainId.toString(), name: "localhost", contracts: contracts };
-            return deployment as Deployment;
+            // const deployment: Deployment = { chainId: chainId.toString(), name: localhost.name, contracts: localhost.contracts };
+            // return deployment;
+            return localhost;
         }
 
         const deployment = require(`@cartesi/rollups/export/abi/${network.name}.json`);
@@ -140,15 +141,14 @@ export const rollups = async (
         throw new Error("unable to resolve DApp address");
     }
 
-    const deployment = readDeployment(chainId, args);
+    const deployment = await readDeployment(chainId, args);
     const InputBox = deployment.contracts["InputBox"];
     const ERC20Portal = deployment.contracts["ERC20Portal"];
     const ERC721Portal = deployment.contracts["ERC721Portal"];
 
     // connect to contracts
     const inputContract = IInputBox__factory.connect(
-        // InputBox.address,
-        "0x59b22D57D4f067708AB0c00552767405926dc768",
+        InputBox.address,
         provider as any
     );
     const outputContract = ICartesiDApp__factory.connect(address, provider as any);

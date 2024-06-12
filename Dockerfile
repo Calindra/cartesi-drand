@@ -1,80 +1,83 @@
-# syntax=docker.io/docker/dockerfile:1.4
-ARG FOLDER_MIDDLEWARE=convenience-middleware
+# syntax=docker.io/docker/dockerfile:1
+FROM ubuntu:22.04 as builder
 
-FROM rust:1.74.1-bookworm as middleware
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH \
+    RUST_VERSION=1.78.0
 
-ARG FOLDER_MIDDLEWARE
-
-# https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/reference.md#example-cache-apt-packages
+ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
-rm -f /etc/apt/apt.conf.d/docker-clean
-echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+set -e
+apt update
+apt install -y --no-install-recommends \
+    build-essential=12.9ubuntu3 \
+    ca-certificates=20230311ubuntu0.22.04.1 \
+    g++-riscv64-linux-gnu=4:11.2.0--1ubuntu1 \
+    wget=1.21.2-2ubuntu1
 EOF
 
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && \
-  apt-get install -y --no-install-recommends \
-  # build-essential=12.9 \
-  # ca-certificates=20230311 \
-  g++-riscv64-linux-gnu=4:12.2.0-5
-
-RUN rustup target add riscv64gc-unknown-linux-gnu
-
-WORKDIR /usr/src/${FOLDER_MIDDLEWARE}
-
-COPY convenience-middleware .
-
-# https://docs.docker.com/build/cache/#use-the-dedicated-run-cache
-# https://docs.docker.com/engine/reference/builder/#run---mounttypecache
-RUN \
-  --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
-  cargo build --release --target=riscv64gc-unknown-linux-gnu
-
-FROM rust:1.74.1-bookworm as dapp-contract
-
-RUN <<EOF
-rm -f /etc/apt/apt.conf.d/docker-clean
-echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
-EOF
-
-RUN \
-  --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && \
-  apt-get install -y --no-install-recommends \
-  # build-essential=12.9 \
-  # ca-certificates=20230311 \
-  g++-riscv64-linux-gnu=4:12.2.0-5
+RUN set -eux; \
+    dpkgArch="$(dpkg --print-architecture)"; \
+    case "${dpkgArch##*-}" in \
+    amd64) rustArch='x86_64-unknown-linux-gnu'; rustupSha256='0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db' ;; \
+    armhf) rustArch='armv7-unknown-linux-gnueabihf'; rustupSha256='f21c44b01678c645d8fbba1e55e4180a01ac5af2d38bcbd14aa665e0d96ed69a' ;; \
+    arm64) rustArch='aarch64-unknown-linux-gnu'; rustupSha256='673e336c81c65e6b16dcdede33f4cc9ed0f08bde1dbe7a935f113605292dc800' ;; \
+    i386) rustArch='i686-unknown-linux-gnu'; rustupSha256='e7b0f47557c1afcd86939b118cbcf7fb95a5d1d917bdd355157b63ca00fc4333' ;; \
+    *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
+    esac; \
+    url="https://static.rust-lang.org/rustup/archive/1.26.0/${rustArch}/rustup-init"; \
+    wget "$url"; \
+    echo "${rustupSha256} *rustup-init" | sha256sum -c -; \
+    chmod +x rustup-init; \
+    ./rustup-init -y --no-modify-path --profile minimal --default-toolchain $RUST_VERSION --default-host ${rustArch}; \
+    rm rustup-init; \
+    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
+    rustup --version; \
+    cargo --version; \
+    rustc --version;
 
 RUN rustup target add riscv64gc-unknown-linux-gnu
 
 WORKDIR /opt/cartesi/dapp
-COPY dapp-contract-blackjack .
-RUN \
-  --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
-  cargo build --release
+
+COPY dapp-contract-blackjack dapp-contract-blackjack
+WORKDIR /opt/cartesi/dapp/dapp-contract-blackjack
+RUN cargo build --release
+
+WORKDIR /opt/cartesi/dapp
+
+COPY convenience-middleware convenience-middleware
+WORKDIR /opt/cartesi/dapp/convenience-middleware
+RUN cargo build --release
+
+WORKDIR /opt/cartesi/dapp
+
+RUN pwd && ls -lR */target/
+
+# COPY Cargo.toml .
+# RUN cargo build --release --workspace --target=riscv64gc-unknown-linux-gnu
 
 FROM --platform=linux/riscv64 riscv64/ubuntu:22.04
 
-ARG FOLDER_MIDDLEWARE
-LABEL io.sunodo.sdk_version=0.2.0
+ARG FOLDER_MIDDLEWARE=convenience-middleware
+ARG MACHINE_EMULATOR_TOOLS_VERSION=0.14.1
+ADD https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb /
+RUN dpkg -i /machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb \
+    && rm /machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.deb
+
+LABEL io.cartesi.rollups.sdk_version=0.6.2
 LABEL io.cartesi.rollups.ram_size=128Mi
 
-ARG MACHINE_EMULATOR_TOOLS_VERSION=0.12.0
-
+ARG DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
+set -e
 apt-get update
 apt-get install -y --no-install-recommends \
     busybox-static=1:1.30.1-7ubuntu3 \
-    ca-certificates=20230311ubuntu0.22.04.1 \
-    curl=7.81.0-1ubuntu1.15 \
-    vim=2:8.2.3995-1ubuntu2.15 \
     jq=1.6-2.1ubuntu3
-curl -fsSL https://github.com/cartesi/machine-emulator-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-emulator-tools-v${MACHINE_EMULATOR_TOOLS_VERSION}.tar.gz \
-  | tar -C / --overwrite -xvzf -
-rm -rf /var/lib/apt/lists/*
+rm -rf /var/lib/apt/lists/* /var/log/* /var/cache/*
+useradd --create-home --user-group dapp
 EOF
 
 ARG CARTESI_DRAND_VERSION=0.2.10
@@ -82,13 +85,15 @@ ARG CARTESI_DRAND_VERSION=0.2.10
 ENV PATH="/opt/cartesi/bin:/opt/cartesi/dapp:${PATH}"
 
 WORKDIR /opt/cartesi/dapp
-COPY --from=middleware /usr/src/${FOLDER_MIDDLEWARE}/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
-COPY --from=dapp-contract /opt/cartesi/dapp/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
-COPY dapp-start.sh ${FOLDER_MIDDLEWARE}/drand.config.json ${FOLDER_MIDDLEWARE}/.env ./
+COPY --from=builder /opt/cartesi/dapp/dapp-contract-blackjack/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
+COPY --from=builder /opt/cartesi/dapp/convenience-middleware/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
+COPY convenience-middleware/drand.config.json ./convenience-middleware/
+COPY dapp-start.sh convenience-middleware/drand.config.json convenience-middleware/.env ./
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
-RUN chmod +x dapp-start.sh cartesi-drand
+RUN chmod +x dapp-start.sh cartesi-drand dapp-contract-blackjack
+RUN mkdir -p data/address data/names
 
 ENTRYPOINT ["rollup-init"]
 CMD ["dapp-start.sh"]

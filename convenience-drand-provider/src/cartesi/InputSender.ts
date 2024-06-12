@@ -41,7 +41,7 @@ export default class InputSender {
         return inputContract
     }
 
-    async findOrCreateInputBox(args: any) {
+    async findOrCreateInputBox(args: Args) {
         if (this.inputBox) {
             return this.inputBox
         } else {
@@ -49,9 +49,13 @@ export default class InputSender {
         }
     }
 
-    async sendInput(args: any) {
+    async sendInput(args: Args) {
         const { payload } = args;
         const dappAddress = this.config.dappAddress || args.address
+
+        if (!dappAddress) {
+            throw new Error("unable to resolve DApp address");
+        }
 
         const inputContract = await this.findOrCreateInputBox(args)
 

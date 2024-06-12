@@ -15,7 +15,7 @@ export interface Chain {
 }
 
 // compatible networks
-export const networks: Record<number, Chain> = {
+export const networks: Record<number, Chain | undefined> = {
     31337: {
         name: "localhost",
     },
