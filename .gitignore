@@ -21,3 +21,5 @@ node_modules/
 .parcel-cache
 
 .cartesi/
+
+.direnv/
