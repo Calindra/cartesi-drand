@@ -12,10 +12,10 @@
         pkgs = import nixpkgs { inherit system; };
       in {
         devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.nodejs_20
-            pkgs.rustup
-            pkgs.libclang
+          buildInputs = with pkgs; [
+            nodejs_22
+            rustup
+            libclang
           ];
         };
       }

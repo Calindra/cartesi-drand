@@ -1,0 +1,10 @@
+services:
+  dapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        FOLDER_MIDDLEWARE: "convenience-middleware"
+        MACHINE_EMULATOR_TOOLS_VERSION: "0.17.0"
+    image: blackjack:latest
+    container_name: blackjack
