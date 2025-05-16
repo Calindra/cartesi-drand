@@ -4,5 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        FOLDER_MIDDLEWARE: "convenience-middleware"
         MACHINE_EMULATOR_TOOLS_VERSION: "0.17.0"
+    environment:
+      RUST_BACKTRACE: full
+      CMT_DEBUG: yes

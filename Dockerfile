@@ -58,38 +58,40 @@ FROM --platform=linux/riscv64 riscv64/ubuntu:24.04
 RUN useradd --create-home --user-group dapp
 
 # Releases: https://github.com/cartesi/machine-guest-tools/releases
-ARG FOLDER_MIDDLEWARE=convenience-middleware
 ARG MACHINE_EMULATOR_TOOLS_VERSION=0.17.0
-ADD https://github.com/cartesi/machine-guest-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-guest-tools_riscv64.deb /tmp/machine-guest-tools_riscv64.deb
+ADD --checksum=sha256:ee205c345818c682fb1dfedd3fe3e4a074148e643ee4b3abad9cefd747877177 https://github.com/cartesi/machine-guest-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-guest-tools_riscv64.deb /tmp/machine-guest-tools_riscv64.deb
 RUN <<EOF
     dpkg -i /tmp/machine-guest-tools_riscv64.deb
     rm /tmp/machine-guest-tools_riscv64.deb
 EOF
-
-
-# Flags: https://github.com/cartesi/cli/blob/65fb9fd557f93d6624cf86a7b9b3d3f8277423e0/apps/cli/src/commands/build.ts#L26-L33
-# LABEL io.cartesi.rollups.sdk_version=0.6.2
-LABEL io.cartesi.rollups.ram_size=128Mi
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
 set -e
 apt-get update
 apt-get install -y --no-install-recommends \
-    busybox-static
+    busybox-static \
+    jq libjq1 libonig5 \
+    tree
 EOF
+
+USER dapp
+
+# Flags: https://github.com/cartesi/cli/blob/65fb9fd557f93d6624cf86a7b9b3d3f8277423e0/apps/cli/src/commands/build.ts#L26-L33
+LABEL io.cartesi.rollups.sdk_version=0.11.1
+LABEL io.cartesi.rollups.ram_size=128Mi
 
 ENV PATH="/opt/cartesi/bin:/opt/cartesi/dapp:${PATH}"
 
 WORKDIR /opt/cartesi/dapp
-COPY --from=dapp-contract /opt/cartesi/dapp/dapp-contract-blackjack/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
-COPY --from=middleware /opt/cartesi/dapp/convenience-middleware/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
-COPY convenience-middleware/drand.config.json ./convenience-middleware/
-COPY dapp-start.sh convenience-middleware/drand.config.json convenience-middleware/.env ./
+COPY --from=dapp-contract --chown=dapp:dapp --chmod=755 /opt/cartesi/dapp/dapp-contract-blackjack/target/riscv64gc-unknown-linux-gnu/release/dapp-contract-blackjack .
+COPY --from=middleware --chown=dapp:dapp --chmod=755 /opt/cartesi/dapp/convenience-middleware/target/riscv64gc-unknown-linux-gnu/release/cartesi-drand .
+# COPY --chown=dapp:dapp ./convenience-middleware/drand.config.json ./convenience-middleware/
+COPY --chown=dapp:dapp --chmod=644 convenience-middleware/drand.config.json convenience-middleware/.env ./
+COPY --chown=dapp:dapp --chmod=755 dapp-start.sh ./
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
-RUN chmod -v +x dapp-start.sh cartesi-drand dapp-contract-blackjack
 RUN mkdir -pv data/address data/names
 
 ENTRYPOINT ["rollup-init"]
