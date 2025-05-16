@@ -12,6 +12,8 @@ rm -f /etc/apt/apt.conf.d/docker-clean
 echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
 EOF
 
+# https://docs.docker.com/build/cache/#use-the-dedicated-run-cache
+# https://docs.docker.com/engine/reference/builder/#run---mounttypecache
 RUN \
   --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
