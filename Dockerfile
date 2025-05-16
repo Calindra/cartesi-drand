@@ -71,8 +71,7 @@ set -e
 apt-get update
 apt-get install -y --no-install-recommends \
     busybox-static \
-    jq libjq1 libonig5 \
-    tree
+    jq libjq1 libonig5
 EOF
 
 USER dapp
