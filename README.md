@@ -13,7 +13,7 @@ Drand enables us to offer pseudo random numbers to Cartesi DApps in a simple man
 
 ## System requirements
 
-- Rust ^1.78.0
+- Rust ^1.86.0
 
 ## Building middleware
 
