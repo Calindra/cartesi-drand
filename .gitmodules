@@ -1,3 +1,0 @@
-[submodule "machine-guest-tools"]
-	path = machine-guest-tools
-	url = git@github.com:cartesi/machine-guest-tools.git
