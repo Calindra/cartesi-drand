@@ -51,7 +51,7 @@ RUN \
 # COPY Cargo.toml .
 # RUN cargo build --release --workspace --target riscv64gc-unknown-linux-gnu
 
-FROM --platform=linux/riscv64 riscv64/ubuntu:24.04 AS final
+FROM --platform=linux/riscv64 riscv64/ubuntu:24.04
 
 RUN useradd --create-home --user-group dapp
 
@@ -87,8 +87,8 @@ COPY dapp-start.sh convenience-middleware/drand.config.json convenience-middlewa
 
 ENV ROLLUP_HTTP_SERVER_URL="http://127.0.0.1:5004"
 
-RUN chmod +x dapp-start.sh cartesi-drand dapp-contract-blackjack
-RUN mkdir -p data/address data/names
+RUN chmod -v +x dapp-start.sh cartesi-drand dapp-contract-blackjack
+RUN mkdir -pv data/address data/names
 
 ENTRYPOINT ["rollup-init"]
 CMD ["dapp-start.sh"]
