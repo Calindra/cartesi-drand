@@ -6,5 +6,5 @@ services:
       args:
         MACHINE_EMULATOR_TOOLS_VERSION: "0.17.0"
     environment:
-      RUST_BACKTRACE: full
+      RUST_BACKTRACE: 1
       CMT_DEBUG: yes
