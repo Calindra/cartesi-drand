@@ -53,11 +53,12 @@ RUN \
 
 FROM --platform=linux/riscv64 riscv64/ubuntu:24.04
 
+RUN useradd --create-home --user-group dapp
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN <<EOF
   set -eu
   apt-get update
-  apt-get --fix-broken install -y
   apt-get install -y --no-install-recommends \
       ca-certificates curl \
       busybox-static \
@@ -69,11 +70,9 @@ EOF
 ARG MACHINE_EMULATOR_TOOLS_VERSION=0.17.0
 ADD --checksum=sha256:ee205c345818c682fb1dfedd3fe3e4a074148e643ee4b3abad9cefd747877177 https://github.com/cartesi/machine-guest-tools/releases/download/v${MACHINE_EMULATOR_TOOLS_VERSION}/machine-guest-tools_riscv64.deb /tmp/machine-guest-tools_riscv64.deb
 RUN <<EOF
-    apt-get -i /tmp/machine-guest-tools_riscv64.deb
+    dpkg -i /tmp/machine-guest-tools_riscv64.deb
     rm /tmp/machine-guest-tools_riscv64.deb
 EOF
-
-RUN useradd --create-home --user-group dapp
 
 USER dapp
 
