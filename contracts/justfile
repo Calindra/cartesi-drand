@@ -18,7 +18,7 @@ clean-bindings:
 
 # generate Rust bindings from Solidity code
 bind: clean-bindings
-    forge bind --alloy --alloy-version 0.3.0 --select {{BINDINGS_FILTER}} \
+    forge bind --alloy --select {{BINDINGS_FILTER}} \
         --module --bindings-path {{BINDINGS_DIR}} \
         --root {{SRC_DIR}}
 
