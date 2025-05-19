@@ -1,6 +1,13 @@
 [profile.default]
-src = "src"
+src = "dependencies"
 out = "out"
-libs = ["lib"]
+libs = ["lib", "dependencies"]
+
+solc-version = "0.8.27"
+
+[dependencies]
+forge-std = "1.9.6"
+cartesi-rollups-contracts = "2.0.0-rc.18"
+"@openzeppelin-contracts" = "5.2.0"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -1,3 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["card-stake", "convenience-middleware", "dapp-contract-blackjack"]
+members = [
+    "card-stake",
+    "contracts/bindings-rs",
+    "convenience-middleware",
+    "dapp-contract-blackjack",
+]

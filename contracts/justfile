@@ -1,0 +1,26 @@
+# Variables
+BINDINGS_DIR := "./bindings-rs/src/contract"
+DEPLOYMENTS_DIR := "./deployments"
+SRC_DIR := "."
+BINDINGS_FILTER := "ERC20$"
+
+default: build
+
+build: build-smart-contracts bind
+
+# compile smart contracts
+build-smart-contracts:
+    forge build
+
+# clean generated bindings
+clean-bindings:
+    rm -rfv {{BINDINGS_DIR}}
+
+# generate Rust bindings from Solidity code
+bind: clean-bindings
+    forge bind --alloy --select {{BINDINGS_FILTER}} \
+        --module --bindings-path {{BINDINGS_DIR}} \
+        --root {{SRC_DIR}}
+
+install-deps:
+    forge soldeer install
