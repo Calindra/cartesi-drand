@@ -26,9 +26,9 @@ else
 	echo "JSON file not found, using default values"
 fi
 
-# mkdir -p data/address data/names
+# mkdir -pv data/address data/names
 
-export RUST_LOG=info
+export RUST_LOG=debug
 export ADDRESS_OWNER_GAME=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 ./cartesi-drand &
 ./dapp-contract-blackjack
