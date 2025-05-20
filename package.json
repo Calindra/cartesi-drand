@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "start": "cartesi rollups start && cartesi rollups logs -f",
+    "stop": "cartesi rollups stop",
     "drand": "npm run -w convenience-drand-provider watch",
     "test": "npm run -ws test"
   },
@@ -10,5 +12,8 @@
   "license": "MIT",
   "workspaces": [
     "convenience-drand-provider"
-  ]
+  ],
+  "devDependencies": {
+    "@cartesi/cli": "^2.0.0-alpha.11"
+  }
 }
