@@ -1,5 +1,6 @@
 # syntax=docker.io/docker/dockerfile:1
-FROM rust:1.87.0-bookworm AS builder
+
+FROM --platform=$BUILDPLATFORM rust:1.87.0-bookworm AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
