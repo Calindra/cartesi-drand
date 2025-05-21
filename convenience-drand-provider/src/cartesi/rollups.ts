@@ -49,28 +49,29 @@ interface Contracts {
  * @returns Argv instance with all options
  */
 export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
-    return yargs
-        .option("dapp", {
-            describe: "DApp name",
-            type: "string",
-            default: "dapp",
-        })
-        .option("address", {
-            describe: "Rollups contract address",
-            type: "string",
-        })
-        .option("addressFile", {
-            describe: "File with rollups contract address",
-            type: "string",
-        })
-        .option("deploymentFile", {
-            describe: "JSON file with deployment of rollups contracts",
-            type: "string",
-        }).option("payload", {
-            describe: "Payload to send to DApp",
-            type: "string",
-            default: "0xdeadbeef",
-        });
+  return yargs
+    .option("dapp", {
+      describe: "DApp name",
+      type: "string",
+      default: "dapp",
+    })
+    .option("address", {
+      describe: "Rollups contract address",
+      type: "string",
+    })
+    .option("addressFile", {
+      describe: "File with rollups contract address",
+      type: "string",
+    })
+    .option("deploymentFile", {
+      describe: "JSON file with deployment of rollups contracts",
+      type: "string",
+    })
+    .option("payload", {
+      describe: "Payload to send to DApp",
+      type: "string",
+      default: "0xdeadbeef",
+    });
 };
 
 
