@@ -77,23 +77,6 @@ export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
 };
 
 
-/**
- * Read address from file located at deployment path
- * @param dapp DApp name
- * @param chainId number of chain id of connected network
- * @returns address or undefined if can't resolve network name of file does not exist
- */
-const readDApp = (
-    dapp: string | undefined,
-    chainId: number
-): string | undefined => {
-    const network = networks[chainId];
-    if (network && dapp) {
-        return readAddressFromFile(`../deployments/${network.name}/${dapp}.json`);
-    }
-};
-
-
 const readDeployment = async (chainId: number, args: Args): Promise<Deployment> => {
     if (args.deploymentFile) {
         const deployment = require(args.deploymentFile);
