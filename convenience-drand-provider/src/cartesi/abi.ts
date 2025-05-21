@@ -1,5 +1,7 @@
 // Copyright 2022 Cartesi Pte. Ltd.
 
+import type { Abi } from "viem";
+
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 // this file except in compliance with the License. You may obtain a copy of the
 // License at http://www.apache.org/licenses/LICENSE-2.0
@@ -11,7 +13,7 @@
 
 export type Contract = {
     address: string;
-    abi: any; // XXX: type it more? or any an existing package, like 'abitype'
+    abi: Abi;
 };
 
 export type Deployment = {
@@ -19,3 +21,16 @@ export type Deployment = {
     chainId: string;
     contracts: Record<string, Contract>;
 };
+
+export const checkIfIsDeployment = (obj: unknown): obj is Deployment => {
+    if (typeof obj !== "object" || obj === null) {
+        return false;
+    }
+    const deployment = obj as Deployment;
+    return (
+        typeof deployment.name === "string" &&
+        typeof deployment.chainId === "string" &&
+        typeof deployment.contracts === "object" &&
+        deployment.contracts !== null
+    );
+}
