@@ -9,46 +9,33 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
+import type { Chain as TypedChain } from "viem";
+import {
+  anvil,
+  goerli,
+  bscTestnet,
+  avalancheFuji,
+  polygonMumbai,
+  optimismGoerli,
+  arbitrumGoerli,
+  gnosisChiado,
+  sepolia,
+} from "viem/chains";
+
 export interface Chain {
-    name: string;
-    explorer?: string;
+  name: string;
+  chain: TypedChain;
 }
 
 // compatible networks
-export const networks: Record<number, Chain | undefined> = {
-    31337: {
-        name: "localhost",
-    },
-    5: {
-        name: "goerli",
-        explorer: "https://goerli.etherscan.io",
-    },
-    97: {
-        name: "bsc_testnet",
-        explorer: "https://testnet.bscscan.com",
-    },
-    43113: {
-        name: "avax_fuji",
-        explorer: "https://testnet.snowtrace.io",
-    },
-    80001: {
-        name: "polygon_mumbai",
-        explorer: "https://mumbai.polygonscan.com",
-    },
-    420: {
-        name: "optimism_goerli",
-        explorer: "https://goerli-optimism.etherscan.io",
-    },
-    421613: {
-        name: "arbitrum_goerli",
-        explorer: "https://goerli-rollup-explorer.arbitrum.io",
-    },
-    10200: {
-        name: "chiado",
-        explorer: "https://blockscout.chiadochain.net/",
-    },
-    11155111: {
-        name: "sepolia",
-        explorer: "https://sepolia.etherscan.io",
-    },
-};
+export const networks = new Map<number, Chain>([
+  [31337, { name: "localhost", chain: anvil }],
+  [5, { name: "goerli", chain: goerli }],
+  [97, { name: "bsc_testnet", chain: bscTestnet }],
+  [43113, { name: "avax_fuji", chain: avalancheFuji }],
+  [80001, { name: "polygon_mumbai", chain: polygonMumbai }],
+  [420, { name: "optimism_goerli", chain: optimismGoerli }],
+  [421613, { name: "arbitrum_goerli", chain: arbitrumGoerli }],
+  [10200, { name: "chiado", chain: gnosisChiado }],
+  [11155111, { name: "sepolia", chain: sepolia }],
+]);
