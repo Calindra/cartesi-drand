@@ -1,5 +1,4 @@
 import { ChainOptions, HttpCachingChain, HttpChainClient, fetchBeacon } from "drand-client"
-import Axios, { AxiosInstance } from "axios";
 import InputSender from "./cartesi/InputSender";
 import { CartesiConfig, DrandConfig, InputSenderConfig } from "./configs";
 import { setTimeout } from 'node:timers/promises'
@@ -13,10 +12,17 @@ interface PendingDrandBeacon {
 export class DrandProvider {
 
     desiredState: 'RUNNING' | 'STOPPED' = 'RUNNING'
-    inspectAxiosInstance: AxiosInstance;
+
+    inputSenderConfig: InputSenderConfig = {
+        /** @todo change to dotenv */
+        dappAddress: "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
+        mnemonic: 'test test test test test test test test test test test junk',
+        rpc: new URL(process.env.RPC_ENDPOINT ?? 'http://localhost:8545').href,
+        accountIndex: 0,
+    }
 
     cartesiConfig: CartesiConfig = {
-        inspectEndpoint: new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080").href,
+        inspectEndpoint: new URL(`/inspect/${this.inputSenderConfig.dappAddress}`, process.env.INSPECT_ENDPOINT ?? "http://localhost:8080").href,
     }
 
     /**
@@ -29,14 +35,6 @@ export class DrandProvider {
         secondsToWait: 3,
     }
 
-    inputSenderConfig: InputSenderConfig = {
-        /** @todo change to dotenv */
-        dappAddress: "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
-        mnemonic: 'test test test test test test test test test test test junk',
-        rpc: new URL(process.env.RPC_ENDPOINT ?? 'http://localhost:8545').href,
-        accountIndex: 0,
-    }
-
     lastPendingTime = 0
     secondsToWait: number = 6;
     private drandClient: HttpChainClient
@@ -44,7 +42,6 @@ export class DrandProvider {
 
     constructor() {
         console.log('inspectEndpoint base url', this.cartesiConfig.inspectEndpoint)
-        this.inspectAxiosInstance = Axios.create({ baseURL: this.cartesiConfig.inspectEndpoint })
         this.drandClient = this.createDrandClient()
         this.inputSender = new InputSender(this.inputSenderConfig)
     }
@@ -53,24 +50,20 @@ export class DrandProvider {
         try {
             // url = "http://localhost:5005/inspect/pendingdrandbeacon"
             console.log(`${new Date().toISOString()}: Fetching pending drand beacon`)
-            const res = await this.inspectAxiosInstance.get<PendingDrandBeacon>('/pendingdrandbeacon')
+            const data = await fetch(this.cartesiConfig.inspectEndpoint)
+            if (!data.ok) {
+                throw new Error(`data: ${data.status} ${data.statusText}`)
+            }
+            const res: PendingDrandBeacon = await data.json()
 
-            if (Array.isArray(res.data.reports) && res.data.reports.length > 0) {
-                const firstReport = res.data.reports.at(0);
+            if (Array.isArray(res.reports) && res.reports.length > 0) {
+                const firstReport = res.reports.at(0);
                 if (firstReport?.payload && firstReport.payload !== '0x00') {
                     return { inputTime: Number(firstReport.payload) }
                 }
             }
         } catch (error) {
-
-            if (Axios.isAxiosError(error)) {
-                console.error(
-                    `${new Date().toISOString()}: No connection to cartesi machine`, error.code, error.message
-                );
-            } else {
-                console.error(`${new Date().toISOString()}: Error on pending drand beacon`, error);
-            }
-
+            console.error(`${new Date().toISOString()}: Error on pending drand beacon`, error);
         }
 
         return null;
