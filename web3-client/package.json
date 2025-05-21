@@ -24,9 +24,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "dependencies": {
-    "@cartesi/rollups": "^1.4.0"
-  },
   "directories": {
     "test": "tests"
   }
