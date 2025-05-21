@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { Contract } from "./abi";
+import { isBytes, isHex } from "viem";
 
 /**
  * Read object from json file
@@ -39,4 +40,8 @@ export const readAllContractsFromDir = (...paths: string[]): Record<string, Cont
         }
     }
     return contracts
+}
+
+export const isBytesLike = (value: unknown): boolean => {
+    return isBytes(value) || isHex(value);
 }
