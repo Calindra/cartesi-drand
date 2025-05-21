@@ -7,10 +7,10 @@
         "skipLibCheck": true,
         "resolveJsonModule": true,
         "outDir": "./dist", // Redirect output structure to the directory.
-        "rootDir": "./src", // Specify the root directory of input files. Use to control the output directory structure with --outDir
         "forceConsistentCasingInFileNames": true,
         "types": ["jest"]
     },
     "$schema": "https://json.schemastore.org/tsconfig",
-    "exclude": ["test", "scripts", "jest.config.ts"]
+    "exclude": ["test", "scripts", "jest.config.ts"],
+    "include": ["."]
 }
