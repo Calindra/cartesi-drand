@@ -9,7 +9,8 @@
     "dev": "ts-node ./src/app.ts",
     "watch": "ts-node-dev --inspect -- ./src/app.ts",
     "test:dev": "nodemon --ext ts --exec \"npm run test\"",
-    "build": "tsc -b --clean && tsc"
+    "build": "tsc -b --clean && tsc",
+    "codegen": "wagmi generate --config wagmi.config.ts"
   },
   "keywords": [
     "drand",
@@ -19,17 +20,18 @@
   "author": "Calindra",
   "license": "MIT",
   "dependencies": {
-    "@cartesi/rollups": "^1.1.0",
+    "@cartesi/viem": "^2.0.0-alpha.7",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@sunodo/devnet": "^1.6.0",
-    "axios": "^1.5.1",
     "dotenv": "^16.3.1",
     "drand-client": "^1.2.1",
-    "ethers": "^6.13.0"
+    "ethers": "^6.13.0",
+    "viem": "^2.30.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.2",
+    "@wagmi/cli": "^2.3.1",
     "jest": "^29.7.0",
     "nock": "^13.3.6",
     "nodemon": "^3.0.1",
