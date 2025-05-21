@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "cartesi build",
-    "deploy": "cartesi rollups deploy",
+    "deploy": "cartesi rollups deploy --mnemonic \"test test test test test test test test test test test junk\" --name \"blackjack\" --authority-owner \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\" --application-owner \"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\" --epoch-length 1",
     "start": "cartesi rollups start && cartesi rollups logs -f",
     "stop": "cartesi rollups stop",
     "drand": "npm run -w convenience-drand-provider watch",
