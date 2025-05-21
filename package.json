@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "build": "cartesi build",
+    "deploy": "cartesi rollups deploy",
     "start": "cartesi rollups start && cartesi rollups logs -f",
     "stop": "cartesi rollups stop",
     "drand": "npm run -w convenience-drand-provider watch",

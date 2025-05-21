@@ -52,7 +52,7 @@ RUN \
 # COPY Cargo.toml .
 # RUN cargo build --release --workspace --target riscv64gc-unknown-linux-gnu
 
-FROM --platform=linux/riscv64 riscv64/ubuntu:24.04
+FROM riscv64/ubuntu:24.04
 
 RUN useradd --create-home --user-group dapp
 
