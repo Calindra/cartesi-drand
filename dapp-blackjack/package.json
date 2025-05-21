@@ -23,7 +23,6 @@
         "@ethersproject/abi": "^5.7.0",
         "@ethersproject/providers": "^5.7.2",
         "autoprefixer": "^10.4.16",
-        "ethers": "^6.8.0",
         "postcss": "^8.4.31",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
