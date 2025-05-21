@@ -19,11 +19,11 @@ jobs:
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
           registry-url: "https://registry.npmjs.org"
           cache: "npm"
-      - run: |
-          cd web3-client
+      - working-directory: web3-client
+        run: |
           npm ci
           npm run test
           npm run build

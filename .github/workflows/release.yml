@@ -13,7 +13,7 @@ jobs:
     name: Build and Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run tests
         working-directory: ./convenience-middleware/
         run: cargo test --verbose
@@ -29,11 +29,11 @@ jobs:
           cross build --release --target riscv64gc-unknown-linux-gnu
       - name: Prepare binaries
         run: |
-          cp target/riscv64gc-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-riscv64gc
-          cp target/x86_64-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-x86_64
-          cp target/armv7-unknown-linux-gnueabihf/release/cartesi-drand ./cartesi-drand-armv7
-          cp target/aarch64-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-aarch64
-          cp target/i686-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-i686
+          cp -v target/riscv64gc-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-riscv64gc
+          cp -v target/x86_64-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-x86_64
+          cp -v target/armv7-unknown-linux-gnueabihf/release/cartesi-drand ./cartesi-drand-armv7
+          cp -v target/aarch64-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-aarch64
+          cp -v target/i686-unknown-linux-gnu/release/cartesi-drand ./cartesi-drand-i686
       - name: Release
         uses: docker://antonyurchenko/git-release:v5
         env:
