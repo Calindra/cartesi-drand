@@ -20,13 +20,10 @@ import {
     IERC721Portal,
     IERC721Portal__factory,
 } from "@cartesi/rollups";
-import { Argv } from "yargs";
-import { networks } from "./networks";
-import { Deployment } from "./abi";
-import {
-    readAddressFromFile,
-} from "./utils"
-import localhost from "@sunodo/devnet/export/abi/localhost.json"
+*/
+import type { Argv } from "yargs";
+import { LOCALHOST, networks } from "./networks";
+import type { Deployment } from "./abi";
 
 export interface Args {
     dapp?: string;
