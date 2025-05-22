@@ -24,7 +24,19 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "dependencies": {
+    "@cartesi/rollups": "^1.4.0",
+    "@cartesi/viem": "^2.0.0-alpha.7",
+    "ethers": "^6.13.0",
+    "viem": "^2.30.0"
+  },
   "directories": {
     "test": "tests"
+  },
+  "targets": {
+    "default": {
+      "source": "src/main.ts",
+      "distDir": "dist"
+    }
   }
 }
