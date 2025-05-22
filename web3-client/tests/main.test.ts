@@ -1,11 +1,11 @@
 import mock from "http-request-mock";
-import { expect, it, describe, beforeEach, afterEach } from "@jest/globals";
-import { CartesiClient, CartesiClientBuilder } from "../src/main";
-import { Hex } from "../src/hex";
+import { CartesiClient, CartesiClientBuilder } from "../src/main.ts";
+import { Hex } from "../src/hex.ts";
 import { createTestClient, http, publicActions, walletActions, type Address, getAddress } from "viem";
 import { foundry } from "viem/chains";
 import { publicActionsL1, waitForInput, walletActionsL1 } from "@cartesi/viem";
-
+import { it, describe, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict"
 function generateValidEth() {
   const hexChars = "0123456789abcdef";
   let address = "0x";
@@ -55,7 +55,7 @@ describe("CartesiClient", () => {
       const result = await cartesiClient.inspect(payload);
 
       // Assert
-      expect(result).toBeNull();
+      assert.strictEqual(result, null)
     });
 
     it("should return the payload from the first report if the response is valid", async () => {
@@ -77,7 +77,7 @@ describe("CartesiClient", () => {
       const result = await cartesiClient.inspect(payload);
 
       // Assert
-      expect(result).toMatchObject(games);
+      assert.deepStrictEqual(result, games);
     });
   });
 
