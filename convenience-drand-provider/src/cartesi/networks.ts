@@ -22,13 +22,13 @@ import {
   sepolia,
 } from "viem/chains";
 
-export interface Chain {
+export interface Network {
   name: string;
   chain: TypedChain;
 }
 
 // compatible networks
-export const networks = new Map<number, Chain>([
+export const networks = new Map<number, Network>([
   [31337, { name: "localhost", chain: anvil }],
   [5, { name: "goerli", chain: goerli }],
   [97, { name: "bsc_testnet", chain: bscTestnet }],

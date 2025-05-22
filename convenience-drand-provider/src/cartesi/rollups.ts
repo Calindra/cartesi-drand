@@ -9,7 +9,9 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-import { Signer, Provider } from "ethers";
+// import { Signer, Provider } from "ethers";
+
+/**
 import {
     IInputBox,
     IInputBox__factory,
@@ -22,25 +24,26 @@ import {
 } from "@cartesi/rollups";
 */
 import type { Argv } from "yargs";
-import { LOCALHOST, networks } from "./networks";
-import type { Deployment } from "./abi";
+import { networks } from "./networks";
+import { checkIfIsDeployment, type Contract, type Deployment } from "./abi";
+import { readFile } from "node:fs/promises";
+import { createWalletClient } from "viem";
+import type { ConnectAccount } from "./connect";
+import { walletActionsL1 } from "@cartesi/viem";
 
 export interface Args {
-    dapp?: string;
-    address?: string;
-    addressFile?: string;
-    deploymentFile?: string;
-    payload: string;
+  dapp?: string;
+  address?: string;
+  addressFile?: string;
+
+  deploymentFile?: string;
+  payload: string;
 }
 
 interface Contracts {
-    dapp: string;
-    inputContract: IInputBox;
-    outputContract: ICartesiDApp;
-    erc20Portal: IERC20Portal;
-    erc721Portal: IERC721Portal;
-    deployment: Deployment
-
+  dapp: string;
+  deployment: Deployment;
+  client: any;
 }
 
 /**
@@ -74,34 +77,13 @@ export const builder = <T>(yargs: Argv<T>): Argv<Args & T> => {
     });
 };
 
-
-const readDeployment = async (chainId: number, args: Args): Promise<Deployment> => {
-    if (args.deploymentFile) {
-        const deployment = require(args.deploymentFile);
-        if (!deployment) {
-            throw new Error(
-                `rollups deployment '${args.deploymentFile}' not found`
-            );
-        }
-        return deployment as Deployment;
-    } else {
-        const network = networks[chainId];
-        if (!network) {
-            throw new Error(`unsupported chain ${chainId}`);
-        }
-
-        if (network.name === "localhost") {
-            // const deployment: Deployment = { chainId: chainId.toString(), name: localhost.name, contracts: localhost.contracts };
-            // return deployment;
-            return localhost;
-        }
-
-        const deployment = require(`@cartesi/rollups/export/abi/${network.name}.json`);
-        if (!deployment) {
-            throw new Error(`rollups not deployed to network ${network.name}`);
-        }
-        return deployment as Deployment;
-    }
+const readDeployment = async (deploymentFile: string): Promise<Deployment> => {
+  const data = await readFile(deploymentFile);
+  const deployment = JSON.parse(data.toString("utf-8"));
+  if (!checkIfIsDeployment(deployment)) {
+    throw new Error(`invalid deployment file ${deploymentFile}`);
+  }
+  return deployment;
 };
 
 /**
@@ -112,43 +94,43 @@ const readDeployment = async (chainId: number, args: Args): Promise<Deployment> 
  * @returns Connected rollups contracts
  */
 export const rollups = async (
-    chainId: number,
-    provider: Provider | Signer,
-    args: Args
+  walletRequest: ConnectAccount,
+  args: Args
 ): Promise<Contracts> => {
-    const address = args.address;
+  const address = args.address;
 
-    if (!address) {
-        throw new Error("unable to resolve DApp address");
-    }
+  if (!address) {
+    throw new Error("unable to resolve DApp address");
+  }
 
-    const deployment = await readDeployment(chainId, args);
-    const InputBox = deployment.contracts["InputBox"];
-    const ERC20Portal = deployment.contracts["ERC20Portal"];
-    const ERC721Portal = deployment.contracts["ERC721Portal"];
+  const wallet = createWalletClient({
+    transport: walletRequest.transport,
+    account: walletRequest.account,
+  }).extend(walletActionsL1());
 
-    // connect to contracts
-    const inputContract = IInputBox__factory.connect(
-        InputBox.address,
-        provider as any
-    );
-    const outputContract = ICartesiDApp__factory.connect(address, provider as any);
-    const erc20Portal = IERC20Portal__factory.connect(
-        ERC20Portal.address,
-        provider as any
-    );
-    const erc721Portal = IERC721Portal__factory.connect(
-        ERC721Portal.address,
-        provider as any
-    );
+  const chainId = await wallet.getChainId();
+  const network = networks.get(chainId);
+  if (!network) {
+    throw new Error(`chain ${chainId} not supported`);
+  }
 
+  if (args.deploymentFile) {
+    const deployment = await readDeployment(args.deploymentFile);
 
     return {
-        dapp: address,
-        inputContract,
-        outputContract,
-        erc20Portal,
-        erc721Portal,
-        deployment
+      dapp: address,
+      deployment,
+      client: wallet,
     };
+  }
+
+  return {
+    dapp: address,
+    deployment: {
+      name: network.name,
+      chainId: network.chain.id.toString(),
+      contracts: {},
+    },
+    client: wallet,
+  };
 };

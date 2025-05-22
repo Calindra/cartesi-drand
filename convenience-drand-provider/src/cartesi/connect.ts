@@ -9,20 +9,20 @@
 // CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-import { ethers, Signer, JsonRpcProvider, Provider } from "ethers";
+//import { ethers, Signer, JsonRpcProvider, Provider } from "ethers";
 import { Argv } from "yargs";
-
+import { http, type HDAccount } from "viem";
+import { mnemonicToAccount } from "viem/accounts";
 export interface Args {
-    rpc: string;
-    mnemonic?: string;
-    accountIndex: number;
+  rpc: string;
+  mnemonic?: string;
+  accountIndex: number;
 }
 
 const HARDHAT_DEFAULT_MNEMONIC =
-    "test test test test test test test test test test test junk";
+  "test test test test test test test test test test test junk";
 
 const HARDHAT_DEFAULT_RPC_URL = "http://localhost:8545";
-
 
 /**
  * Builder for provider connection
@@ -31,61 +31,57 @@ const HARDHAT_DEFAULT_RPC_URL = "http://localhost:8545";
  * @returns Argv instance with all options
  */
 export const builder = <T>(
-    yargs: Argv<T>,
-    transactional: boolean = false
+  yargs: Argv<T>,
+  transactional: boolean = false
 ): Argv<Args & T> => {
-    return yargs
-        .option("rpc", {
-            describe: "JSON-RPC provider URL",
-            type: "string",
-            default: process.env.RPC_URL || HARDHAT_DEFAULT_RPC_URL,
-        })
-        .option("mnemonic", {
-            describe: "Wallet mnemonic",
-            type: "string",
-            default: process.env.MNEMONIC || HARDHAT_DEFAULT_MNEMONIC,
-            demandOption: transactional, // required if need to send transactions
-        })
-        .option("accountIndex", {
-            describe: "Account index from mnemonic",
-            type: "number",
-            default: 0,
-        });
+  return yargs
+    .option("rpc", {
+      describe: "JSON-RPC provider URL",
+      type: "string",
+      default: process.env.RPC_URL || HARDHAT_DEFAULT_RPC_URL,
+    })
+    .option("mnemonic", {
+      describe: "Wallet mnemonic",
+      type: "string",
+      default: process.env.MNEMONIC || HARDHAT_DEFAULT_MNEMONIC,
+      demandOption: transactional, // required if need to send transactions
+    })
+    .option("accountIndex", {
+      describe: "Account index from mnemonic",
+      type: "number",
+      default: 0,
+    });
 };
 
-export type Connection = {
-    provider: Provider;
-    signer?: Signer;
-};
+export interface ConnectAccount {
+  account?: HDAccount;
+  transport: ReturnType<typeof http>;
+}
 
 /**
- * Connect to a JSON-RPC provider and return a signer or provider
- * @param rpc JSON-RPC provider URL
- * @param mnemonic optional mnemonic to sign transactions
- * @param accountIndex account index of mnemonic (default to 0)
- * @returns signer if mnemonic is provided, provider otherwise
+ * Connects to a JSON-RPC provider and optionally creates an HD wallet account for signing transactions.
+ * @param rpc - The JSON-RPC provider URL.
+ * @param mnemonic - (Optional) Mnemonic phrase to derive the wallet account.
+ * @param accountIndex - (Optional) Index of the account to derive from the mnemonic (defaults to 0).
+ * @returns An object containing the transport and, if a mnemonic is provided, the derived HD account.
  */
 export const connect = (
-    rpc: string,
-    mnemonic?: string,
-    accountIndex?: number
-): Connection => {
-    // connect to JSON-RPC provider
-    const provider = new JsonRpcProvider(rpc);
+  rpc: string,
+  mnemonic?: string,
+  accountIndex?: number
+): ConnectAccount => {
+  let account: HDAccount | undefined;
 
-    // create signer to be used to send transactions
-    let signer: Connection['signer'] | undefined;
+  if (mnemonic) {
+    // create account from mnemonic
+    account = mnemonicToAccount(mnemonic, {
+      addressIndex: accountIndex ?? 0,
+      // path: `m/44'/60'/0'/0/${accountIndex ?? 0}`,
+    });
+  }
 
-    if (mnemonic) {
-        const path = `m/44'/60'/0'/0/${accountIndex ?? 0}`;
-        const mneu = ethers.Mnemonic.fromPhrase(mnemonic);
-        const hdNode = ethers.HDNodeWallet.fromMnemonic(mneu, path);
-
-        signer = hdNode.connect(provider);
-    }
-
-    return {
-        provider,
-        signer,
-    };
+  return {
+    account,
+    transport: http(rpc),
+  };
 };
