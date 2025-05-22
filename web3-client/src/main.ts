@@ -1,46 +1,28 @@
-import { IInputBox__factory, type InputBox } from "@cartesi/rollups";
-import {
-  ethers,
-  type Signer,
-  type Provider,
-  Wallet,
-  type AddressLike,
-  resolveAddress,
-  type ContractTransactionResponse,
-} from "ethers";
+import { Address, createPublicClient, createWalletClient, http, stringToHex, zeroAddress, type Account } from "viem";
 import { Utils } from "./utils";
 import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
-import { address as InputBoxContractAddress } from "@cartesi/rollups/deployments/mainnet/InputBox.json";
+import { publicActionsL1, walletActionsL1, getInputsAdded, createCartesiPublicClient } from "@cartesi/viem";
 
 export interface CartesiConstructor {
   /**
    * The endpoint of the Cartesi Rollups server
    */
   endpoint: URL;
-  /**
-   * AddressLike, type used by ethers to string
-   */
-  dapp_address: AddressLike;
-  signer: Signer;
-  wallet?: Wallet;
-  provider: Provider;
+  signer?: Account;
+  dapp_address: Address;
   logger: Log;
 }
 
 export class CartesiClientBuilder {
   private endpoint: URL;
-  private dappAddress: AddressLike;
-  private signer: Signer;
-  private wallet?: Wallet;
-  private provider: Provider;
+  private dappAddress: Address;
   private logger: Log;
+  private signer?: Account;
 
   constructor() {
     this.endpoint = new URL("http://localhost:8545");
-    this.dappAddress = "";
-    this.provider = ethers.getDefaultProvider(this.endpoint.href);
-    this.signer = new ethers.VoidSigner("0x", this.provider);
+    this.dappAddress = zeroAddress;
     this.logger = {
       info: console.log,
       error: console.error,
@@ -52,23 +34,8 @@ export class CartesiClientBuilder {
     return this;
   }
 
-  withDappAddress(address: AddressLike): CartesiClientBuilder {
+  withDappAddress(address: Address): CartesiClientBuilder {
     this.dappAddress = address;
-    return this;
-  }
-
-  withSigner(signer: Signer): CartesiClientBuilder {
-    this.signer = signer;
-    return this;
-  }
-
-  withWallet(wallet: Wallet): CartesiClientBuilder {
-    this.wallet = wallet;
-    return this;
-  }
-
-  withProvider(provider: Provider): CartesiClientBuilder {
-    this.provider = provider;
     return this;
   }
 
@@ -77,50 +44,30 @@ export class CartesiClientBuilder {
     return this;
   }
 
+  withSigner(signer: any): CartesiClientBuilder {
+    this.signer = signer;
+    return this;
+  }
+
   build(): CartesiClient {
     return new CartesiClient({
       endpoint: this.endpoint,
       dapp_address: this.dappAddress,
-      signer: this.signer,
-      wallet: this.wallet,
-      provider: this.provider,
       logger: this.logger,
+      signer: this.signer,
     });
   }
 }
 
 export class CartesiClient {
-  private static inputContract?: InputBox;
-
   constructor(private readonly config: CartesiConstructor) {}
 
   /**
    * Convert AddressLike, type used by ethers to string
    */
-  async getDappAddress(): Promise<string> {
-    return resolveAddress(this.config.dapp_address);
-  }
-
-  setSigner(signer: Signer): void {
-    if(this.config.signer !== signer) {
-      CartesiClient.inputContract = undefined;
-      this.config.signer = signer;
-    }
-  }
-
-  setProvider(provider: Provider): void {
-    this.config.provider = provider;
-  }
-
-  /**
-   * Singleton to create contract
-   */
-  async getInputContract(): Promise<InputBox> {
-    if (!CartesiClient.inputContract) {
-      const address = InputBoxContractAddress;
-      CartesiClient.inputContract = IInputBox__factory.connect(address, this.config.signer);
-    }
-    return CartesiClient.inputContract;
+  async getDappAddress(): Promise<Address> {
+    // return getAddress(this.config.dapp_address);
+    return this.config.dapp_address;
   }
 
   /**
@@ -170,37 +117,79 @@ export class CartesiClient {
   async advance<T extends ObjectLike>(payload: T) {
     const { logger } = this.config;
 
+    const account = this.config.signer;
+    if (!account) {
+      throw new Error("No account provided");
+    }
+
+    const walletClient = createWalletClient({
+      account,
+      transport: http(this.config.endpoint.href),
+    }).extend(walletActionsL1());
+
+    const publicClient = createPublicClient({
+      transport: http(this.config.endpoint.href),
+    }).extend(publicActionsL1());
+
+    const publicClientL2 = createCartesiPublicClient({
+      transport: http(this.config.endpoint.href),
+    });
+
     try {
-      const { provider, signer } = this.config;
-      logger.info("getting network", provider);
-      const network = await provider.getNetwork();
-      logger.info("getting signer address", signer);
-      const signerAddress = await signer.getAddress();
+      logger.info("getting network", walletClient);
+      logger.info("getting signer address", account);
+      const signerAddress = await account.getAddress?.();
 
-      logger.info(`connected to chain ${network.chainId}`);
+      const chainId = await walletClient.getChainId();
+
+      logger.info(`connected to chain ${chainId}`);
       logger.info(`using account "${signerAddress}"`);
-
-      // connect to rollups,
-      const inputContract = await this.getInputContract();
 
       // use message from command line option, or from user prompt
       logger.info(`sending "${JSON.stringify(payload)}"`);
 
       // convert string to input bytes (if it's not already bytes-like)
-      const inputBytes = ethers.toUtf8Bytes(
+      const inputBytes = stringToHex(
         JSON.stringify({
           input: payload,
-        })
+        }),
       );
 
       const dappAddress = await this.getDappAddress();
 
       // send transaction
-      const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
-      logger.info(`transaction: ${tx.hash}`);
-      logger.info("waiting for confirmation...");
-      const receipt = await tx.wait(1);
+      const tx = await walletClient.addInput({
+        account,
+        chain: walletClient.chain,
+        application: dappAddress,
+        payload: inputBytes,
+      });
+
+      // const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
+      logger.info(`transaction: ${tx}`);
+      logger.info("waiting for receipt...");
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: tx,
+      });
       logger.info(JSON.stringify(receipt));
+
+      logger.info("check logs for input...");
+      const [inputAdded] = getInputsAdded(receipt);
+
+      if (inputAdded) {
+        logger.info(`input event added: ${inputAdded}`);
+        const { index: inputIndex } = inputAdded;
+        logger.info("waiting for input to be processed...");
+
+        const input = await publicClientL2.waitForInput({
+          application: dappAddress,
+          inputIndex,
+        });
+
+        console.log("input processed", input);
+      } else {
+        logger.info("no input added");
+      }
     } catch (e) {
       logger.error(e);
 
