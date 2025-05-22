@@ -1,4 +1,4 @@
-import { Address, createPublicClient, createWalletClient, http, stringToHex, zeroAddress, type Account } from "viem";
+import { Address, http, publicActions, stringToHex, walletActions, zeroAddress, type Account } from "viem";
 import { Utils } from "./utils";
 import { Hex } from "./hex";
 import type { ObjectLike, Log } from "./types";
@@ -9,7 +9,7 @@ export interface CartesiConstructor {
    * The endpoint of the Cartesi Rollups server
    */
   endpoint: URL;
-  signer?: Account;
+  account?: Account;
   dapp_address: Address;
   logger: Log;
 }
@@ -18,7 +18,7 @@ export class CartesiClientBuilder {
   private endpoint: URL;
   private dappAddress: Address;
   private logger: Log;
-  private signer?: Account;
+  private account?: Account;
 
   constructor() {
     this.endpoint = new URL("http://localhost:8545");
@@ -44,8 +44,8 @@ export class CartesiClientBuilder {
     return this;
   }
 
-  withSigner(signer: any): CartesiClientBuilder {
-    this.signer = signer;
+  withAccount(account: Account): CartesiClientBuilder {
+    this.account = account;
     return this;
   }
 
@@ -54,7 +54,7 @@ export class CartesiClientBuilder {
       endpoint: this.endpoint,
       dapp_address: this.dappAddress,
       logger: this.logger,
-      signer: this.signer,
+      account: this.account,
     });
   }
 }
@@ -110,6 +110,23 @@ export class CartesiClient {
     return null;
   }
 
+  getClient(account: Account) {
+    return createCartesiPublicClient({
+      account,
+      transport: http(this.config.endpoint.href),
+    })
+      .extend(walletActions)
+      .extend(publicActions)
+      .extend(walletActionsL1())
+      .extend(publicActionsL1());
+  }
+
+  // getCartesiClient() {
+  //   return createCartesiPublicClient({
+  //     transport: http(this.config.endpoint.href),
+  //   });
+  // }
+
   /**
    * Send InputBox
    * @param payload The data to be sent to the Cartesi Machine, transform to payload
@@ -117,30 +134,19 @@ export class CartesiClient {
   async advance<T extends ObjectLike>(payload: T) {
     const { logger } = this.config;
 
-    const account = this.config.signer;
+    const account = this.config.account;
     if (!account) {
       throw new Error("No account provided");
     }
 
-    const walletClient = createWalletClient({
-      account,
-      transport: http(this.config.endpoint.href),
-    }).extend(walletActionsL1());
-
-    const publicClient = createPublicClient({
-      transport: http(this.config.endpoint.href),
-    }).extend(publicActionsL1());
-
-    const publicClientL2 = createCartesiPublicClient({
-      transport: http(this.config.endpoint.href),
-    });
+    const client = this.getClient(account);
 
     try {
-      logger.info("getting network", walletClient);
-      logger.info("getting signer address", account);
+      logger.info("getting client", client);
+      logger.info("getting account address", account);
       const signerAddress = await account.getAddress?.();
 
-      const chainId = await walletClient.getChainId();
+      const chainId = await client.getChainId();
 
       logger.info(`connected to chain ${chainId}`);
       logger.info(`using account "${signerAddress}"`);
@@ -158,17 +164,16 @@ export class CartesiClient {
       const dappAddress = await this.getDappAddress();
 
       // send transaction
-      const tx = await walletClient.addInput({
+      const tx = await client.addInput({
         account,
-        chain: walletClient.chain,
+        chain: client.chain,
         application: dappAddress,
         payload: inputBytes,
       });
 
-      // const tx = <ContractTransactionResponse>await inputContract.addInput(dappAddress, inputBytes);
       logger.info(`transaction: ${tx}`);
       logger.info("waiting for receipt...");
-      const receipt = await publicClient.waitForTransactionReceipt({
+      const receipt = await client.waitForTransactionReceipt({
         hash: tx,
       });
       logger.info(JSON.stringify(receipt));
@@ -181,7 +186,7 @@ export class CartesiClient {
         const { index: inputIndex } = inputAdded;
         logger.info("waiting for input to be processed...");
 
-        const input = await publicClientL2.waitForInput({
+        const input = await client.waitForInput({
           application: dappAddress,
           inputIndex,
         });
