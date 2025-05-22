@@ -67,6 +67,8 @@ export class DrandProvider {
       }
       const res: PendingDrandBeacon = await data.json();
 
+      console.log("Result", res);
+
       if (Array.isArray(res.reports) && res.reports.length > 0) {
         const firstReport = res.reports.at(0);
         if (firstReport?.payload && firstReport.payload !== "0x00") {
