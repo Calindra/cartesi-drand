@@ -40,6 +40,7 @@ describe("DrandProvider", () => {
         provider.stop();
       }, 1000);
       await runPromise;
+      assert.ok(inputSent);
       assert.ok(inputSent.payload);
       const payload = JSON.parse(inputSent.payload);
       assert.ok(payload.beacon);
