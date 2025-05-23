@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "rootDir": ".",
         "target": "ESNext",
         "module": "ESNext",
         "strict": true,
@@ -11,5 +12,5 @@
         "moduleResolution": "Node"
     },
     "$schema": "https://json.schemastore.org/tsconfig",
-    "include": ["src"]
+    "include": ["src"],
 }
