@@ -11,6 +11,5 @@
         "moduleResolution": "Node"
     },
     "$schema": "https://json.schemastore.org/tsconfig",
-    "exclude": ["test", "scripts", "jest.config.ts"],
-    "include": ["."]
+    "include": ["src"]
 }
