@@ -1,14 +1,14 @@
 {
     "compilerOptions": {
-        "target": "ES2021",
-        "module": "CommonJS",
+        "target": "ESNext",
+        "module": "ESNext",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "resolveJsonModule": true,
         "outDir": "./dist", // Redirect output structure to the directory.
         "forceConsistentCasingInFileNames": true,
-        "types": ["jest"]
+        "moduleResolution": "Node"
     },
     "$schema": "https://json.schemastore.org/tsconfig",
     "exclude": ["test", "scripts", "jest.config.ts"],
