@@ -1,6 +1,6 @@
 import mock from "http-request-mock";
-import { CartesiClient, CartesiClientBuilder } from "../src/main.ts";
-import { Hex } from "../src/hex.ts";
+import { CartesiClient, CartesiClientBuilder } from "../src/main";
+import { Hex } from "../src/hex";
 import { createTestClient, http, publicActions, walletActions, type Address, getAddress } from "viem";
 import { foundry } from "viem/chains";
 import { publicActionsL1, waitForInput, walletActionsL1 } from "@cartesi/viem";
