@@ -5,7 +5,7 @@ export default class Helper {
 
     static nockUrl = new URL("/inspect", process.env.INSPECT_ENDPOINT ?? "http://localhost:8080");
 
-    static nockInspectEndpointRandomIsNeeded() {
+    static nockInspectEndpointRandomIsNeeded(dappAddress: string) {
         return nock(Helper.nockUrl)
             .get(/\/inspect\/pendingdrandbeacon/)
             .reply(200, {

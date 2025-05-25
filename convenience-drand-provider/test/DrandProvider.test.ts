@@ -13,8 +13,10 @@ describe("DrandProvider", () => {
 
   describe(".pendingDrandBeacon()", () => {
     it("should inform the inputTime when there is some random seed pending", async () => {
-      Helper.nockInspectEndpointRandomIsNeeded();
+
       const provider = new DrandProvider();
+      const dappAddress = provider.inputSenderConfig.dappAddress;
+      Helper.nockInspectEndpointRandomIsNeeded(dappAddress);
       const resp = await provider.pendingDrandBeacon();
       assert.ok(resp?.inputTime);
     });

@@ -59,7 +59,10 @@ export class DrandProvider {
     try {
       // url = "http://localhost:5005/inspect/pendingdrandbeacon"
       console.log(`${new Date().toISOString()}: Fetching pending drand beacon`);
-      const data = await fetch(this.cartesiConfig.inspectEndpoint, {
+      const url = new URL(
+        `${this.cartesiConfig.inspectEndpoint}/pendingdrandbeacon`
+      );
+      const data = await fetch(url, {
         method: "POST",
       });
       if (!data.ok) {
